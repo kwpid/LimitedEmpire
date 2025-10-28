@@ -6,19 +6,39 @@ Limited Empire is a web-based collection game where players acquire rare items t
 
 ## Recent Changes (October 28, 2025)
 
+**Major New Features:**
+- **Leaderboard System**: Added comprehensive leaderboard tab with 4 categories:
+  - Top Value: Players ranked by total inventory value
+  - Top Items: Players ranked by number of items owned
+  - Top Cash: Players ranked by cash balance
+  - Top Rolls: Players ranked by total roll count
+  - Shows top 30 players per category, excluding admin (userId 1)
+  - Top 3 players feature gold/silver/bronze gradient backgrounds
+  - Auto-refreshes every 5 minutes
+  - Clicking any player opens their profile modal
+
 **Performance & UX Optimizations:**
-- Optimized roll tab loading - now loads only once when site loads (on user availability), never reloads when switching tabs
+- Optimized roll tab with React.memo - now renders exactly once on site load and never re-renders when switching tabs
+- Roll component remains mounted but hidden with CSS display property when switching tabs
+- Internal state and stats continue to update independently without component re-renders
 - Data only updates after actual rolls, not on tab switches
 - Removed 3-second roll delay - players can now roll again immediately after an item is shown
 - Simplified autoroll logic to prevent double-rolling issues
 
 **UI Improvements:**
+- **Redesigned Player Cards**: Made more compact and consistent
+  - Reduced avatar size from 80px to 48px for better space efficiency
+  - Added inventory value display with trending icon
+  - Ensured consistent sizing regardless of whether player has custom status
+  - Showcase items reduced to 64px for proportional scaling
+  - Removed padding for cleaner, denser layout
 - Removed "rarest item" display from roll tab stats section for cleaner layout
+- Removed "Add Friend" button from player profile modal
 - Fixed settings tab switching - profile and sell settings tabs now synchronize properly
-- Enhanced and enlarged player cards with bigger avatars, text, and showcase boxes
 - Added empty state indicators (Ban icon) for showcase slots without items
 - Limited players "all" tab to show 10 players for optimization (unlimited when searching)
 - Added professional footer with Roblox fair use disclaimer, locked to bottom of page
+- Expanded navigation to 6 tabs (added Leaderboard between Players and Index)
 
 **Admin Features:**
 - Fixed admin account appearing in item owners list - admin users are now filtered out from the owners display
