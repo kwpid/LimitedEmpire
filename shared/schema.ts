@@ -54,7 +54,9 @@ export const userSchema = z.object({
   userId: z.number(), // Sequential ID (1, 2, 3, etc.)
   isAdmin: z.boolean(),
   isBanned: z.boolean().default(false),
+  isPermanentBan: z.boolean().default(false), // If true, user is permanently banned and auto-wiped
   banReason: z.string().optional(),
+  banExpiresAt: z.number().optional(), // timestamp for temporary bans
   createdAt: z.number(), // timestamp
   rollCount: z.number().default(0), // Total number of rolls performed
   cash: z.number().default(1000), // User's currency
@@ -64,7 +66,7 @@ export const userSchema = z.object({
   inventory: z.array(z.object({
     id: z.string(),
     itemId: z.string(),
-    serialNumber: z.number().nullable(),
+    serialNumber: z.number().nullable(), // null for infinite items, 0 for admin's special copy, 1+ for user copies
     rolledAt: z.number(),
     amount: z.number().default(1),
   })).default([]),
@@ -88,6 +90,12 @@ export const usernameSchema = z
   .refine((val) => !/\s/.test(val), "Username cannot contain spaces");
 
 // Item Schema
+// ADMIN SERIAL #0 BEHAVIOR:
+// - When an item is created, Admin (userId 1) automatically receives serial #0
+// - For limited items: serial #0 does NOT count towards totalStock/remainingStock
+//   Example: Creating item with 100 stock gives admin #0, users can get #1-100
+// - For infinite items: admin gets a regular copy (serialNumber: null)
+// - Serial #0 cannot be transferred via "Pick Serial" - it's permanently admin's
 export const itemSchema = z.object({
   id: z.string(), // Firestore document ID
   name: z.string(),
@@ -97,8 +105,8 @@ export const itemSchema = z.object({
   rarity: z.enum(["COMMON", "UNCOMMON", "RARE", "ULTRA_RARE", "EPIC", "ULTRA_EPIC", "MYTHIC", "INSANE"]),
   offSale: z.boolean(),
   stockType: z.enum(["limited", "infinite"]),
-  totalStock: z.number().nullable(), // null for infinite stock
-  remainingStock: z.number().nullable(), // null for infinite stock
+  totalStock: z.number().nullable(), // null for infinite stock; for limited, does NOT include admin's #0
+  remainingStock: z.number().nullable(), // null for infinite stock; for limited, does NOT include admin's #0
   totalOwners: z.number().nonnegative().default(0), // Track unique users who own this item
   createdAt: z.number(),
   createdBy: z.string(), // userId who created it
