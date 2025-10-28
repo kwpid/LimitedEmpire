@@ -61,20 +61,20 @@ export function PlayerCard({ player, onClick }: PlayerCardProps) {
       onClick={onClick}
       data-testid={`card-player-${player.userId}`}
     >
-      <CardContent className="p-4 h-full">
-        <div className="flex items-start gap-4 h-full">
+      <CardContent className="p-5 h-full">
+        <div className="flex items-start gap-5 h-full">
           <div className="relative flex-shrink-0">
-            <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
-              <UserIcon className="w-8 h-8 text-primary" />
+            <div className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center">
+              <UserIcon className="w-10 h-10 text-primary" />
             </div>
             {isOnline && (
-              <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-background rounded-full" />
+              <div className="absolute bottom-0 right-0 w-5 h-5 bg-green-500 border-2 border-background rounded-full" />
             )}
           </div>
 
-          <div className="flex-1 min-w-0 flex flex-col gap-2">
+          <div className="flex-1 min-w-0 flex flex-col gap-3">
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-lg truncate" data-testid={`text-player-name-${player.userId}`}>
+              <h3 className="font-bold text-xl truncate" data-testid={`text-player-name-${player.userId}`}>
                 {player.username}
               </h3>
               {player.isAdmin && (
@@ -83,22 +83,22 @@ export function PlayerCard({ player, onClick }: PlayerCardProps) {
             </div>
             
             {player.customStatus && (
-              <p className="text-sm text-muted-foreground truncate" data-testid={`text-player-status-${player.userId}`}>
+              <p className="text-base text-muted-foreground truncate" data-testid={`text-player-status-${player.userId}`}>
                 {player.customStatus}
               </p>
             )}
 
-            <div className="flex gap-2 mt-auto">
+            <div className="flex gap-2.5 mt-auto">
               {loading ? (
                 <>
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="w-14 h-14 bg-muted animate-pulse rounded border-2 border-muted-foreground/20" />
+                    <div key={i} className="w-20 h-20 bg-muted animate-pulse rounded border-2 border-muted-foreground/20" />
                   ))}
                 </>
               ) : (
                 <>
                   {showcaseItems.map((item, idx) => (
-                    <div key={idx} className="relative w-14 h-14 rounded border-2 border-primary/30 overflow-hidden bg-muted">
+                    <div key={idx} className="relative w-20 h-20 rounded border-2 border-primary/30 overflow-hidden bg-muted">
                       <img
                         src={item.imageUrl}
                         alt={item.name}
@@ -115,8 +115,8 @@ export function PlayerCard({ player, onClick }: PlayerCardProps) {
                     </div>
                   ))}
                   {Array.from({ length: emptySlots }).map((_, idx) => (
-                    <div key={`empty-${idx}`} className="w-14 h-14 rounded border-2 border-muted-foreground/20 bg-muted/30 flex items-center justify-center">
-                      <Ban className="w-6 h-6 text-muted-foreground/40" />
+                    <div key={`empty-${idx}`} className="w-20 h-20 rounded border-2 border-muted-foreground/20 bg-muted/30 flex items-center justify-center">
+                      <Ban className="w-8 h-8 text-muted-foreground/40" />
                     </div>
                   ))}
                 </>

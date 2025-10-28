@@ -13,7 +13,6 @@ import { Dices, Loader2, TrendingUp, Package, Gem, Hash } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import type { RarityTier } from "@shared/schema";
-import { useLocation } from "wouter";
 
 interface UserStats {
   totalRolls: number;
@@ -36,7 +35,6 @@ interface SavedRoll {
 export default function RollScreen() {
   const { user, refetchUser } = useAuth();
   const { toast } = useToast();
-  const [location] = useLocation();
   const [items, setItems] = useState<Item[]>([]);
   const [rolling, setRolling] = useState(false);
   const [autoRoll, setAutoRoll] = useState(false);
@@ -57,20 +55,14 @@ export default function RollScreen() {
   const hasLoadedRef = useRef(false);
 
   useEffect(() => {
-    if (!hasLoadedRef.current) {
+    if (!hasLoadedRef.current && user) {
       loadItems();
-      hasLoadedRef.current = true;
-    }
-  }, []);
-  
-  useEffect(() => {
-    const isOnRollTab = location === "/";
-    if (isOnRollTab && user) {
       loadBestRolls();
       loadGlobalRolls();
       loadUserStats();
+      hasLoadedRef.current = true;
     }
-  }, [location, user]);
+  }, [user]);
 
   const loadUserStats = async () => {
     if (!user) return;

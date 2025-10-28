@@ -65,7 +65,7 @@ function AppContent() {
   const currentTab = location === "/" ? "roll" : location.slice(1);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-3">
@@ -109,7 +109,7 @@ function AppContent() {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-4">
+      <div className="flex-1 container mx-auto px-4 py-4 pb-8">
         <Tabs value={currentTab} onValueChange={(value) => setLocation(value === "roll" ? "/" : `/${value}`)}>
           <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-5 mb-6">
             <TabsTrigger value="roll" data-testid="tab-roll">
@@ -145,6 +145,22 @@ function AppContent() {
           <Route path="/settings" component={Settings} />
         </Switch>
       </div>
+
+      <footer className="w-full border-t bg-muted/30 py-6 mt-auto">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto text-center space-y-3">
+            <p className="text-sm text-muted-foreground">
+              <strong>Disclaimer:</strong> Item thumbnails and names displayed on this platform are property of <strong>Roblox Corporation</strong> and are used here under <strong>Fair Use</strong> for educational and non-commercial purposes. All other content, including the platform design, code, and functionality, is the intellectual property of Limited Empire.
+            </p>
+            <p className="text-xs text-muted-foreground/70">
+              Limited Empire is not affiliated with, endorsed by, or sponsored by Roblox Corporation.
+            </p>
+            <p className="text-xs text-muted-foreground/50">
+              © {new Date().getFullYear()} Limited Empire. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </footer>
 
       <GlobalRollToast />
 
