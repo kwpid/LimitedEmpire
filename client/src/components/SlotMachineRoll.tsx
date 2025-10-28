@@ -49,6 +49,7 @@ export function SlotMachineRoll({ items, finalItem, isRolling }: SlotMachineRoll
       </div>
       
       <motion.div
+        key={`roll-${finalItem?.id}-${Date.now()}`}
         initial={{ y: 0 }}
         animate={{ y: finalPosition }}
         transition={{

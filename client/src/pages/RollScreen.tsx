@@ -489,7 +489,7 @@ export default function RollScreen() {
                   id="auto-roll"
                   checked={autoRoll}
                   onCheckedChange={setAutoRoll}
-                  disabled={rolling || items.length === 0}
+                  disabled={items.length === 0}
                   data-testid="switch-auto-roll"
                 />
               </div>
