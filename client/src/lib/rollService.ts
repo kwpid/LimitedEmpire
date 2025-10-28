@@ -132,9 +132,12 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
       const currentRollCount = userDoc.data()?.rollCount || 0;
       const currentInventory = userDoc.data()?.inventory || [];
       
+      const inventoryItemId = `${user.firebaseUid}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
       transaction.update(userRef, {
         rollCount: currentRollCount + 1,
         inventory: arrayUnion({
+          id: inventoryItemId,
           itemId: selectedItem.id,
           serialNumber,
           rolledAt: Date.now(),

@@ -50,6 +50,7 @@ export const userSchema = z.object({
     autoSellRarities: z.array(z.enum(["COMMON", "UNCOMMON", "RARE", "ULTRA_RARE", "EPIC", "ULTRA_EPIC", "MYTHIC", "INSANE"])).default([]),
   }).default({ autoSellRarities: [] }),
   inventory: z.array(z.object({
+    id: z.string(),
     itemId: z.string(),
     serialNumber: z.number().nullable(),
     rolledAt: z.number(),

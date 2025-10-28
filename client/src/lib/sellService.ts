@@ -1,4 +1,4 @@
-import { runTransaction, doc, collection, query, where, getDocs, updateDoc } from "firebase/firestore";
+import { runTransaction, doc, collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { User } from "@shared/schema";
 
@@ -49,19 +49,20 @@ export async function sellItems(
 
     const currentCash = userDoc.data().cash || 0;
     const adminCash = adminData.cash || 0;
+    const currentInventory = userDoc.data().inventory || [];
+
+    const filteredInventory = currentInventory.filter(
+      (invItem: any) => !idsToSell.includes(invItem.id)
+    );
 
     transaction.update(userRef, {
       cash: currentCash + playerEarned,
+      inventory: filteredInventory,
     });
 
     transaction.update(adminRef, {
       cash: adminCash + adminEarned,
     });
-
-    for (const invId of idsToSell) {
-      const inventoryRef = doc(db, "inventory", invId);
-      transaction.delete(inventoryRef);
-    }
 
     return {
       soldCount: quantityToSell,
