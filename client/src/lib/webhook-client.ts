@@ -1,13 +1,16 @@
-// Utility for making authenticated webhook requests
-const ADMIN_SECRET = 'change-this-in-production'; // Should match server-side
-
 export async function sendWebhookRequest(endpoint: string, data: any): Promise<void> {
   try {
+    const adminSecret = import.meta.env.VITE_ADMIN_WEBHOOK_SECRET;
+    if (!adminSecret) {
+      console.error('VITE_ADMIN_WEBHOOK_SECRET not configured');
+      return;
+    }
+
     await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-admin-secret': ADMIN_SECRET,
+        'x-admin-secret': adminSecret,
       },
       body: JSON.stringify(data),
     });
