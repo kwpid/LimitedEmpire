@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import type { User } from "@shared/schema";
 
@@ -17,6 +17,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const sessionStartRef = useRef<number>(Date.now());
+  const activityIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchUserData = async (uid: string) => {
     try {
@@ -43,6 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setFirebaseUser(fbUser);
       if (fbUser) {
         await fetchUserData(fbUser.uid);
+        sessionStartRef.current = Date.now();
       } else {
         setUser(null);
       }
@@ -51,6 +54,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const updateActivity = async () => {
+      try {
+        const userRef = doc(db, "users", user.id);
+        await updateDoc(userRef, {
+          lastActive: Date.now(),
+        });
+      } catch (error) {
+        console.error("Error updating activity:", error);
+      }
+    };
+
+    updateActivity();
+
+    activityIntervalRef.current = setInterval(updateActivity, 30000);
+
+    const handleBeforeUnload = async () => {
+      if (!user) return;
+      
+      const sessionDuration = Date.now() - sessionStartRef.current;
+      try {
+        const userRef = doc(db, "users", user.id);
+        await updateDoc(userRef, {
+          timeSpentOnSite: (user.timeSpentOnSite || 0) + sessionDuration,
+          lastActive: Date.now(),
+        });
+      } catch (error) {
+        console.error("Error saving session duration:", error);
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      if (activityIntervalRef.current) {
+        clearInterval(activityIntervalRef.current);
+      }
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      handleBeforeUnload();
+    };
+  }, [user]);
 
   return (
     <AuthContext.Provider value={{ firebaseUser, user, loading, refetchUser }}>
