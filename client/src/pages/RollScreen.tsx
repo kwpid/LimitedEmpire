@@ -353,8 +353,101 @@ export default function RollScreen() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[300px,1fr,300px] gap-4 md:gap-6">
-        <Card className="order-1 md:order-1">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl md:text-3xl font-bold tracking-tight">Roll</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 md:space-y-6">
+          <div className="min-h-[300px] md:min-h-[400px] flex items-center justify-center w-full overflow-hidden">
+            <AnimatePresence mode="wait">
+              {isAnimating ? (
+                <motion.div
+                  key="rolling"
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="w-full flex justify-center"
+                >
+                  <SlotMachineRoll items={items} finalItem={rolledItem} isRolling={isAnimating} />
+                </motion.div>
+              ) : rolledItem ? (
+                <motion.div
+                  key="result"
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.5, type: "spring" }}
+                  className={`border-4 rounded-lg overflow-hidden ${rarityClass} ${rarityGlow}`}
+                >
+                  <img
+                    src={rolledItem.imageUrl}
+                    alt={rolledItem.name}
+                    className="w-48 h-48 md:w-64 md:h-64 object-cover"
+                  />
+                  <div className="p-3 md:p-4 bg-card text-center">
+                    <h3 className="font-bold text-base md:text-lg">{rolledItem.name}</h3>
+                    <p className="text-xs md:text-sm text-muted-foreground">{formatValue(rolledItem.value)}</p>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="idle"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-center text-muted-foreground"
+                >
+                  <Dices className="w-24 h-24 md:w-32 md:h-32 mx-auto mb-4 opacity-50" />
+                  <p className="text-sm md:text-base">Click Roll to start</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div className="space-y-3 md:space-y-4">
+            <Button
+              onClick={performRoll}
+              disabled={rolling || items.length === 0}
+              size="lg"
+              className="w-full h-14 md:h-16 text-lg md:text-xl font-bold"
+              data-testid="button-roll"
+            >
+              {rolling ? (
+                <>
+                  <Loader2 className="w-5 h-5 md:w-6 md:h-6 mr-2 animate-spin" />
+                  Rolling...
+                </>
+              ) : (
+                <>
+                  <Dices className="w-5 h-5 md:w-6 md:h-6 mr-2" />
+                  Roll
+                </>
+              )}
+            </Button>
+
+            <div className="flex items-center justify-between p-3 md:p-4 bg-muted rounded-lg">
+              <Label htmlFor="auto-roll" className="cursor-pointer text-sm md:text-base">
+                Auto Roll
+              </Label>
+              <Switch
+                id="auto-roll"
+                checked={autoRoll}
+                onCheckedChange={setAutoRoll}
+                disabled={items.length === 0}
+                data-testid="switch-auto-roll"
+              />
+            </div>
+
+            {items.length === 0 && (
+              <p className="text-xs md:text-sm text-center text-muted-foreground">
+                No items available to roll. Contact an admin to add items.
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+        <Card>
           <CardHeader>
             <CardTitle className="text-base md:text-lg">Your Best Rolls</CardTitle>
             <p className="text-xs text-muted-foreground">Last 10 worth 250K+</p>
@@ -388,100 +481,7 @@ export default function RollScreen() {
           </CardContent>
         </Card>
 
-        <Card className="order-2 md:order-2 md:col-span-2 lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="text-2xl md:text-3xl font-bold tracking-tight">Roll</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 md:space-y-6">
-            <div className="min-h-[300px] md:min-h-[400px] flex items-center justify-center w-full overflow-hidden">
-              <AnimatePresence mode="wait">
-                {isAnimating ? (
-                  <motion.div
-                    key="rolling"
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="w-full flex justify-center"
-                  >
-                    <SlotMachineRoll items={items} finalItem={rolledItem} isRolling={isAnimating} />
-                  </motion.div>
-                ) : rolledItem ? (
-                  <motion.div
-                    key="result"
-                    initial={{ scale: 0.5, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ duration: 0.5, type: "spring" }}
-                    className={`border-4 rounded-lg overflow-hidden ${rarityClass} ${rarityGlow}`}
-                  >
-                    <img
-                      src={rolledItem.imageUrl}
-                      alt={rolledItem.name}
-                      className="w-48 h-48 md:w-64 md:h-64 object-cover"
-                    />
-                    <div className="p-3 md:p-4 bg-card text-center">
-                      <h3 className="font-bold text-base md:text-lg">{rolledItem.name}</h3>
-                      <p className="text-xs md:text-sm text-muted-foreground">{formatValue(rolledItem.value)}</p>
-                    </div>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="idle"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-center text-muted-foreground"
-                  >
-                    <Dices className="w-24 h-24 md:w-32 md:h-32 mx-auto mb-4 opacity-50" />
-                    <p className="text-sm md:text-base">Click Roll to start</p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            <div className="space-y-3 md:space-y-4">
-              <Button
-                onClick={performRoll}
-                disabled={rolling || items.length === 0}
-                size="lg"
-                className="w-full h-14 md:h-16 text-lg md:text-xl font-bold"
-                data-testid="button-roll"
-              >
-                {rolling ? (
-                  <>
-                    <Loader2 className="w-5 h-5 md:w-6 md:h-6 mr-2 animate-spin" />
-                    Rolling...
-                  </>
-                ) : (
-                  <>
-                    <Dices className="w-5 h-5 md:w-6 md:h-6 mr-2" />
-                    Roll
-                  </>
-                )}
-              </Button>
-
-              <div className="flex items-center justify-between p-3 md:p-4 bg-muted rounded-lg">
-                <Label htmlFor="auto-roll" className="cursor-pointer text-sm md:text-base">
-                  Auto Roll
-                </Label>
-                <Switch
-                  id="auto-roll"
-                  checked={autoRoll}
-                  onCheckedChange={setAutoRoll}
-                  disabled={items.length === 0}
-                  data-testid="switch-auto-roll"
-                />
-              </div>
-
-              {items.length === 0 && (
-                <p className="text-xs md:text-sm text-center text-muted-foreground">
-                  No items available to roll. Contact an admin to add items.
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="order-3 md:order-3">
+        <Card>
           <CardHeader>
             <CardTitle className="text-base md:text-lg">Global Rolls</CardTitle>
             <p className="text-xs text-muted-foreground">Last 10 worth 2.5M+</p>

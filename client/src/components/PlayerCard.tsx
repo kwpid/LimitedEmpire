@@ -111,11 +111,9 @@ export function PlayerCard({ player, onClick }: PlayerCardProps) {
               </div>
             </div>
 
-            {player.customStatus && (
-              <p className="text-xs text-muted-foreground truncate mt-1" data-testid={`text-player-status-${player.userId}`}>
-                {player.customStatus}
-              </p>
-            )}
+            <p className="text-xs text-muted-foreground truncate mt-1" data-testid={`text-player-status-${player.userId}`}>
+              {player.customStatus || "No Status"}
+            </p>
           </div>
         </div>
 

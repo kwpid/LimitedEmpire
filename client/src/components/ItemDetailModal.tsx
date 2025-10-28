@@ -203,13 +203,8 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
             >
               {RARITY_TIERS[item.rarity].name}
             </Badge>
-            {item.stockType === "limited" && (
-              <Badge variant="secondary" className="absolute top-3 right-3 text-sm z-10 bg-secondary backdrop-blur-md" data-testid="text-stock-info">
-                {item.remainingStock}/{item.totalStock}
-              </Badge>
-            )}
             {serialNumber !== undefined && (
-              <Badge variant="secondary" className="absolute bottom-3 left-3 text-sm z-10 bg-secondary backdrop-blur-md" data-testid="badge-serial-number">
+              <Badge variant="secondary" className="absolute top-3 right-3 text-sm z-10 bg-secondary backdrop-blur-md" data-testid="badge-serial-number">
                 #{serialNumber}
               </Badge>
             )}
