@@ -55,10 +55,16 @@ service cloud.firestore {
       // Anyone can read items
       allow read: if true;
       
-      // Only admins can create, update, or delete items
+      // Only admins can create or delete items
       allow create: if isAdmin();
-      allow update: if isAdmin();
       allow delete: if isAdmin();
+      
+      // Admins can update all fields
+      // Authenticated users can only update stock-related fields (during rolls)
+      allow update: if isAdmin() || 
+                      (isAuthenticated() && 
+                       !request.resource.data.diff(resource.data).affectedKeys()
+                         .hasAny(['name', 'imageUrl', 'value', 'rarity', 'offSale', 'stockType', 'totalStock']));
       
       // Ownership markers subcollection (for tracking unique owners)
       match /owners/{userId} {

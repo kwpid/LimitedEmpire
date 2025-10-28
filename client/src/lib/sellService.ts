@@ -87,6 +87,17 @@ export async function sellItems(
       throw new Error(`Invalid inventory: expected to remove ${quantityToSell} items but only found ${actualRemovedCount}`);
     }
 
+    const finalItemId = soldItemId || itemId;
+    let itemDoc = null;
+    let itemRef = null;
+    let ownershipMarkerRef = null;
+    
+    if (finalItemId) {
+      itemRef = doc(db, "items", finalItemId);
+      ownershipMarkerRef = doc(db, "items", finalItemId, "owners", user.firebaseUid);
+      itemDoc = await transaction.get(itemRef);
+    }
+
     transaction.update(userRef, {
       cash: currentCash + playerEarned,
       inventory: updatedInventory,
@@ -96,32 +107,23 @@ export async function sellItems(
       cash: adminCash + adminEarned,
     });
 
-    if (soldItemId || itemId) {
-      const finalItemId = soldItemId || itemId;
-      if (finalItemId) {
-        const itemRef = doc(db, "items", finalItemId);
-        const ownershipMarkerRef = doc(db, "items", finalItemId, "owners", user.firebaseUid);
-        const itemDoc = await transaction.get(itemRef);
-        
-        if (itemDoc.exists()) {
-          const itemData = itemDoc.data();
-          const currentOwners = itemData.totalOwners || 0;
-          
-          const stillOwnsItem = updatedInventory.some((invItem: any) => invItem.itemId === finalItemId);
-          
-          if (itemData.stockType === "limited") {
-            if (!stillOwnsItem) {
-              transaction.update(itemRef, {
-                totalOwners: Math.max(0, currentOwners - 1),
-              });
-              transaction.delete(ownershipMarkerRef);
-            }
-          } else {
-            transaction.update(itemRef, {
-              totalOwners: Math.max(0, currentOwners - actualRemovedCount),
-            });
-          }
+    if (itemDoc && itemDoc.exists() && itemRef && ownershipMarkerRef) {
+      const itemData = itemDoc.data();
+      const currentOwners = itemData.totalOwners || 0;
+      
+      const stillOwnsItem = updatedInventory.some((invItem: any) => invItem.itemId === finalItemId);
+      
+      if (itemData.stockType === "limited") {
+        if (!stillOwnsItem) {
+          transaction.update(itemRef, {
+            totalOwners: Math.max(0, currentOwners - 1),
+          });
+          transaction.delete(ownershipMarkerRef);
         }
+      } else {
+        transaction.update(itemRef, {
+          totalOwners: Math.max(0, currentOwners - actualRemovedCount),
+        });
       }
     }
 
