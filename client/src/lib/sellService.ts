@@ -12,7 +12,8 @@ export async function sellItems(
   user: User,
   inventoryIds: string[],
   itemValue: number,
-  quantityToSell: number
+  quantityToSell: number,
+  itemId?: string
 ): Promise<SellResult> {
   if (quantityToSell <= 0) {
     throw new Error("Quantity must be positive");
@@ -59,9 +60,13 @@ export async function sellItems(
     const idsToSellSet = new Set(idsToSell);
     const updatedInventory = [];
     let actualRemovedCount = 0;
+    let soldItemId: string | null = null;
     
     for (const invItem of currentInventory) {
       if (idsToSellSet.has(invItem.id)) {
+        if (!soldItemId) {
+          soldItemId = invItem.itemId;
+        }
         const amount = invItem.amount || 1;
         const sellAmount = Math.min(amount, quantityToSell - actualRemovedCount);
         
@@ -90,6 +95,35 @@ export async function sellItems(
     transaction.update(adminRef, {
       cash: adminCash + adminEarned,
     });
+
+    if (soldItemId || itemId) {
+      const finalItemId = soldItemId || itemId;
+      if (finalItemId) {
+        const itemRef = doc(db, "items", finalItemId);
+        const ownershipMarkerRef = doc(db, "items", finalItemId, "owners", user.firebaseUid);
+        const itemDoc = await transaction.get(itemRef);
+        
+        if (itemDoc.exists()) {
+          const itemData = itemDoc.data();
+          const currentOwners = itemData.totalOwners || 0;
+          
+          const stillOwnsItem = updatedInventory.some((invItem: any) => invItem.itemId === finalItemId);
+          
+          if (itemData.stockType === "limited") {
+            if (!stillOwnsItem) {
+              transaction.update(itemRef, {
+                totalOwners: Math.max(0, currentOwners - 1),
+              });
+              transaction.delete(ownershipMarkerRef);
+            }
+          } else {
+            transaction.update(itemRef, {
+              totalOwners: Math.max(0, currentOwners - actualRemovedCount),
+            });
+          }
+        }
+      }
+    }
 
     return {
       soldCount: actualRemovedCount,

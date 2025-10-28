@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import type { Item } from "@shared/schema";
 import { getRarityClass, getRarityGlow, formatValue, getRarityColor } from "@/lib/rarity";
 import { RARITY_TIERS, calculateRollChance } from "@shared/schema";
 import { useAuth } from "@/contexts/AuthContext";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { sellItems } from "@/lib/sellService";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +28,12 @@ interface ItemDetailModalProps {
   onSellComplete?: () => void;
 }
 
+interface OwnerInfo {
+  username: string;
+  serialNumber: number;
+  userId: string;
+}
+
 export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit, inventoryIds = [], stackCount = 1, onSellComplete }: ItemDetailModalProps) {
   const { user, refetchUser } = useAuth();
   const { toast } = useToast();
@@ -34,6 +41,8 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
   const [showSellDialog, setShowSellDialog] = useState(false);
   const [sellQuantity, setSellQuantity] = useState(1);
   const [selling, setSelling] = useState(false);
+  const [owners, setOwners] = useState<OwnerInfo[]>([]);
+  const [loadingOwners, setLoadingOwners] = useState(false);
 
   useEffect(() => {
     async function fetchCreator() {
@@ -66,6 +75,46 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
     }
   }, [open]);
 
+  useEffect(() => {
+    async function fetchOwners() {
+      if (!item || !open || item.stockType !== "limited") {
+        setOwners([]);
+        return;
+      }
+
+      setLoadingOwners(true);
+      try {
+        const usersSnapshot = await getDocs(collection(db, "users"));
+        const ownersList: OwnerInfo[] = [];
+
+        for (const userDoc of usersSnapshot.docs) {
+          const userData = userDoc.data();
+          const inventory = userData.inventory || [];
+          
+          for (const invItem of inventory) {
+            if (invItem.itemId === item.id && invItem.serialNumber !== null) {
+              ownersList.push({
+                username: userData.username || "Unknown",
+                serialNumber: invItem.serialNumber,
+                userId: userData.userId || 0,
+              });
+            }
+          }
+        }
+
+        ownersList.sort((a, b) => a.serialNumber - b.serialNumber);
+        setOwners(ownersList);
+      } catch (error) {
+        console.error("Error fetching owners:", error);
+        setOwners([]);
+      } finally {
+        setLoadingOwners(false);
+      }
+    }
+
+    fetchOwners();
+  }, [item, open]);
+
   if (!item) return null;
 
   const rarityClass = getRarityClass(item.rarity);
@@ -85,7 +134,7 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
 
     setSelling(true);
     try {
-      const result = await sellItems(user, inventoryIds, item.value, sellQuantity);
+      const result = await sellItems(user, inventoryIds, item.value, sellQuantity, item.id);
       
       toast({
         title: "Items sold!",
@@ -185,7 +234,9 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
 
             <Card className="rounded-xl">
               <CardContent className="p-4">
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Owner Count</h3>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                  {item.stockType === "limited" ? "Owners" : "Copies"}
+                </h3>
                 <p className="text-2xl tabular-nums font-bold" data-testid="text-owner-count">
                   {item.totalOwners.toLocaleString()}
                 </p>
@@ -251,6 +302,41 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
             )}
           </div>
         </div>
+
+        {item.stockType === "limited" && owners.length > 0 && (
+          <div className="mt-6 border-t pt-4">
+            <h3 className="text-sm font-medium text-muted-foreground mb-3">
+              Owners ({owners.length})
+            </h3>
+            <ScrollArea className="h-[200px] rounded-md border p-4">
+              <div className="space-y-2">
+                {owners.map((owner) => (
+                  <div 
+                    key={`${owner.userId}-${owner.serialNumber}`}
+                    className="flex items-center justify-between p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                    data-testid={`owner-item-${owner.serialNumber}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Badge variant="secondary" className="text-xs">
+                        #{owner.serialNumber}
+                      </Badge>
+                      <span className="text-sm font-medium">{owner.username}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      ID: {owner.userId}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+        )}
+
+        {item.stockType === "limited" && loadingOwners && (
+          <div className="mt-6 border-t pt-4">
+            <p className="text-sm text-center text-muted-foreground">Loading owners...</p>
+          </div>
+        )}
       </DialogContent>
 
       <AlertDialog open={showSellDialog} onOpenChange={setShowSellDialog}>

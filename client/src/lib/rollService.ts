@@ -81,11 +81,13 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
 
       itemUpdates.remainingStock = selectedItem.remainingStock - 1;
       serialNumber = (selectedItem.totalStock || 0) - selectedItem.remainingStock + 1;
-    }
-
-    if (isFirstTimeOwning) {
+      
+      if (isFirstTimeOwning) {
+        itemUpdates.totalOwners = (selectedItem.totalOwners || 0) + 1;
+        transaction.set(ownershipMarkerRef, { ownedAt: Date.now() });
+      }
+    } else {
       itemUpdates.totalOwners = (selectedItem.totalOwners || 0) + 1;
-      transaction.set(ownershipMarkerRef, { ownedAt: Date.now() });
     }
 
     if (Object.keys(itemUpdates).length > 0) {
