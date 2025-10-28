@@ -46,10 +46,21 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
 
   const result = await runTransaction(db, async (transaction) => {
     const itemRef = doc(db, "items", selectedItemId);
+    const ownershipMarkerRef = doc(db, "items", selectedItemId, "owners", user.firebaseUid);
+    const userRef = doc(db, "users", user.id);
+    const adminRef = adminDocId ? doc(db, "users", adminDocId) : null;
+
     const itemDoc = await transaction.get(itemRef);
+    const ownershipDoc = await transaction.get(ownershipMarkerRef);
+    const userDoc = await transaction.get(userRef);
+    const adminDoc = adminRef ? await transaction.get(adminRef) : null;
     
     if (!itemDoc.exists()) {
       throw new Error("Item not found");
+    }
+    
+    if (!userDoc.exists()) {
+      throw new Error("User document not found");
     }
     
     const selectedItem = { id: itemDoc.id, ...itemDoc.data() } as Item;
@@ -58,29 +69,27 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
       throw new Error("Item is off-sale and cannot be rolled");
     }
 
-    const ownershipMarkerRef = doc(db, "items", selectedItemId, "owners", user.firebaseUid);
-    const ownershipDoc = await transaction.get(ownershipMarkerRef);
     const isFirstTimeOwning = !ownershipDoc.exists();
     
     let serialNumber: number | null = null;
-    const updates: any = {};
+    const itemUpdates: any = {};
 
     if (selectedItem.stockType === "limited") {
       if (!selectedItem.remainingStock || selectedItem.remainingStock <= 0) {
         throw new Error("Item is out of stock");
       }
 
-      updates.remainingStock = selectedItem.remainingStock - 1;
+      itemUpdates.remainingStock = selectedItem.remainingStock - 1;
       serialNumber = (selectedItem.totalStock || 0) - selectedItem.remainingStock + 1;
     }
 
     if (isFirstTimeOwning) {
-      updates.totalOwners = (selectedItem.totalOwners || 0) + 1;
+      itemUpdates.totalOwners = (selectedItem.totalOwners || 0) + 1;
       transaction.set(ownershipMarkerRef, { ownedAt: Date.now() });
     }
 
-    if (Object.keys(updates).length > 0) {
-      transaction.update(itemRef, updates);
+    if (Object.keys(itemUpdates).length > 0) {
+      transaction.update(itemRef, itemUpdates);
     }
 
     const shouldAutoSell = user.settings?.autoSellRarities?.includes(selectedItem.rarity) || false;
@@ -91,47 +100,24 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
       playerEarned = Math.floor(totalValue * 0.8);
       const adminEarned = Math.floor(totalValue * 0.2);
 
-      if (!adminDocId) {
+      if (!adminDoc || !adminRef) {
         throw new Error("Admin user not found. Cannot process auto-sell.");
-      }
-
-      const adminRef = doc(db, "users", adminDocId);
-      const adminDoc = await transaction.get(adminRef);
-      
-      if (!adminDoc.exists()) {
-        throw new Error("Admin user document not found. Cannot process auto-sell.");
       }
       
       const adminCash = adminDoc.data()?.cash || 0;
+      const currentCash = userDoc.data()?.cash || 0;
+      const currentRollCount = userDoc.data()?.rollCount || 0;
+      
       transaction.update(adminRef, {
         cash: adminCash + adminEarned,
       });
 
-      const userRef = doc(db, "users", user.id);
-      const userDoc = await transaction.get(userRef);
-      
-      if (!userDoc.exists()) {
-        throw new Error("User document not found");
-      }
-      
-      const currentCash = userDoc.data()?.cash || 0;
-      const currentRollCount = userDoc.data()?.rollCount || 0;
-      
       transaction.update(userRef, {
         cash: currentCash + playerEarned,
         rollCount: currentRollCount + 1,
       });
     } else {
-      const userRef = doc(db, "users", user.id);
-      const userDoc = await transaction.get(userRef);
-      
-      if (!userDoc.exists()) {
-        throw new Error("User document not found");
-      }
-      
       const currentRollCount = userDoc.data()?.rollCount || 0;
-      const currentInventory = userDoc.data()?.inventory || [];
-      
       const inventoryItemId = `${user.firebaseUid}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
       transaction.update(userRef, {

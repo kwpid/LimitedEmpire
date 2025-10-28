@@ -58,9 +58,9 @@ export default function Inventory() {
       const userData = userDocSnap.data();
       const userInventory = userData.inventory || [];
 
-      const uniqueItemIds = Array.from(new Set(userInventory.map((inv: any) => inv.itemId)));
+      const uniqueItemIds = Array.from(new Set(userInventory.map((inv: any) => inv.itemId))) as string[];
       
-      const itemFetches = uniqueItemIds.map(async (itemId) => {
+      const itemFetches = uniqueItemIds.map(async (itemId: string) => {
         const itemDocRef = doc(db, "items", itemId);
         const itemDoc = await getDoc(itemDocRef);
         return itemDoc.exists() 
