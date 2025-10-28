@@ -58,22 +58,25 @@ export default function Inventory() {
       const userData = userDocSnap.data();
       const userInventory = userData.inventory || [];
 
-      const items: InventoryItemWithDetails[] = [];
-      const itemCache = new Map<string, Item>();
+      const uniqueItemIds = Array.from(new Set(userInventory.map((inv: any) => inv.itemId)));
+      
+      const itemFetches = uniqueItemIds.map(async (itemId) => {
+        const itemDocRef = doc(db, "items", itemId);
+        const itemDoc = await getDoc(itemDocRef);
+        return itemDoc.exists() 
+          ? { id: itemDoc.id, ...itemDoc.data() } as Item
+          : null;
+      });
 
+      const fetchedItems = await Promise.all(itemFetches);
+      const itemCache = new Map<string, Item>();
+      fetchedItems.forEach((item) => {
+        if (item) itemCache.set(item.id, item);
+      });
+
+      const items: InventoryItemWithDetails[] = [];
       for (const invItem of userInventory) {
-        let item: Item | undefined = itemCache.get(invItem.itemId);
-        
-        if (!item) {
-          const itemDocRef = doc(db, "items", invItem.itemId);
-          const itemDoc = await getDoc(itemDocRef);
-          
-          if (itemDoc.exists()) {
-            item = { id: itemDoc.id, ...itemDoc.data() } as Item;
-            itemCache.set(invItem.itemId, item);
-          }
-        }
-        
+        const item = itemCache.get(invItem.itemId);
         if (item) {
           items.push({ 
             id: invItem.id,

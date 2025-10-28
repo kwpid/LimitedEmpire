@@ -39,9 +39,14 @@ export function calculateRollChance(value: number): number {
 // Benefits:
 // 1. Single document read instead of N+1 queries (1 user doc + N inventory docs)
 // 2. Atomic updates with Firestore transactions
-// 3. Better scalability with thousands of concurrent players
-// 4. Reduced read costs (1 read vs. potentially hundreds per user)
-// 5. Inventory cached with user data, reducing latency
+// 3. Reduced read costs (1 read vs. potentially hundreds per user)
+// 4. Inventory cached with user data, reducing latency
+// 
+// LIMITATION: Firestore documents have a 1 MB size limit. Each inventory item is ~100-200 bytes,
+// so this supports ~5000-10000 items per user. For users with larger inventories, consider:
+// - Implementing inventory pagination/chunking
+// - Using a subcollection for overflow items
+// - Adding auto-cleanup of old/low-value items
 export const userSchema = z.object({
   id: z.string(), // Firestore document ID
   firebaseUid: z.string(),

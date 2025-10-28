@@ -28,6 +28,27 @@ export async function sellItems(
   const adminEarned = Math.floor(totalValue * 0.2);
 
   const result = await runTransaction(db, async (transaction) => {
+    const userRef = doc(db, "users", user.id);
+    const userDoc = await transaction.get(userRef);
+    
+    if (!userDoc.exists()) {
+      throw new Error("User not found");
+    }
+
+    const currentCash = userDoc.data().cash || 0;
+    const currentInventory = userDoc.data().inventory || [];
+
+    const idsToSellSet = new Set(idsToSell);
+    const filteredInventory = currentInventory.filter(
+      (invItem: any) => !idsToSellSet.has(invItem.id)
+    );
+
+    const actualRemovedCount = currentInventory.length - filteredInventory.length;
+    
+    if (actualRemovedCount !== quantityToSell) {
+      throw new Error(`Invalid inventory: expected to remove ${quantityToSell} items but only found ${actualRemovedCount}`);
+    }
+
     const usersRef = collection(db, "users");
     const adminQuery = query(usersRef, where("userId", "==", 1));
     const adminSnapshot = await getDocs(adminQuery);
@@ -39,21 +60,7 @@ export async function sellItems(
     const adminDoc = adminSnapshot.docs[0];
     const adminRef = doc(db, "users", adminDoc.id);
     const adminData = adminDoc.data();
-
-    const userRef = doc(db, "users", user.id);
-    const userDoc = await transaction.get(userRef);
-    
-    if (!userDoc.exists()) {
-      throw new Error("User not found");
-    }
-
-    const currentCash = userDoc.data().cash || 0;
     const adminCash = adminData.cash || 0;
-    const currentInventory = userDoc.data().inventory || [];
-
-    const filteredInventory = currentInventory.filter(
-      (invItem: any) => !idsToSell.includes(invItem.id)
-    );
 
     transaction.update(userRef, {
       cash: currentCash + playerEarned,
@@ -65,7 +72,7 @@ export async function sellItems(
     });
 
     return {
-      soldCount: quantityToSell,
+      soldCount: actualRemovedCount,
       playerEarned,
       adminEarned,
     };
