@@ -10,11 +10,12 @@ import UsernameSetup from "./pages/UsernameSetup";
 import RollScreen from "./pages/RollScreen";
 import Inventory from "./pages/Inventory";
 import ItemIndex from "./pages/ItemIndex";
+import Settings from "./pages/Settings";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { AdminPanel } from "@/components/AdminPanel";
 import { GlobalRollToast } from "@/components/GlobalRollToast";
-import { Dices, Package, Database, Shield, LogOut, Sparkles } from "lucide-react";
+import { Dices, Package, Database, Shield, LogOut, Sparkles, Settings as SettingsIcon } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth } from "./lib/firebase";
 import type { Item } from "@shared/schema";
@@ -108,7 +109,7 @@ function AppContent() {
 
       <div className="container mx-auto px-4 py-4">
         <Tabs value={currentTab} onValueChange={(value) => setLocation(value === "roll" ? "/" : `/${value}`)}>
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-3 mb-6">
+          <TabsList className="grid w-full max-w-2xl mx-auto grid-cols-4 mb-6">
             <TabsTrigger value="roll" data-testid="tab-roll">
               <Dices className="w-4 h-4 mr-2" />
               Roll
@@ -121,6 +122,10 @@ function AppContent() {
               <Database className="w-4 h-4 mr-2" />
               Index
             </TabsTrigger>
+            <TabsTrigger value="settings" data-testid="tab-settings">
+              <SettingsIcon className="w-4 h-4 mr-2" />
+              Settings
+            </TabsTrigger>
           </TabsList>
         </Tabs>
 
@@ -130,6 +135,7 @@ function AppContent() {
           <Route path="/index">
             {() => <ItemIndex onEditItem={openAdminPanel} />}
           </Route>
+          <Route path="/settings" component={Settings} />
         </Switch>
       </div>
 

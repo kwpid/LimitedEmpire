@@ -24,7 +24,7 @@ export default function Inventory() {
   const [filteredInventory, setFilteredInventory] = useState<StackedInventoryItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [rarityFilter, setRarityFilter] = useState<string>("all");
-  const [selectedItem, setSelectedItem] = useState<{ item: Item; serialNumber?: number } | null>(null);
+  const [selectedItem, setSelectedItem] = useState<{ item: Item; serialNumber?: number; inventoryIds: string[]; stackCount: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -173,6 +173,8 @@ export default function Inventory() {
                 setSelectedItem({
                   item: stackedItem.item,
                   serialNumber: stackedItem.serialNumber,
+                  inventoryIds: stackedItem.inventoryIds,
+                  stackCount: stackedItem.count,
                 })
               }
             />
@@ -194,6 +196,9 @@ export default function Inventory() {
         serialNumber={selectedItem?.serialNumber}
         open={!!selectedItem}
         onOpenChange={(open) => !open && setSelectedItem(null)}
+        inventoryIds={selectedItem?.inventoryIds}
+        stackCount={selectedItem?.stackCount}
+        onSellComplete={loadInventory}
       />
     </div>
   );

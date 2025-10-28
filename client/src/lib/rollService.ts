@@ -2,7 +2,7 @@ import { collection, doc, runTransaction, getDocs, query, where } from "firebase
 import { db } from "./firebase";
 import type { Item, User } from "@shared/schema";
 
-export async function performRoll(user: User): Promise<{ item: Item; serialNumber: number | null }> {
+export async function performRoll(user: User): Promise<{ item: Item; serialNumber: number | null; autoSold?: boolean; playerEarned?: number }> {
   const itemsRef = collection(db, "items");
   const q = query(itemsRef, where("offSale", "==", false));
   const itemsSnapshot = await getDocs(q);
@@ -37,6 +37,12 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
       break;
     }
   }
+
+  const usersRef = collection(db, "users");
+  const adminQuery = query(usersRef, where("userId", "==", 1));
+  const adminSnapshot = await getDocs(adminQuery);
+  
+  const adminDocId = !adminSnapshot.empty ? adminSnapshot.docs[0].id : null;
 
   const result = await runTransaction(db, async (transaction) => {
     const itemRef = doc(db, "items", selectedItemId);
@@ -77,13 +83,66 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
       transaction.update(itemRef, updates);
     }
 
-    const inventoryRef = doc(collection(db, "inventory"));
-    transaction.set(inventoryRef, {
-      itemId: selectedItem.id,
-      userId: user.firebaseUid,
-      serialNumber,
-      rolledAt: Date.now(),
-    });
+    const shouldAutoSell = user.settings?.autoSellRarities?.includes(selectedItem.rarity) || false;
+    let playerEarned = 0;
+
+    if (shouldAutoSell) {
+      const totalValue = selectedItem.value;
+      playerEarned = Math.floor(totalValue * 0.8);
+      const adminEarned = Math.floor(totalValue * 0.2);
+
+      if (!adminDocId) {
+        throw new Error("Admin user not found. Cannot process auto-sell.");
+      }
+
+      const adminRef = doc(db, "users", adminDocId);
+      const adminDoc = await transaction.get(adminRef);
+      
+      if (!adminDoc.exists()) {
+        throw new Error("Admin user document not found. Cannot process auto-sell.");
+      }
+      
+      const adminCash = adminDoc.data()?.cash || 0;
+      transaction.update(adminRef, {
+        cash: adminCash + adminEarned,
+      });
+
+      const userRef = doc(db, "users", user.id);
+      const userDoc = await transaction.get(userRef);
+      
+      if (!userDoc.exists()) {
+        throw new Error("User document not found");
+      }
+      
+      const currentCash = userDoc.data()?.cash || 0;
+      const currentRollCount = userDoc.data()?.rollCount || 0;
+      
+      transaction.update(userRef, {
+        cash: currentCash + playerEarned,
+        rollCount: currentRollCount + 1,
+      });
+    } else {
+      const inventoryRef = doc(collection(db, "inventory"));
+      transaction.set(inventoryRef, {
+        itemId: selectedItem.id,
+        userId: user.firebaseUid,
+        serialNumber,
+        rolledAt: Date.now(),
+      });
+
+      const userRef = doc(db, "users", user.id);
+      const userDoc = await transaction.get(userRef);
+      
+      if (!userDoc.exists()) {
+        throw new Error("User document not found");
+      }
+      
+      const currentRollCount = userDoc.data()?.rollCount || 0;
+      
+      transaction.update(userRef, {
+        rollCount: currentRollCount + 1,
+      });
+    }
 
     if (selectedItem.value >= 2500000) {
       const globalRollRef = doc(collection(db, "globalRolls"));
@@ -98,12 +157,12 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
       });
     }
 
-    const userRef = doc(db, "users", user.firebaseUid);
-    transaction.update(userRef, {
-      rollCount: (user.rollCount || 0) + 1,
-    });
-
-    return { item: selectedItem, serialNumber };
+    return { 
+      item: selectedItem, 
+      serialNumber,
+      autoSold: shouldAutoSell,
+      playerEarned: shouldAutoSell ? playerEarned : undefined,
+    };
   });
 
   return result;

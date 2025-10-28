@@ -11,9 +11,10 @@ interface SlotMachineRollProps {
 
 export function SlotMachineRoll({ items, finalItem, isRolling }: SlotMachineRollProps) {
   const [displayItems, setDisplayItems] = useState<Item[]>([]);
+  const [hasBuiltArray, setHasBuiltArray] = useState(false);
 
   useEffect(() => {
-    if (isRolling && items.length > 0) {
+    if (isRolling && items.length > 0 && finalItem && !hasBuiltArray) {
       const shuffledItems = [...items].sort(() => Math.random() - 0.5);
       const repeatedItems = [];
       
@@ -21,14 +22,17 @@ export function SlotMachineRoll({ items, finalItem, isRolling }: SlotMachineRoll
         repeatedItems.push(shuffledItems[i % shuffledItems.length]);
       }
       
-      if (finalItem) {
-        const finalIndex = 14;
-        repeatedItems[finalIndex] = finalItem;
-      }
+      const finalIndex = 14;
+      repeatedItems[finalIndex] = finalItem;
       
       setDisplayItems(repeatedItems);
+      setHasBuiltArray(true);
     }
-  }, [isRolling, items, finalItem]);
+    
+    if (!isRolling) {
+      setHasBuiltArray(false);
+    }
+  }, [isRolling, items, finalItem, hasBuiltArray]);
 
   if (!isRolling || displayItems.length === 0) {
     return null;

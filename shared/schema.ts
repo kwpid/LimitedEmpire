@@ -46,6 +46,9 @@ export const userSchema = z.object({
   createdAt: z.number(), // timestamp
   rollCount: z.number().default(0), // Total number of rolls performed
   cash: z.number().default(1000), // User's currency
+  settings: z.object({
+    autoSellRarities: z.array(z.enum(["COMMON", "UNCOMMON", "RARE", "ULTRA_RARE", "EPIC", "ULTRA_EPIC", "MYTHIC", "INSANE"])).default([]),
+  }).default({ autoSellRarities: [] }),
 });
 
 export const insertUserSchema = userSchema.omit({ id: true });

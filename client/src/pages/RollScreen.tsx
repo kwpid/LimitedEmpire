@@ -165,10 +165,17 @@ export default function RollScreen() {
       
       setIsAnimating(false);
       
-      toast({
-        title: "You rolled!",
-        description: `${result.item.name} - ${formatValue(result.item.value)}${result.serialNumber ? ` #${result.serialNumber}` : ""}`,
-      });
+      if (result.autoSold) {
+        toast({
+          title: "Auto-Sold!",
+          description: `${result.item.name} - Earned ${formatValue(result.playerEarned || 0)}`,
+        });
+      } else {
+        toast({
+          title: "You rolled!",
+          description: `${result.item.name} - ${formatValue(result.item.value)}${result.serialNumber ? ` #${result.serialNumber}` : ""}`,
+        });
+      }
 
       await Promise.all([
         loadItems(),
