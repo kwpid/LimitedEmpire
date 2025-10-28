@@ -41,6 +41,8 @@ export default function RollScreen() {
     rarestItem: null,
   });
   const rollingRef = useRef(false);
+  const autoRollRef = useRef(false);
+  const autoRollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadItems();
@@ -197,13 +199,28 @@ export default function RollScreen() {
   }, [user, rolling, toast]);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    autoRollRef.current = autoRoll;
+    
+    const autoRollLoop = async () => {
+      if (!autoRollRef.current || rollingRef.current) return;
+      
+      await performRoll();
+      
+      if (autoRollRef.current) {
+        autoRollTimeoutRef.current = setTimeout(autoRollLoop, 2000);
+      }
+    };
+    
     if (autoRoll && !rolling) {
-      interval = setInterval(() => {
-        performRoll();
-      }, 3000);
+      autoRollTimeoutRef.current = setTimeout(autoRollLoop, 0);
     }
-    return () => clearInterval(interval);
+    
+    return () => {
+      if (autoRollTimeoutRef.current) {
+        clearTimeout(autoRollTimeoutRef.current);
+        autoRollTimeoutRef.current = null;
+      }
+    };
   }, [autoRoll, rolling, performRoll]);
 
   const rarityClass = rolledItem ? getRarityClass(rolledItem.rarity) : "";

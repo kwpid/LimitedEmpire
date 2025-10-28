@@ -73,6 +73,7 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
     
     let serialNumber: number | null = null;
     const itemUpdates: any = {};
+    let shouldSetOwnership = false;
 
     if (selectedItem.stockType === "limited") {
       if (!selectedItem.remainingStock || selectedItem.remainingStock <= 0) {
@@ -84,14 +85,10 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
       
       if (isFirstTimeOwning) {
         itemUpdates.totalOwners = (selectedItem.totalOwners || 0) + 1;
-        transaction.set(ownershipMarkerRef, { ownedAt: Date.now() });
+        shouldSetOwnership = true;
       }
     } else {
       itemUpdates.totalOwners = (selectedItem.totalOwners || 0) + 1;
-    }
-
-    if (Object.keys(itemUpdates).length > 0) {
-      transaction.update(itemRef, itemUpdates);
     }
 
     const shouldAutoSell = user.settings?.autoSellRarities?.includes(selectedItem.rarity) || false;
@@ -159,6 +156,14 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
         rollCount: currentRollCount + 1,
         inventory: updatedInventory,
       });
+    }
+
+    if (Object.keys(itemUpdates).length > 0) {
+      transaction.update(itemRef, itemUpdates);
+    }
+
+    if (shouldSetOwnership) {
+      transaction.set(ownershipMarkerRef, { ownedAt: Date.now() });
     }
 
     if (selectedItem.value >= 2500000) {
