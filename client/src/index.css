@@ -141,17 +141,17 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 0 0% 6%;
+  --background: 0 0% 0%;
 
   --foreground: 0 0% 92%;
 
-  --border: 0 0% 18%;
+  --border: 0 0% 12%;
 
-  --card: 0 0% 10%;
+  --card: 0 0% 4%;
 
   --card-foreground: 0 0% 90%;
 
-  --card-border: 0 0% 16%;
+  --card-border: 0 0% 10%;
 
   --sidebar: 0 0% 12%;
 

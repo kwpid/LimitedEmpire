@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { collection, getDocs, query, where, orderBy, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import type { Item, InventoryItemWithDetails } from "@shared/schema";
 import { useAuth } from "@/contexts/AuthContext";
 import { ItemCard } from "@/components/ItemCard";
+import { SlotMachineRoll } from "@/components/SlotMachineRoll";
 import { getRarityClass, getRarityGlow, formatValue } from "@/lib/rarity";
 import { Dices, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -23,6 +24,7 @@ export default function RollScreen() {
   const [bestRolls, setBestRolls] = useState<InventoryItemWithDetails[]>([]);
   const [globalRolls, setGlobalRolls] = useState<any[]>([]);
   const [isAnimating, setIsAnimating] = useState(false);
+  const rollingRef = useRef(false);
 
   useEffect(() => {
     loadItems();
@@ -77,18 +79,20 @@ export default function RollScreen() {
   };
 
   const performRoll = useCallback(async () => {
-    if (!user || rolling) return;
+    if (!user || rolling || rollingRef.current) return;
 
+    rollingRef.current = true;
     setRolling(true);
     setIsAnimating(true);
-
-    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     try {
       const { performRoll: executeRoll } = await import("@/lib/rollService");
       const result = await executeRoll(user);
       
       setRolledItem(result.item);
+      
+      await new Promise((resolve) => setTimeout(resolve, 2100));
+      
       setIsAnimating(false);
       
       toast({
@@ -108,6 +112,7 @@ export default function RollScreen() {
       });
     } finally {
       setRolling(false);
+      rollingRef.current = false;
     }
   }, [user, rolling, toast]);
 
@@ -137,13 +142,12 @@ export default function RollScreen() {
                 {isAnimating ? (
                   <motion.div
                     key="rolling"
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1, rotate: 360 }}
-                    exit={{ scale: 0.8, opacity: 0 }}
-                    transition={{ duration: 0.5, repeat: Infinity, ease: "linear" }}
-                    className="w-64 h-64 flex items-center justify-center"
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.9, opacity: 0 }}
+                    transition={{ duration: 0.3 }}
                   >
-                    <Dices className="w-32 h-32 text-primary" />
+                    <SlotMachineRoll items={items} finalItem={rolledItem} isRolling={isAnimating} />
                   </motion.div>
                 ) : rolledItem ? (
                   <motion.div

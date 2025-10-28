@@ -115,6 +115,15 @@ export default {
           "71%": { borderColor: "#4b0082" },
           "85%": { borderColor: "#9400d3" },
         },
+        "rainbow-slow": {
+          "0%, 100%": { borderColor: "#ff0000", opacity: "1" },
+          "14%": { borderColor: "#ff7f00", opacity: "0.7" },
+          "28%": { borderColor: "#ffff00", opacity: "1" },
+          "42%": { borderColor: "#00ff00", opacity: "0.7" },
+          "57%": { borderColor: "#0000ff", opacity: "1" },
+          "71%": { borderColor: "#4b0082", opacity: "0.7" },
+          "85%": { borderColor: "#9400d3", opacity: "1" },
+        },
         "spin-slow": {
           from: { transform: "rotate(0deg)" },
           to: { transform: "rotate(360deg)" },
@@ -128,6 +137,7 @@ export default {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "rainbow": "rainbow 3s linear infinite",
+        "rainbow-slow": "rainbow-slow 4s ease-in-out infinite",
         "spin-slow": "spin-slow 2s linear infinite",
         "roll-spin": "roll-spin 0.1s linear infinite",
       },

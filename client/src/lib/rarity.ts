@@ -14,7 +14,7 @@ export function getRarityClass(rarity: RarityTier): string {
     EPIC: "border-rarity-epic",
     ULTRA_EPIC: "border-rarity-ultra-epic",
     MYTHIC: "border-rarity-mythic",
-    INSANE: "border-transparent animate-rainbow",
+    INSANE: "border-transparent animate-rainbow-slow",
   };
   return map[rarity];
 }

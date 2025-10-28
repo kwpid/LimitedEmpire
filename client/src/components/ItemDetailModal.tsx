@@ -61,7 +61,7 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">Roll Chance</h3>
                 <p className="text-sm tabular-nums" data-testid="text-roll-chance">
-                  {rollChance < 0.01 ? rollChance.toExponential(2) : rollChance.toFixed(4)}%
+                  {rollChance.toFixed(Math.max(2, Math.ceil(-Math.log10(rollChance))))}%
                 </p>
               </div>
               <div>
