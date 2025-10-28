@@ -60,7 +60,12 @@ export default function RollScreen() {
       loadGlobalRolls();
       loadUserStats();
     }
+    setIsAnimating(false);
   }, [user]);
+  
+  useEffect(() => {
+    setIsAnimating(false);
+  }, []);
 
   const loadUserStats = async () => {
     if (!user) return;
@@ -248,6 +253,8 @@ export default function RollScreen() {
       ]);
       
       loadBestRolls();
+      
+      await new Promise((resolve) => setTimeout(resolve, 3000));
     } catch (error: any) {
       console.error("Roll error:", error);
       setIsAnimating(false);
@@ -271,7 +278,7 @@ export default function RollScreen() {
       await performRoll();
       
       if (autoRollRef.current) {
-        autoRollTimeoutRef.current = setTimeout(autoRollLoop, 3000);
+        autoRollTimeoutRef.current = setTimeout(autoRollLoop, 0);
       }
     };
     

@@ -4,13 +4,13 @@ export async function sendWebhookRequest(endpoint: string, data: any): Promise<v
   try {
     const user = auth.currentUser;
     if (!user) {
-      console.error('No authenticated user');
+      console.error('No authenticated user for webhook request');
       return;
     }
 
     const idToken = await user.getIdToken();
 
-    await fetch(endpoint, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -18,6 +18,13 @@ export async function sendWebhookRequest(endpoint: string, data: any): Promise<v
       },
       body: JSON.stringify(data),
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Webhook request to ${endpoint} failed:`, response.status, errorText);
+    } else {
+      console.log(`Webhook sent successfully to ${endpoint}`);
+    }
   } catch (error) {
     console.error(`Failed to send webhook to ${endpoint}:`, error);
   }
