@@ -68,6 +68,8 @@ server/
 - username: string (unique, 2-20 chars)
 - userId: number (sequential ID)
 - isAdmin: boolean
+- cash: number (starting balance: 1,000)
+- rollCount: number (total rolls performed)
 - createdAt: timestamp
 
 **items/**
@@ -194,6 +196,26 @@ None specified yet.
 
 ## Recent Changes
 
+### October 28, 2025
+- **User Stats System**: Added comprehensive stats tracking (roll count, total/unique items, inventory value, rarest item, user ID)
+  - Stats displayed on roll screen with icons and proper formatting
+  - Efficient batched loading using Promise.all to avoid race conditions
+- **Currency System**: Implemented cash balance for users
+  - Starting balance of 1,000 cash
+  - Displayed in topbar with proper nullish coalescing (handles zero balances correctly)
+- **ItemCard Redesign**: 
+  - Rarity badge moved to top left with color-coded background
+  - Stock/serial numbers displayed top right
+  - Insane rarity items feature animated rainbow gradient background
+  - Consistent card heights with flex layout
+  - Stack counts shown for inventory items with total value calculation
+- **ItemDetailModal Redesign**:
+  - Rarity badge overlaid on top left of item image
+  - Stock info displayed on bottom left of image
+  - Boxed layout for stats (description, value, roll chance, creator)
+  - Rainbow gradient for Insane items in modal
+
+### Earlier
 - Initial implementation of Limited Empire rolling game
 - Firebase integration with authentication and Firestore
 - Complete UI with rolling, inventory, and admin features
