@@ -6,6 +6,27 @@ Limited Empire is a web-based collection game where players acquire rare items t
 
 ## Recent Changes (October 28, 2025)
 
+**Latest Updates (Evening Session):**
+- **Banned User Banner**: Player profiles now display a prominent red banner at the top when viewing banned users, with ban reason if available
+- **Auto-Sell Protection**: Mythic and Insane rarity items can no longer be auto-sold, preventing accidental loss of high-value items
+- **Leaderboard Refresh Timer**: Added countdown timer showing when leaderboards will next refresh (every 5 minutes)
+- **Leaderboard Layout Redesign**: 
+  - Changed to side-by-side layout (4 columns on XL screens, 2 on medium screens)
+  - Reduced gradient brightness for better readability (added opacity)
+  - Added scrollable frames with fixed height (600px) for consistent display
+  - Implemented roll-tab-like mechanics (only renders on initial load, not on tab switches)
+- **Roll Animation Overhaul**:
+  - Completely redesigned from vertical to horizontal CS:GO style
+  - Animation now scrolls left-to-right instead of top-to-bottom
+  - Increased animation duration from 2s to 3.5s for better anticipation
+  - Fixed autoroll speed-up bug by using stable ref-based animation keys
+  - Implemented responsive centering that works across all viewport sizes
+- **Badge System Enhancements**:
+  - Badge section now always visible on profiles (removed "coming soon" placeholder)
+  - Added help button (?) that opens detailed badge information dialog
+  - Dialog explains all available badges and how to earn them
+  - Improved badge display with proper empty states
+
 **Major New Features:**
 - **Leaderboard System**: Added comprehensive leaderboard tab with 4 categories:
   - Top Value: Players ranked by total inventory value
