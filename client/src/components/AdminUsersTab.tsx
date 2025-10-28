@@ -10,8 +10,49 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input as InputComponent } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { User } from "@shared/schema";
 import { AdminGiveItemsDialog } from "@/components/AdminGiveItemsDialog";
+
+type BanPreset = {
+  name: string;
+  reason: string;
+  days: number;
+  isPermanent: boolean;
+  wipeInventory: boolean;
+};
+
+const BAN_PRESETS: BanPreset[] = [
+  {
+    name: "Alt Farming",
+    reason: "Alt Farming",
+    days: 7,
+    isPermanent: false,
+    wipeInventory: true,
+  },
+  {
+    name: "Toxicity",
+    reason: "Toxicity",
+    days: 3,
+    isPermanent: false,
+    wipeInventory: false,
+  },
+  {
+    name: "Scamming",
+    reason: "Scamming",
+    days: 0,
+    isPermanent: true,
+    wipeInventory: true,
+  },
+  {
+    name: "Glitch Abuse",
+    reason: "Glitch Abuse",
+    days: 30,
+    isPermanent: false,
+    wipeInventory: false,
+  },
+];
 
 export function AdminUsersTab() {
   const { toast } = useToast();
@@ -25,8 +66,30 @@ export function AdminUsersTab() {
   const [banReason, setBanReason] = useState("");
   const [isPermanentBan, setIsPermanentBan] = useState(false);
   const [banDays, setBanDays] = useState(7);
+  const [wipeInventoryOnBan, setWipeInventoryOnBan] = useState(false);
+  const [selectedPreset, setSelectedPreset] = useState<string>("custom");
   const [giveItemsUser, setGiveItemsUser] = useState<User | null>(null);
   const [processing, setProcessing] = useState(false);
+
+  const applyBanPreset = (presetName: string) => {
+    setSelectedPreset(presetName);
+    
+    if (presetName === "custom") {
+      setBanReason("");
+      setIsPermanentBan(false);
+      setBanDays(7);
+      setWipeInventoryOnBan(false);
+      return;
+    }
+
+    const preset = BAN_PRESETS.find(p => p.name === presetName);
+    if (preset) {
+      setBanReason(preset.reason);
+      setIsPermanentBan(preset.isPermanent);
+      setBanDays(preset.days);
+      setWipeInventoryOnBan(preset.wipeInventory);
+    }
+  };
 
   const searchUsers = async () => {
     if (!searchTerm.trim()) return;
@@ -84,13 +147,15 @@ export function AdminUsersTab() {
         updateData.banExpiresAt = banExpiresAt;
       }
 
-      if (isPermanentBan) {
+      const shouldWipeInventory = isPermanentBan || wipeInventoryOnBan;
+
+      if (shouldWipeInventory) {
         const usersRef = collection(db, "users");
         const adminQuery = query(usersRef, where("userId", "==", 1));
         const adminSnapshot = await getDocs(adminQuery);
         
         if (adminSnapshot.empty) {
-          throw new Error("Admin user not found. Cannot process permanent ban.");
+          throw new Error("Admin user not found. Cannot process ban with inventory wipe.");
         }
 
         const adminDocId = adminSnapshot.docs[0].id;
@@ -120,8 +185,8 @@ export function AdminUsersTab() {
         });
 
         toast({
-          title: "User permanently banned",
-          description: `${actionDialog.user.username} has been permanently banned and their inventory wiped`,
+          title: isPermanentBan ? "User permanently banned" : "User banned",
+          description: `${actionDialog.user.username} has been banned and their inventory wiped`,
         });
       } else {
         await updateDoc(userRef, updateData);
@@ -341,12 +406,33 @@ export function AdminUsersTab() {
               {actionDialog.type === "ban" && (
                 <div className="space-y-4">
                   <p>This will prevent the user from accessing the game.</p>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="ban-preset">Quick Select</Label>
+                    <Select value={selectedPreset} onValueChange={applyBanPreset}>
+                      <SelectTrigger data-testid="select-ban-preset">
+                        <SelectValue placeholder="Choose a preset..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="custom">Custom Ban</SelectItem>
+                        {BAN_PRESETS.map((preset) => (
+                          <SelectItem key={preset.name} value={preset.name}>
+                            {preset.name} ({preset.isPermanent ? "Permanent" : `${preset.days} days`}
+                            {preset.wipeInventory && ", Wipe"})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   
                   <div className="space-y-3">
                     <Label>Ban Type</Label>
                     <RadioGroup 
                       value={isPermanentBan ? "permanent" : "temporary"} 
-                      onValueChange={(value) => setIsPermanentBan(value === "permanent")}
+                      onValueChange={(value) => {
+                        setIsPermanentBan(value === "permanent");
+                        if (selectedPreset !== "custom") setSelectedPreset("custom");
+                      }}
                     >
                       <div className="flex items-center space-x-2">
                         <RadioGroupItem value="temporary" id="ban-temporary" data-testid="radio-temporary-ban" />
@@ -364,17 +450,37 @@ export function AdminUsersTab() {
                   </div>
 
                   {!isPermanentBan && (
-                    <div className="space-y-2">
-                      <Label htmlFor="ban-days">Ban Duration (days)</Label>
-                      <InputComponent
-                        id="ban-days"
-                        type="number"
-                        min="1"
-                        value={banDays}
-                        onChange={(e) => setBanDays(Math.max(1, parseInt(e.target.value) || 1))}
-                        data-testid="input-ban-days"
-                      />
-                    </div>
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="ban-days">Ban Duration (days)</Label>
+                        <InputComponent
+                          id="ban-days"
+                          type="number"
+                          min="1"
+                          value={banDays}
+                          onChange={(e) => {
+                            setBanDays(Math.max(1, parseInt(e.target.value) || 1));
+                            if (selectedPreset !== "custom") setSelectedPreset("custom");
+                          }}
+                          data-testid="input-ban-days"
+                        />
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="wipe-inventory"
+                          checked={wipeInventoryOnBan}
+                          onCheckedChange={(checked) => {
+                            setWipeInventoryOnBan(!!checked);
+                            if (selectedPreset !== "custom") setSelectedPreset("custom");
+                          }}
+                          data-testid="checkbox-wipe-inventory"
+                        />
+                        <Label htmlFor="wipe-inventory" className="font-normal cursor-pointer">
+                          Wipe inventory (transfer all items to Admin)
+                        </Label>
+                      </div>
+                    </>
                   )}
 
                   <div className="space-y-2">
@@ -383,14 +489,17 @@ export function AdminUsersTab() {
                       id="ban-reason"
                       placeholder="Enter reason for ban..."
                       value={banReason}
-                      onChange={(e) => setBanReason(e.target.value)}
+                      onChange={(e) => {
+                        setBanReason(e.target.value);
+                        if (selectedPreset !== "custom") setSelectedPreset("custom");
+                      }}
                       data-testid="input-ban-reason"
                     />
                   </div>
 
-                  {isPermanentBan && (
+                  {(isPermanentBan || wipeInventoryOnBan) && (
                     <p className="text-sm text-destructive font-semibold">
-                      ⚠️ Permanent bans will automatically transfer all of this user's items to the Admin account.
+                      ⚠️ This ban will transfer all of this user's items to the Admin account.
                     </p>
                   )}
                 </div>

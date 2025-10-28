@@ -172,7 +172,13 @@ Roll probability is calculated logarithmically based on item value:
     - Infinite items: Specify quantity to give
     - Limited items: Create new serial OR transfer existing serial
     - Serial #0 (admin's) cannot be transferred
-  - **Ban System**: Temporary or permanent bans
+  - **Ban System**: Temporary or permanent bans with preset options
+    - **Quick Presets**:
+      - Alt Farming: 7 days + inventory wipe
+      - Toxicity: 3 days
+      - Scamming: Permanent + inventory wipe
+      - Glitch Abuse: 30 days + optional inventory wipe
+    - Custom bans with flexible duration and wipe options
     - Temporary: Set expiry date, user can return after expiration
     - Permanent: Auto-wipes inventory (transfers all items to admin)
     - Cannot ban admin (userId 1)
@@ -184,6 +190,7 @@ Roll probability is calculated logarithmically based on item value:
   - Shows ban type (temporary/permanent)
   - Displays ban reason and expiry time
   - Informs about inventory wipe for permanent bans
+  - Logout button allows banned users to sign out
 
 ### Real-time Features
 - Global roll notifications for items worth 2.5M+
@@ -232,7 +239,26 @@ None specified yet.
 
 ## Recent Changes
 
-### October 28, 2025 (Latest) - Firebase & Auto-Roll Fixes
+### October 28, 2025 (Latest) - Ban Presets & Search Improvements
+- **Ban System Enhancements**:
+  - Added preset ban reasons with quick-select dropdown
+  - Alt Farming (7 days + wipe), Toxicity (3 days), Scamming (Permanent + wipe), Glitch Abuse (30 days)
+  - Optional inventory wipe checkbox for temporary bans
+  - Banned users can now logout via button on ban overlay
+- **Search Improvements**:
+  - More flexible search: type any words from item name in any order
+  - No longer requires exact matching or specific word order
+  - Real-time filtering as you type
+  - Applied to both Inventory and Item Index pages
+
+### October 28, 2025 (Earlier) - Admin Features Complete
+- **Admin Auto-Ownership**: Admin (userId 1) automatically receives serial #0 of every item upon creation
+- **Advanced Item Gifting**: AdminGiveItemsDialog with Create Serial and Pick Serial modes
+- **Ban System**: Temporary/permanent bans with automatic inventory wiping for permanent bans
+- **Inventory Wipe**: Manual wipe functionality with atomic transaction safety
+- **BanOverlay**: Full-screen blocking UI for banned users
+
+### October 28, 2025 (Earlier) - Firebase & Auto-Roll Fixes
 - **Firebase Transaction Fixes**: Fixed "require all reads to be executed before all writes" errors
   - Fixed rollService.ts transaction: moved all writes (item, ownership, user, admin) to end of transaction
   - Fixed sellService.ts transaction: ensured all reads happen before any writes

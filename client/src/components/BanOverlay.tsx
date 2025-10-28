@@ -2,8 +2,11 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Ban, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Ban, Clock, LogOut } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 export function BanOverlay() {
   const { user } = useAuth();
@@ -36,6 +39,14 @@ export function BanOverlay() {
   const banExpiryText = user.banExpiresAt && !user.isPermanentBan
     ? formatDistanceToNow(new Date(user.banExpiresAt), { addSuffix: true })
     : null;
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
 
   return (
     <div 
@@ -97,6 +108,16 @@ export function BanOverlay() {
           <div className="text-center text-sm text-muted-foreground pt-4 border-t">
             <p>If you believe this ban was issued in error, please contact an administrator.</p>
           </div>
+
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={handleLogout}
+            data-testid="button-logout-banned"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Logout
+          </Button>
         </CardContent>
       </Card>
     </div>
