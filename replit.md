@@ -11,6 +11,9 @@ Limited Empire is a web-based collection game featuring:
 - Admin panel for item creation and management
 - Real-time global roll notifications for high-value items
 - Stock system with serial numbers for limited items
+- **Admin auto-ownership**: Admin receives serial #0 of all items
+- **Advanced gifting system**: Give items with serial management (create new or transfer existing)
+- **Ban system**: Temporary/permanent bans with automatic inventory wiping
 
 ## Tech Stack
 
@@ -35,9 +38,12 @@ client/src/
 │   ├── ui/             # shadcn components
 │   ├── ItemCard.tsx    # Item display card
 │   ├── ItemDetailModal.tsx  # Modal with sell functionality
-│   ├── ItemCreateForm.tsx
+│   ├── ItemCreateForm.tsx   # Auto-gives admin serial #0
 │   ├── ItemEditForm.tsx
 │   ├── AdminPanel.tsx
+│   ├── AdminGiveItemsDialog.tsx  # Advanced item gifting
+│   ├── AdminUsersTab.tsx    # User management with ban/wipe
+│   ├── BanOverlay.tsx       # Full-screen ban message
 │   ├── GlobalRollToast.tsx
 │   └── SlotMachineRoll.tsx  # Roll animation
 ├── contexts/
@@ -74,6 +80,10 @@ server/
 - isAdmin: boolean
 - cash: number (starting balance: 1,000)
 - rollCount: number (total rolls performed)
+- isBanned: boolean (default: false)
+- isPermanentBan: boolean (optional)
+- banExpiresAt: timestamp (optional, for temporary bans)
+- banReason: string (optional)
 - settings: object (optional)
   - autoSellRarities: array of rarity strings to auto-sell
 - createdAt: timestamp
@@ -149,11 +159,31 @@ Roll probability is calculated logarithmically based on item value:
 - Serial numbers for limited items
 
 ### Admin Features
-- Item creation with live preview
-- Item editing capabilities
-- Stock management (limited/infinite)
-- Off-sale toggle to disable rolling
-- Visual previews of rarity, value, and roll chance
+- **Item Creation**: Live preview with auto-ownership (admin gets serial #0)
+  - Limited items: Admin receives serial #0, users get serials starting at #1
+  - Infinite items: Admin receives one copy
+  - Admin's serial #0 doesn't count towards stock
+- **Item Editing**: Update name, description, image, value, stock settings
+- **Stock Management**: Toggle between limited/infinite, set total stock
+- **Off-sale Toggle**: Disable items from being rolled
+- **User Management** (AdminUsersTab):
+  - View all users with stats (cash, rolls, items)
+  - **Give Items**: Advanced gifting with serial management
+    - Infinite items: Specify quantity to give
+    - Limited items: Create new serial OR transfer existing serial
+    - Serial #0 (admin's) cannot be transferred
+  - **Ban System**: Temporary or permanent bans
+    - Temporary: Set expiry date, user can return after expiration
+    - Permanent: Auto-wipes inventory (transfers all items to admin)
+    - Cannot ban admin (userId 1)
+  - **Wipe Inventory**: Manually transfer all user items to admin
+    - Preserves serial numbers during transfer
+    - Updates ownership markers atomically
+    - Cannot wipe admin account
+- **Ban Overlay**: Full-screen message blocks banned users from all interaction
+  - Shows ban type (temporary/permanent)
+  - Displays ban reason and expiry time
+  - Informs about inventory wipe for permanent bans
 
 ### Real-time Features
 - Global roll notifications for items worth 2.5M+
