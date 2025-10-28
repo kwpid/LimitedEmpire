@@ -185,6 +185,15 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
 
             <Card className="rounded-xl">
               <CardContent className="p-4">
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Owner Count</h3>
+                <p className="text-2xl tabular-nums font-bold" data-testid="text-owner-count">
+                  {item.totalOwners.toLocaleString()}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-xl">
+              <CardContent className="p-4">
                 <h3 className="text-sm font-medium text-muted-foreground mb-2">Description</h3>
                 <p className="text-sm" data-testid="text-item-description">{item.description}</p>
               </CardContent>

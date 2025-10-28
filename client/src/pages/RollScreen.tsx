@@ -54,18 +54,15 @@ export default function RollScreen() {
   const loadUserStats = async () => {
     if (!user) return;
 
-    const inventoryRef = collection(db, "inventory");
-    const q = query(inventoryRef, where("userId", "==", user.firebaseUid));
-    const snapshot = await getDocs(q);
-
+    const inventory = user.inventory || [];
     const itemIdCounts = new Map<string, number>();
     const uniqueItemIds = new Set<string>();
 
-    snapshot.docs.forEach((doc) => {
-      const invItem = doc.data();
+    inventory.forEach((invItem) => {
       const itemId = invItem.itemId;
+      const amount = invItem.amount || 1;
       uniqueItemIds.add(itemId);
-      itemIdCounts.set(itemId, (itemIdCounts.get(itemId) || 0) + 1);
+      itemIdCounts.set(itemId, (itemIdCounts.get(itemId) || 0) + amount);
     });
 
     const itemPromises = Array.from(uniqueItemIds).map(async (itemId) => {
@@ -81,10 +78,12 @@ export default function RollScreen() {
 
     const itemCounts = new Map<string, { item: Item; count: number }>();
     let totalValue = 0;
+    let totalItems = 0;
 
     items.forEach((item) => {
       const count = itemIdCounts.get(item.id) || 0;
       totalValue += item.value * count;
+      totalItems += count;
       itemCounts.set(item.id, { item, count });
     });
 
@@ -97,7 +96,7 @@ export default function RollScreen() {
 
     setUserStats({
       totalRolls: user.rollCount || 0,
-      totalItems: snapshot.size,
+      totalItems,
       uniqueItems: itemCounts.size,
       totalValue,
       rarestItem,
