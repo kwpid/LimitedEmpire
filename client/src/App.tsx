@@ -11,12 +11,13 @@ import RollScreen from "./pages/RollScreen";
 import Inventory from "./pages/Inventory";
 import ItemIndex from "./pages/ItemIndex";
 import Settings from "./pages/Settings";
+import Players from "./pages/Players";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { AdminPanel } from "@/components/AdminPanel";
 import { GlobalRollToast } from "@/components/GlobalRollToast";
 import { BanOverlay } from "@/components/BanOverlay";
-import { Dices, Package, Database, Shield, LogOut, Sparkles, Settings as SettingsIcon } from "lucide-react";
+import { Dices, Package, Database, Shield, LogOut, Sparkles, Settings as SettingsIcon, Users } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth } from "./lib/firebase";
 import type { Item } from "@shared/schema";
@@ -110,7 +111,7 @@ function AppContent() {
 
       <div className="container mx-auto px-4 py-4">
         <Tabs value={currentTab} onValueChange={(value) => setLocation(value === "roll" ? "/" : `/${value}`)}>
-          <TabsList className="grid w-full max-w-2xl mx-auto grid-cols-4 mb-6">
+          <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-5 mb-6">
             <TabsTrigger value="roll" data-testid="tab-roll">
               <Dices className="w-4 h-4 mr-2" />
               Roll
@@ -118,6 +119,10 @@ function AppContent() {
             <TabsTrigger value="inventory" data-testid="tab-inventory">
               <Package className="w-4 h-4 mr-2" />
               Inventory
+            </TabsTrigger>
+            <TabsTrigger value="players" data-testid="tab-players">
+              <Users className="w-4 h-4 mr-2" />
+              Players
             </TabsTrigger>
             <TabsTrigger value="index" data-testid="tab-index">
               <Database className="w-4 h-4 mr-2" />
@@ -133,6 +138,7 @@ function AppContent() {
         <Switch>
           <Route path="/" component={RollScreen} />
           <Route path="/inventory" component={Inventory} />
+          <Route path="/players" component={Players} />
           <Route path="/index">
             {() => <ItemIndex onEditItem={openAdminPanel} />}
           </Route>

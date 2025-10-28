@@ -11,11 +11,11 @@ import type { Item } from "@shared/schema";
 import { getRarityClass, getRarityGlow, formatValue, getRarityColor } from "@/lib/rarity";
 import { RARITY_TIERS, calculateRollChance } from "@shared/schema";
 import { useAuth } from "@/contexts/AuthContext";
-import { doc, getDoc, collection, getDocs } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { sellItems } from "@/lib/sellService";
 import { useToast } from "@/hooks/use-toast";
-import { DollarSign } from "lucide-react";
+import { DollarSign, Star } from "lucide-react";
 
 interface ItemDetailModalProps {
   item: Item | null;
@@ -295,6 +295,63 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
                 </Button>
               </div>
             )}
+
+            {canSell && inventoryIds.length > 0 && (() => {
+              const firstInventoryId = inventoryIds[0];
+              const isInShowcase = user?.showcaseItems?.includes(firstInventoryId);
+              const showcaseCount = user?.showcaseItems?.length || 0;
+              const canAddToShowcase = !isInShowcase && showcaseCount < 5;
+
+              const handleShowcaseToggle = async () => {
+                if (!user) return;
+
+                try {
+                  const userRef = doc(db, "users", user.id);
+                  let newShowcaseItems;
+
+                  if (isInShowcase) {
+                    newShowcaseItems = (user.showcaseItems || []).filter(id => id !== firstInventoryId);
+                  } else if (canAddToShowcase) {
+                    newShowcaseItems = [...(user.showcaseItems || []), firstInventoryId];
+                  } else {
+                    return;
+                  }
+
+                  await updateDoc(userRef, {
+                    showcaseItems: newShowcaseItems,
+                  });
+
+                  await refetchUser();
+
+                  toast({
+                    title: isInShowcase ? "Removed from showcase" : "Added to showcase",
+                    description: isInShowcase
+                      ? `${item.name} removed from your showcase`
+                      : `${item.name} added to your showcase`,
+                  });
+                } catch (error: any) {
+                  console.error("Showcase toggle error:", error);
+                  toast({
+                    title: "Action failed",
+                    description: error.message || "An error occurred",
+                    variant: "destructive",
+                  });
+                }
+              };
+
+              return (
+                <Button
+                  onClick={handleShowcaseToggle}
+                  variant={isInShowcase ? "secondary" : "outline"}
+                  className="w-full"
+                  disabled={!isInShowcase && !canAddToShowcase}
+                  data-testid="button-toggle-showcase"
+                >
+                  <Star className={`w-4 h-4 mr-2 ${isInShowcase ? "fill-current" : ""}`} />
+                  {isInShowcase ? "Remove from Showcase" : canAddToShowcase ? "Add to Showcase" : `Showcase Full (${showcaseCount}/5)`}
+                </Button>
+              );
+            })()}
 
             {user?.isAdmin && onEdit && (
               <Button onClick={onEdit} className="w-full" data-testid="button-edit-item">

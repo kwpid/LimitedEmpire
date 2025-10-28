@@ -74,15 +74,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     activityIntervalRef.current = setInterval(updateActivity, 30000);
 
     const handleBeforeUnload = async () => {
-      if (!user) return;
+      if (!user || !sessionStartRef.current) return;
       
       const sessionDuration = Date.now() - sessionStartRef.current;
+      if (sessionDuration <= 0) return;
+      
       try {
         const userRef = doc(db, "users", user.id);
         await updateDoc(userRef, {
           timeSpentOnSite: (user.timeSpentOnSite || 0) + sessionDuration,
           lastActive: Date.now(),
         });
+        sessionStartRef.current = Date.now();
       } catch (error) {
         console.error("Error saving session duration:", error);
       }
