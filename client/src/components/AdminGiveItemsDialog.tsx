@@ -262,10 +262,12 @@ export function AdminGiveItemsDialog({ open, onOpenChange, targetUser, onSuccess
     await runTransaction(db, async (transaction) => {
       const sourceUserRef = doc(db, "users", owner.userDocId);
       const targetUserRef = doc(db, "users", targetUser.id);
+      const itemRef = doc(db, "items", item.id);
       const targetOwnershipMarkerRef = doc(db, "items", item.id, "owners", targetUser.firebaseUid);
 
       const sourceUserDoc = await transaction.get(sourceUserRef);
       const targetUserDoc = await transaction.get(targetUserRef);
+      const itemDoc = await transaction.get(itemRef);
       const targetOwnershipDoc = await transaction.get(targetOwnershipMarkerRef);
 
       if (!sourceUserDoc.exists() || !targetUserDoc.exists()) {
@@ -291,9 +293,6 @@ export function AdminGiveItemsDialog({ open, onOpenChange, targetUser, onSuccess
       transaction.update(targetUserRef, { inventory: updatedTargetInventory });
 
       if (!targetOwnershipDoc.exists()) {
-        const itemRef = doc(db, "items", item.id);
-        const itemDoc = await transaction.get(itemRef);
-        
         transaction.set(targetOwnershipMarkerRef, {
           userId: targetUser.firebaseUid,
           username: targetUser.username,
