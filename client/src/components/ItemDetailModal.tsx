@@ -117,7 +117,7 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
           <DialogTitle className="text-2xl">{item.name}</DialogTitle>
         </DialogHeader>
         <div className="grid md:grid-cols-[300px,1fr] gap-6">
-          <div className={`aspect-square border-2 rounded-lg relative bg-black ${rarityClass} ${rarityGlow}`}>
+          <div className={`aspect-square border-2 rounded-lg relative bg-black overflow-hidden ${rarityClass} ${rarityGlow}`}>
             {isInsane && (
               <div 
                 className="absolute inset-0 opacity-30 z-[0] animate-gradient-slow pointer-events-none"
@@ -130,14 +130,14 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
             <img
               src={item.imageUrl}
               alt={item.name}
-              className="absolute inset-0 w-full h-full object-cover z-[10]"
+              className="absolute inset-0 w-full h-full object-cover z-[1]"
               onError={(e) => {
                 e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Crect width='300' height='300' fill='%23333'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23fff' font-size='72' font-weight='bold'%3E%3F%3C/text%3E%3C/svg%3E";
               }}
             />
             <Badge 
               variant="outline" 
-              className="absolute top-3 left-3 text-sm font-bold z-[50] backdrop-blur-sm"
+              className="absolute top-3 left-3 text-sm font-bold z-[20] backdrop-blur-sm"
               style={!isInsane ? { 
                 backgroundColor: `${rarityColor}20`,
                 borderColor: rarityColor,
@@ -151,12 +151,12 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
               {RARITY_TIERS[item.rarity].name}
             </Badge>
             {item.stockType === "limited" && (
-              <Badge variant="secondary" className="absolute top-3 right-3 text-sm z-[50] bg-secondary/90 backdrop-blur-sm" data-testid="text-stock-info">
+              <Badge variant="secondary" className="absolute top-3 right-3 text-sm z-[20] bg-secondary/90 backdrop-blur-sm" data-testid="text-stock-info">
                 {item.remainingStock}/{item.totalStock}
               </Badge>
             )}
             {serialNumber !== undefined && (
-              <Badge variant="secondary" className="absolute bottom-3 right-3 text-sm z-[50] bg-secondary/90 backdrop-blur-sm" data-testid="badge-serial-number">
+              <Badge variant="secondary" className="absolute bottom-3 right-3 text-sm z-[20] bg-secondary/90 backdrop-blur-sm" data-testid="badge-serial-number">
                 #{serialNumber}
               </Badge>
             )}

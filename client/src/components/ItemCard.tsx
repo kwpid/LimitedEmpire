@@ -19,11 +19,11 @@ export function ItemCard({ item, serialNumber, onClick, stackCount }: ItemCardPr
 
   return (
     <Card
-      className={`overflow-hidden cursor-pointer hover-elevate active-elevate-2 transition-all duration-300 border-2 ${rarityClass} ${rarityGlow} h-full flex flex-col`}
+      className={`overflow-visible cursor-pointer hover-elevate active-elevate-2 transition-all duration-300 border-2 ${rarityClass} ${rarityGlow} h-full flex flex-col`}
       onClick={onClick}
       data-testid={`card-item-${item.id}`}
     >
-      <div className="aspect-square relative bg-black overflow-visible">
+      <div className="aspect-square relative bg-black overflow-hidden rounded-t-lg">
         {isInsane && (
           <div 
             className="absolute inset-0 opacity-30 z-[0] animate-gradient-slow pointer-events-none"
@@ -36,14 +36,14 @@ export function ItemCard({ item, serialNumber, onClick, stackCount }: ItemCardPr
         <img
           src={item.imageUrl}
           alt={item.name}
-          className="absolute inset-0 w-full h-full object-cover z-[10]"
+          className="absolute inset-0 w-full h-full object-cover z-[1]"
           onError={(e) => {
             e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect width='200' height='200' fill='%23333'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23fff' font-size='48' font-weight='bold'%3E%3F%3C/text%3E%3C/svg%3E";
           }}
         />
         <Badge 
           variant="outline" 
-          className="absolute top-2 left-2 text-xs font-bold z-[50] backdrop-blur-sm"
+          className="absolute top-2 left-2 text-xs font-bold z-[20] backdrop-blur-sm"
           style={!isInsane ? { 
             backgroundColor: `${rarityColor}20`,
             borderColor: rarityColor,
@@ -58,18 +58,18 @@ export function ItemCard({ item, serialNumber, onClick, stackCount }: ItemCardPr
           {RARITY_TIERS[item.rarity].name}
         </Badge>
         {serialNumber !== undefined ? (
-          <Badge variant="secondary" className="absolute top-2 right-2 text-xs z-[50] bg-secondary/90 backdrop-blur-sm" data-testid={`badge-serial-${serialNumber}`}>
+          <Badge variant="secondary" className="absolute top-2 right-2 text-xs z-[20] bg-secondary/90 backdrop-blur-sm" data-testid={`badge-serial-${serialNumber}`}>
             #{serialNumber}
           </Badge>
         ) : (
           item.stockType === "limited" && (
-            <Badge variant="secondary" className="absolute top-2 right-2 text-xs z-[50] bg-secondary/90 backdrop-blur-sm" data-testid={`badge-stock-${item.id}`}>
+            <Badge variant="secondary" className="absolute top-2 right-2 text-xs z-[20] bg-secondary/90 backdrop-blur-sm" data-testid={`badge-stock-${item.id}`}>
               {item.remainingStock}/{item.totalStock}
             </Badge>
           )
         )}
         {item.offSale && (
-          <Badge variant="destructive" className="absolute bottom-2 right-2 z-[50] bg-destructive/90 backdrop-blur-sm">
+          <Badge variant="destructive" className="absolute bottom-2 right-2 z-[20] bg-destructive/90 backdrop-blur-sm">
             Off-Sale
           </Badge>
         )}
