@@ -153,13 +153,13 @@ export default function RollScreen() {
 
     rollingRef.current = true;
     setRolling(true);
-    setIsAnimating(true);
 
     try {
       const { performRoll: executeRoll } = await import("@/lib/rollService");
       const result = await executeRoll(user);
       
       setRolledItem(result.item);
+      setIsAnimating(true);
       
       await new Promise((resolve) => setTimeout(resolve, 2100));
       

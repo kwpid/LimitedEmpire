@@ -78,14 +78,28 @@ export default function Inventory() {
       for (const invItem of userInventory) {
         const item = itemCache.get(invItem.itemId);
         if (item) {
-          items.push({ 
-            id: invItem.id,
-            itemId: invItem.itemId,
-            userId: user.firebaseUid,
-            serialNumber: invItem.serialNumber,
-            rolledAt: invItem.rolledAt,
-            item 
-          });
+          const amount = invItem.amount || 1;
+          if (invItem.serialNumber !== null) {
+            items.push({ 
+              id: invItem.id,
+              itemId: invItem.itemId,
+              userId: user.firebaseUid,
+              serialNumber: invItem.serialNumber,
+              rolledAt: invItem.rolledAt,
+              item 
+            });
+          } else {
+            for (let i = 0; i < amount; i++) {
+              items.push({ 
+                id: i === 0 ? invItem.id : `${invItem.id}-${i}`,
+                itemId: invItem.itemId,
+                userId: user.firebaseUid,
+                serialNumber: invItem.serialNumber,
+                rolledAt: invItem.rolledAt,
+                item 
+              });
+            }
+          }
         }
       }
 

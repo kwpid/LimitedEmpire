@@ -57,11 +57,26 @@ export async function sellItems(
     const adminCash = adminDoc.data().cash || 0;
 
     const idsToSellSet = new Set(idsToSell);
-    const filteredInventory = currentInventory.filter(
-      (invItem: any) => !idsToSellSet.has(invItem.id)
-    );
-
-    const actualRemovedCount = currentInventory.length - filteredInventory.length;
+    const updatedInventory = [];
+    let actualRemovedCount = 0;
+    
+    for (const invItem of currentInventory) {
+      if (idsToSellSet.has(invItem.id)) {
+        const amount = invItem.amount || 1;
+        const sellAmount = Math.min(amount, quantityToSell - actualRemovedCount);
+        
+        actualRemovedCount += sellAmount;
+        
+        if (sellAmount < amount) {
+          updatedInventory.push({
+            ...invItem,
+            amount: amount - sellAmount,
+          });
+        }
+      } else {
+        updatedInventory.push(invItem);
+      }
+    }
     
     if (actualRemovedCount !== quantityToSell) {
       throw new Error(`Invalid inventory: expected to remove ${quantityToSell} items but only found ${actualRemovedCount}`);
@@ -69,7 +84,7 @@ export async function sellItems(
 
     transaction.update(userRef, {
       cash: currentCash + playerEarned,
-      inventory: filteredInventory,
+      inventory: updatedInventory,
     });
 
     transaction.update(adminRef, {

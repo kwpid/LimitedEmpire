@@ -66,6 +66,7 @@ export const userSchema = z.object({
     itemId: z.string(),
     serialNumber: z.number().nullable(),
     rolledAt: z.number(),
+    amount: z.number().default(1),
   })).default([]),
 });
 

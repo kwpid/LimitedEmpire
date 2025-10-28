@@ -28,7 +28,7 @@ interface ItemDetailModalProps {
 }
 
 export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit, inventoryIds = [], stackCount = 1, onSellComplete }: ItemDetailModalProps) {
-  const { user } = useAuth();
+  const { user, refetchUser } = useAuth();
   const { toast } = useToast();
   const [creatorUsername, setCreatorUsername] = useState<string>("");
   const [showSellDialog, setShowSellDialog] = useState(false);
@@ -94,6 +94,8 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
 
       setShowSellDialog(false);
       onOpenChange(false);
+      
+      await refetchUser();
       
       if (onSellComplete) {
         onSellComplete();

@@ -118,16 +118,44 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
       });
     } else {
       const currentRollCount = userDoc.data()?.rollCount || 0;
-      const inventoryItemId = `${user.firebaseUid}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const currentInventory = userDoc.data()?.inventory || [];
       
-      transaction.update(userRef, {
-        rollCount: currentRollCount + 1,
-        inventory: arrayUnion({
+      let updatedInventory = [...currentInventory];
+      
+      if (serialNumber === null) {
+        const existingIndex = updatedInventory.findIndex(
+          (invItem: any) => invItem.itemId === selectedItem.id && invItem.serialNumber === null
+        );
+        
+        if (existingIndex !== -1) {
+          updatedInventory[existingIndex] = {
+            ...updatedInventory[existingIndex],
+            amount: (updatedInventory[existingIndex].amount || 1) + 1,
+          };
+        } else {
+          const inventoryItemId = `${user.firebaseUid}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          updatedInventory.push({
+            id: inventoryItemId,
+            itemId: selectedItem.id,
+            serialNumber,
+            rolledAt: Date.now(),
+            amount: 1,
+          });
+        }
+      } else {
+        const inventoryItemId = `${user.firebaseUid}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        updatedInventory.push({
           id: inventoryItemId,
           itemId: selectedItem.id,
           serialNumber,
           rolledAt: Date.now(),
-        }),
+          amount: 1,
+        });
+      }
+      
+      transaction.update(userRef, {
+        rollCount: currentRollCount + 1,
+        inventory: updatedInventory,
       });
     }
 

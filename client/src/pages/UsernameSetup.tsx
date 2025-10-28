@@ -59,6 +59,12 @@ export default function UsernameSetup() {
         isAdmin: false,
         isBanned: false,
         createdAt: Date.now(),
+        rollCount: 0,
+        cash: 1000,
+        settings: {
+          autoSellRarities: [],
+        },
+        inventory: [],
       });
 
       await refetchUser();
