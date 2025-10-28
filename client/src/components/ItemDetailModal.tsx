@@ -62,10 +62,10 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
           <DialogTitle className="text-2xl">{item.name}</DialogTitle>
         </DialogHeader>
         <div className="grid md:grid-cols-[300px,1fr] gap-6">
-          <div className={`aspect-square border-2 rounded-lg overflow-hidden relative ${rarityClass} ${rarityGlow}`}>
+          <div className={`aspect-square border-2 rounded-lg overflow-hidden relative bg-black ${rarityClass} ${rarityGlow}`}>
             {isInsane && (
               <div 
-                className="absolute inset-0 opacity-30 animate-gradient-slow"
+                className="absolute inset-0 opacity-30 z-[5] animate-gradient-slow pointer-events-none"
                 style={{
                   background: "linear-gradient(135deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3)",
                   backgroundSize: "400% 400%",
@@ -75,14 +75,14 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
             <img
               src={item.imageUrl}
               alt={item.name}
-              className="w-full h-full object-cover relative z-10"
+              className="absolute inset-0 w-full h-full object-cover z-[1]"
               onError={(e) => {
                 e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Crect width='300' height='300' fill='%23333'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23fff' font-size='72' font-weight='bold'%3E%3F%3C/text%3E%3C/svg%3E";
               }}
             />
             <Badge 
               variant="outline" 
-              className="absolute top-3 left-3 text-sm font-bold z-20"
+              className="absolute top-3 left-3 text-sm font-bold z-[20]"
               style={!isInsane ? { 
                 backgroundColor: `${rarityColor}20`,
                 borderColor: rarityColor,
@@ -95,20 +95,20 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
             >
               {RARITY_TIERS[item.rarity].name}
             </Badge>
-            <Badge variant="secondary" className="absolute bottom-3 left-3 text-sm z-20" data-testid="text-stock-info">
+            <Badge variant="secondary" className="absolute bottom-3 left-3 text-sm z-[20] bg-secondary/90 backdrop-blur-sm" data-testid="text-stock-info">
               {item.stockType === "infinite"
                 ? "∞ Stock"
                 : `${item.remainingStock}/${item.totalStock}`}
             </Badge>
             {serialNumber !== undefined && (
-              <Badge variant="secondary" className="absolute top-3 right-3 text-sm z-20" data-testid="badge-serial-number">
+              <Badge variant="secondary" className="absolute top-3 right-3 text-sm z-[20] bg-secondary/90 backdrop-blur-sm" data-testid="badge-serial-number">
                 #{serialNumber}
               </Badge>
             )}
           </div>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <Card className="rounded-lg">
+              <Card className="rounded-xl">
                 <CardContent className="p-4">
                   <h3 className="text-sm font-medium text-muted-foreground mb-1">Value</h3>
                   <p className="font-bold text-2xl tabular-nums" data-testid="text-detail-value">
@@ -116,7 +116,7 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
                   </p>
                 </CardContent>
               </Card>
-              <Card className="rounded-lg">
+              <Card className="rounded-xl">
                 <CardContent className="p-4">
                   <h3 className="text-sm font-medium text-muted-foreground mb-1">Roll Chance</h3>
                   <p className="text-2xl tabular-nums font-bold" data-testid="text-roll-chance">
@@ -126,7 +126,7 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
               </Card>
             </div>
 
-            <Card className="rounded-lg">
+            <Card className="rounded-xl">
               <CardContent className="p-4">
                 <h3 className="text-sm font-medium text-muted-foreground mb-2">Description</h3>
                 <p className="text-sm" data-testid="text-item-description">{item.description}</p>
@@ -134,7 +134,7 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
             </Card>
 
             {creatorUsername && (
-              <Card className="rounded-lg">
+              <Card className="rounded-xl">
                 <CardContent className="p-4">
                   <h3 className="text-sm font-medium text-muted-foreground mb-1">Uploaded By</h3>
                   <p className="text-sm font-medium" data-testid="text-creator-username">
