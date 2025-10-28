@@ -56,9 +56,11 @@ export default function ItemIndex({ onEditItem }: ItemIndexProps = {}) {
     let filtered = [...items];
 
     if (searchTerm) {
-      filtered = filtered.filter((item) =>
-        item.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      const searchWords = searchTerm.toLowerCase().trim().split(/\s+/);
+      filtered = filtered.filter((item) => {
+        const itemName = item.name.toLowerCase();
+        return searchWords.every(word => itemName.includes(word));
+      });
     }
 
     if (rarityFilter !== "all") {

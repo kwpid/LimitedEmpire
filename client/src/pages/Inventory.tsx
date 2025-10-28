@@ -149,9 +149,11 @@ export default function Inventory() {
     let filtered = [...stackedInventory];
 
     if (searchTerm) {
-      filtered = filtered.filter((item) =>
-        item.item.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      const searchWords = searchTerm.toLowerCase().trim().split(/\s+/);
+      filtered = filtered.filter((item) => {
+        const itemName = item.item.name.toLowerCase();
+        return searchWords.every(word => itemName.includes(word));
+      });
     }
 
     if (rarityFilter !== "all") {
