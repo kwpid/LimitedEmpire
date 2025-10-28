@@ -393,7 +393,7 @@ export default function RollScreen() {
             <CardTitle className="text-2xl md:text-3xl font-bold tracking-tight">Roll</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 md:space-y-6">
-            <div className="min-h-[300px] md:min-h-[400px] flex items-center justify-center">
+            <div className="min-h-[300px] md:min-h-[400px] flex items-center justify-center w-full overflow-hidden">
               <AnimatePresence mode="wait">
                 {isAnimating ? (
                   <motion.div
@@ -402,6 +402,7 @@ export default function RollScreen() {
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.9, opacity: 0 }}
                     transition={{ duration: 0.3 }}
+                    className="w-full flex justify-center"
                   >
                     <SlotMachineRoll items={items} finalItem={rolledItem} isRolling={isAnimating} />
                   </motion.div>

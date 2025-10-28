@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Trophy, TrendingUp, Package, DollarSign, Dices, Clock } from "lucide-react";
+import { Trophy, TrendingUp, Package, DollarSign, Dices } from "lucide-react";
 import type { User, Item } from "@shared/schema";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -24,7 +24,6 @@ export default function Leaderboard() {
   const [selectedPlayer, setSelectedPlayer] = useState<User | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [hasRendered, setHasRendered] = useState(false);
-  const [timeUntilRefresh, setTimeUntilRefresh] = useState(300);
 
   const loadLeaderboards = async () => {
     setLoading(true);
@@ -105,16 +104,10 @@ export default function Leaderboard() {
     
     const refreshInterval = setInterval(() => {
       loadLeaderboards();
-      setTimeUntilRefresh(300);
     }, 5 * 60 * 1000);
-    
-    const timerInterval = setInterval(() => {
-      setTimeUntilRefresh(prev => Math.max(0, prev - 1));
-    }, 1000);
     
     return () => {
       clearInterval(refreshInterval);
-      clearInterval(timerInterval);
     };
   }, [hasRendered]);
 
@@ -128,12 +121,6 @@ export default function Leaderboard() {
     if (rank === 2) return "bg-gradient-to-br from-gray-300/50 via-gray-400/50 to-gray-500/50";
     if (rank === 3) return "bg-gradient-to-br from-amber-600/50 via-amber-700/50 to-amber-800/50";
     return "bg-card";
-  };
-  
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${minutes}:${secs.toString().padStart(2, '0')}`;
   };
 
   const getRankTextColor = (rank: number) => {
@@ -199,19 +186,11 @@ export default function Leaderboard() {
   return (
     <div className="container mx-auto p-4 md:p-6 max-w-[1600px]">
       <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight mb-2 flex items-center gap-2">
-              <Trophy className="w-8 h-8" />
-              Leaderboards
-            </h1>
-            <p className="text-muted-foreground">Top players across all categories</p>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-refresh-timer">
-            <Clock className="w-4 h-4" />
-            <span>Refreshes in {formatTime(timeUntilRefresh)}</span>
-          </div>
-        </div>
+        <h1 className="text-3xl font-bold tracking-tight mb-2 flex items-center gap-2">
+          <Trophy className="w-8 h-8" />
+          Leaderboards
+        </h1>
+        <p className="text-muted-foreground">Top players across all categories</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">

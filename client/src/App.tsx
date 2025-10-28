@@ -115,29 +115,29 @@ function AppContent() {
       <div className="flex-1 container mx-auto px-4 py-4 pb-8">
         <Tabs value={currentTab} onValueChange={(value) => setLocation(value === "roll" ? "/" : `/${value}`)}>
           <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-6 mb-6">
-            <TabsTrigger value="roll" data-testid="tab-roll">
-              <Dices className="w-4 h-4 mr-2" />
-              Roll
+            <TabsTrigger value="roll" data-testid="tab-roll" className="flex items-center gap-1 md:gap-2">
+              <Dices className="w-4 h-4" />
+              <span className="hidden sm:inline">Roll</span>
             </TabsTrigger>
-            <TabsTrigger value="inventory" data-testid="tab-inventory">
-              <Package className="w-4 h-4 mr-2" />
-              Inventory
+            <TabsTrigger value="inventory" data-testid="tab-inventory" className="flex items-center gap-1 md:gap-2">
+              <Package className="w-4 h-4" />
+              <span className="hidden sm:inline">Inventory</span>
             </TabsTrigger>
-            <TabsTrigger value="players" data-testid="tab-players">
-              <Users className="w-4 h-4 mr-2" />
-              Players
+            <TabsTrigger value="players" data-testid="tab-players" className="flex items-center gap-1 md:gap-2">
+              <Users className="w-4 h-4" />
+              <span className="hidden sm:inline">Players</span>
             </TabsTrigger>
-            <TabsTrigger value="leaderboard" data-testid="tab-leaderboard">
-              <Trophy className="w-4 h-4 mr-2" />
-              Leaderboard
+            <TabsTrigger value="leaderboard" data-testid="tab-leaderboard" className="flex items-center gap-1 md:gap-2">
+              <Trophy className="w-4 h-4" />
+              <span className="hidden sm:inline">Leaderboard</span>
             </TabsTrigger>
-            <TabsTrigger value="index" data-testid="tab-index">
-              <Database className="w-4 h-4 mr-2" />
-              Index
+            <TabsTrigger value="index" data-testid="tab-index" className="flex items-center gap-1 md:gap-2">
+              <Database className="w-4 h-4" />
+              <span className="hidden sm:inline">Index</span>
             </TabsTrigger>
-            <TabsTrigger value="settings" data-testid="tab-settings">
-              <SettingsIcon className="w-4 h-4 mr-2" />
-              Settings
+            <TabsTrigger value="settings" data-testid="tab-settings" className="flex items-center gap-1 md:gap-2">
+              <SettingsIcon className="w-4 h-4" />
+              <span className="hidden sm:inline">Settings</span>
             </TabsTrigger>
           </TabsList>
         </Tabs>
