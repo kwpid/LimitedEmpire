@@ -64,8 +64,9 @@ service cloud.firestore {
         // Anyone authenticated can read ownership markers
         allow read: if isAuthenticated();
         
-        // Only allow creating ownership markers during item rolls
-        allow create: if isAuthenticated() && request.auth.uid == userId;
+        // Users can create their own ownership markers during rolls
+        // Admins can create ownership markers for any user (for item creation, gifting, etc.)
+        allow create: if (isAuthenticated() && request.auth.uid == userId) || isAdmin();
         
         // Admins can delete ownership markers (for economy reset)
         allow delete: if isAdmin();
