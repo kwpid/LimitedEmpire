@@ -6,6 +6,9 @@ import { useToast } from "@/hooks/use-toast";
 import { collection, query, where, getDocs, doc, updateDoc, writeBatch, runTransaction, deleteField } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Search, Ban, UserX, Trash2, Gift } from "lucide-react";
+import { createAuditLog } from "@/lib/audit-log";
+import { useAuth } from "@/contexts/AuthContext";
+import { sendWebhookRequest } from "@/lib/webhook-client";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Input as InputComponent } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,6 +59,7 @@ const BAN_PRESETS: BanPreset[] = [
 
 export function AdminUsersTab() {
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [searching, setSearching] = useState(false);
@@ -78,6 +82,18 @@ export function AdminUsersTab() {
 
     return () => clearTimeout(delayDebounce);
   }, [searchTerm]);
+
+  const sendWebhook = async (action: string, targetUsername: string, details: string[], color?: number) => {
+    if (!currentUser) return;
+    
+    await sendWebhookRequest('/api/webhooks/admin-log', {
+      action,
+      adminUsername: currentUser.username,
+      targetUsername,
+      details,
+      color,
+    });
+  };
 
   const applyBanPreset = (presetName: string) => {
     setSelectedPreset(presetName);
@@ -164,6 +180,40 @@ export function AdminUsersTab() {
 
       const shouldWipeInventory = isPermanentBan || wipeInventoryOnBan;
 
+      // Create audit log
+      if (currentUser) {
+        await createAuditLog({
+          timestamp: Date.now(),
+          adminId: currentUser.id,
+          adminUsername: currentUser.username,
+          actionType: "user_ban",
+          targetUserId: actionDialog.user.id,
+          targetUsername: actionDialog.user.username,
+          details: {
+            reason: banReason || "No reason provided",
+            isPermanent: isPermanentBan,
+            duration: isPermanentBan ? 0 : banDays,
+            wipeInventory: shouldWipeInventory,
+          },
+          metadata: {
+            banReason: banReason || "No reason provided",
+            banDuration: isPermanentBan ? undefined : banDays * 24 * 60 * 60 * 1000,
+            isPermanentBan,
+          },
+        });
+      }
+
+      // Send Discord webhook
+      const webhookDetails: string[] = [
+        `**User:** ${actionDialog.user.username}`,
+        `**Reason:** ${banReason || "No reason provided"}`,
+        `**Type:** ${isPermanentBan ? "Permanent Ban" : `Temporary (${banDays} days)`}`,
+      ];
+      if (shouldWipeInventory) {
+        webhookDetails.push("**Inventory:** Wiped");
+      }
+      await sendWebhook("User Banned", actionDialog.user.username, webhookDetails, 0xED4245);
+
       if (shouldWipeInventory) {
         const usersRef = collection(db, "users");
         const adminQuery = query(usersRef, where("userId", "==", 1));
@@ -242,6 +292,28 @@ export function AdminUsersTab() {
         banExpiresAt: deleteField(),
       });
 
+      // Create audit log
+      if (currentUser) {
+        await createAuditLog({
+          timestamp: Date.now(),
+          adminId: currentUser.id,
+          adminUsername: currentUser.username,
+          actionType: "user_unban",
+          targetUserId: actionDialog.user.id,
+          targetUsername: actionDialog.user.username,
+          details: {
+            action: "User unbanned",
+          },
+        });
+      }
+
+      // Send Discord webhook
+      const webhookDetails: string[] = [
+        `**User:** ${actionDialog.user.username}`,
+        `**Status:** Unbanned`,
+      ];
+      await sendWebhook("User Unbanned", actionDialog.user.username, webhookDetails, 0x57F287);
+
       toast({
         title: "User unbanned",
         description: `${actionDialog.user.username} has been unbanned`,
@@ -286,7 +358,7 @@ export function AdminUsersTab() {
 
       const adminDocId = adminSnapshot.docs[0].id;
 
-      await runTransaction(db, async (transaction) => {
+      const itemCount = await runTransaction(db, async (transaction) => {
         const userRef = doc(db, "users", actionDialog.user!.id);
         const adminRef = doc(db, "users", adminDocId);
 
@@ -307,7 +379,36 @@ export function AdminUsersTab() {
         transaction.update(userRef, {
           inventory: [],
         });
+
+        return userInventory.length;
       });
+
+      // Create audit log
+      if (currentUser) {
+        await createAuditLog({
+          timestamp: Date.now(),
+          adminId: currentUser.id,
+          adminUsername: currentUser.username,
+          actionType: "user_wipe_inventory",
+          targetUserId: actionDialog.user.id,
+          targetUsername: actionDialog.user.username,
+          details: {
+            action: "Inventory wiped",
+            itemsTransferred: itemCount,
+          },
+          metadata: {
+            itemsWiped: itemCount,
+          },
+        });
+      }
+
+      // Send Discord webhook
+      const webhookDetails: string[] = [
+        `**User:** ${actionDialog.user.username}`,
+        `**Items Wiped:** ${itemCount}`,
+        `**Transferred to:** Admin`,
+      ];
+      await sendWebhook("Inventory Wiped", actionDialog.user.username, webhookDetails, 0xFEE75C);
 
       toast({
         title: "Inventory wiped",

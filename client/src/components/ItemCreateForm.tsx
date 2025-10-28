@@ -15,6 +15,8 @@ import { collection, addDoc, query, where, getDocs, doc, runTransaction } from "
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
 import { getRarityClass, getRarityGlow, formatValue } from "@/lib/rarity";
+import { createAuditLog } from "@/lib/audit-log";
+import { sendWebhookRequest } from "@/lib/webhook-client";
 import { z } from "zod";
 
 export function ItemCreateForm({ onSuccess }: { onSuccess?: () => void }) {
@@ -114,6 +116,50 @@ export function ItemCreateForm({ onSuccess }: { onSuccess?: () => void }) {
             ownedAt: Date.now(),
           });
         }
+      });
+
+      // Create audit log
+      await createAuditLog({
+        timestamp: Date.now(),
+        adminId: user.id,
+        adminUsername: user.username,
+        actionType: "item_create",
+        details: {
+          itemName: values.name,
+          value: values.value,
+          rarity,
+          stockType: values.stockType,
+        },
+        metadata: {
+          itemData: {
+            itemId: itemId,
+            itemName: values.name,
+            value: values.value,
+            rarity,
+            stock: values.stockType === "limited" ? values.totalStock : null,
+          },
+        },
+      });
+
+      // Send item release webhook
+      await sendWebhookRequest('/api/webhooks/item-release', {
+        name: values.name,
+        rarity,
+        value: values.value,
+        stock: values.stockType === "limited" ? values.totalStock : null,
+      });
+
+      // Send admin log webhook
+      await sendWebhookRequest('/api/webhooks/admin-log', {
+        action: "Item Released",
+        adminUsername: user.username,
+        details: [
+          `**Item:** ${values.name}`,
+          `**Rarity:** ${RARITY_TIERS[rarity].name}`,
+          `**Value:** ${values.value.toLocaleString()}`,
+          `**Stock:** ${values.stockType === "limited" ? values.totalStock?.toLocaleString() : "Infinite"}`,
+        ],
+        color: 0x5865F2,
       });
 
       toast({
