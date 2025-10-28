@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 export default function Settings() {
   const { user, refetchUser } = useAuth();
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState("profile");
   const [autoSellRarities, setAutoSellRarities] = useState<RarityTier[]>(
     user?.settings?.autoSellRarities || []
   );
@@ -110,40 +111,40 @@ export default function Settings() {
 
       <div className="flex gap-6">
         <div className="w-64 space-y-2">
-          <Tabs defaultValue="profile" orientation="vertical" className="h-full">
-            <TabsList className="flex flex-col h-auto w-full bg-transparent space-y-1">
-              <TabsTrigger 
-                value="profile" 
-                className="w-full justify-start data-[state=active]:bg-primary/10"
-                data-testid="tab-profile-settings"
-              >
-                <User className="w-4 h-4 mr-2" />
-                Profile
-              </TabsTrigger>
-              <TabsTrigger 
-                value="sell" 
-                className="w-full justify-start data-[state=active]:bg-primary/10"
-                data-testid="tab-sell-settings"
-              >
-                <DollarSign className="w-4 h-4 mr-2" />
-                Sell Settings
-              </TabsTrigger>
-              <TabsTrigger 
-                value="trade" 
-                className="w-full justify-start data-[state=active]:bg-primary/10"
-                data-testid="tab-trade-settings"
-                disabled
-              >
-                <ArrowRightLeft className="w-4 h-4 mr-2" />
-                Trade Settings
-                <Badge variant="secondary" className="ml-auto text-xs">Coming Soon</Badge>
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="flex flex-col h-auto w-full bg-transparent space-y-1">
+            <Button 
+              variant={activeTab === "profile" ? "secondary" : "ghost"}
+              className="w-full justify-start"
+              onClick={() => setActiveTab("profile")}
+              data-testid="tab-profile-settings"
+            >
+              <User className="w-4 h-4 mr-2" />
+              Profile
+            </Button>
+            <Button 
+              variant={activeTab === "sell" ? "secondary" : "ghost"}
+              className="w-full justify-start"
+              onClick={() => setActiveTab("sell")}
+              data-testid="tab-sell-settings"
+            >
+              <DollarSign className="w-4 h-4 mr-2" />
+              Sell Settings
+            </Button>
+            <Button 
+              variant="ghost"
+              className="w-full justify-start opacity-50"
+              disabled
+              data-testid="tab-trade-settings"
+            >
+              <ArrowRightLeft className="w-4 h-4 mr-2" />
+              Trade Settings
+              <Badge variant="secondary" className="ml-auto text-xs">Coming Soon</Badge>
+            </Button>
+          </div>
         </div>
 
         <div className="flex-1">
-          <Tabs defaultValue="profile">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsContent value="profile" className="mt-0">
               <Card>
                 <CardHeader>

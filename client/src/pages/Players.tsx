@@ -51,7 +51,7 @@ export default function Players() {
   
   const filteredAll = players.filter(p => 
     p.username.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  ).slice(0, searchQuery ? undefined : 10);
 
   return (
     <div className="container mx-auto p-4 md:p-6 max-w-7xl">

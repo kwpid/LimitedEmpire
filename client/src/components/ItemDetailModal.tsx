@@ -89,6 +89,7 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
 
         for (const userDoc of usersSnapshot.docs) {
           const userData = userDoc.data();
+          if (userData.isAdmin) continue;
           const inventory = userData.inventory || [];
           
           for (const invItem of inventory) {

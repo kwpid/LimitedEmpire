@@ -13,6 +13,7 @@ import { Dices, Loader2, TrendingUp, Package, Gem, Hash } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import type { RarityTier } from "@shared/schema";
+import { useLocation } from "wouter";
 
 interface UserStats {
   totalRolls: number;
@@ -35,6 +36,7 @@ interface SavedRoll {
 export default function RollScreen() {
   const { user, refetchUser } = useAuth();
   const { toast } = useToast();
+  const [location] = useLocation();
   const [items, setItems] = useState<Item[]>([]);
   const [rolling, setRolling] = useState(false);
   const [autoRoll, setAutoRoll] = useState(false);
@@ -52,20 +54,23 @@ export default function RollScreen() {
   const rollingRef = useRef(false);
   const autoRollRef = useRef(false);
   const autoRollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
-    loadItems();
-    if (user) {
+    if (!hasLoadedRef.current) {
+      loadItems();
+      hasLoadedRef.current = true;
+    }
+  }, []);
+  
+  useEffect(() => {
+    const isOnRollTab = location === "/";
+    if (isOnRollTab && user) {
       loadBestRolls();
       loadGlobalRolls();
       loadUserStats();
     }
-    setIsAnimating(false);
-  }, [user]);
-  
-  useEffect(() => {
-    setIsAnimating(false);
-  }, []);
+  }, [location, user]);
 
   const loadUserStats = async () => {
     if (!user) return;
@@ -253,8 +258,6 @@ export default function RollScreen() {
       ]);
       
       loadBestRolls();
-      
-      await new Promise((resolve) => setTimeout(resolve, 3000));
     } catch (error: any) {
       console.error("Roll error:", error);
       setIsAnimating(false);
@@ -271,20 +274,20 @@ export default function RollScreen() {
 
   useEffect(() => {
     autoRollRef.current = autoRoll;
+  }, [autoRoll]);
+
+  useEffect(() => {
+    if (!autoRoll || rolling || rollingRef.current) return;
     
-    const autoRollLoop = async () => {
+    const tryAutoRoll = async () => {
       if (!autoRollRef.current || rollingRef.current) return;
-      
       await performRoll();
-      
-      if (autoRollRef.current) {
-        autoRollTimeoutRef.current = setTimeout(autoRollLoop, 0);
+      if (autoRollRef.current && !rollingRef.current) {
+        autoRollTimeoutRef.current = setTimeout(tryAutoRoll, 100);
       }
     };
     
-    if (autoRoll && !rolling) {
-      autoRollTimeoutRef.current = setTimeout(autoRollLoop, 0);
-    }
+    autoRollTimeoutRef.current = setTimeout(tryAutoRoll, 100);
     
     return () => {
       if (autoRollTimeoutRef.current) {
@@ -292,7 +295,7 @@ export default function RollScreen() {
         autoRollTimeoutRef.current = null;
       }
     };
-  }, [autoRoll, rolling, performRoll]);
+  }, [autoRoll, rolling]);
 
   const rarityClass = rolledItem ? getRarityClass(rolledItem.rarity) : "";
   const rarityGlow = rolledItem ? getRarityGlow(rolledItem.rarity) : "";
@@ -355,24 +358,6 @@ export default function RollScreen() {
               <p className="text-xs text-muted-foreground">User ID</p>
             </div>
           </div>
-          {userStats.rarestItem && (
-            <div className="mt-4 pt-4 border-t">
-              <p className="text-xs text-muted-foreground mb-2">Rarest Item</p>
-              <div className="flex items-center gap-3">
-                <img
-                  src={userStats.rarestItem.item.imageUrl}
-                  alt={userStats.rarestItem.item.name}
-                  className="w-12 h-12 rounded-md object-cover"
-                />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold">{userStats.rarestItem.item.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatValue(userStats.rarestItem.item.value)} • x{userStats.rarestItem.count}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
 
