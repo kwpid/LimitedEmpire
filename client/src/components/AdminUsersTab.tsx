@@ -3,12 +3,15 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { collection, query, where, getDocs, doc, updateDoc, writeBatch, addDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, updateDoc, writeBatch, runTransaction } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Search, Ban, UserX, Trash2, Gift } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { User, Item } from "@shared/schema";
+import { Input as InputComponent } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import type { User } from "@shared/schema";
+import { AdminGiveItemsDialog } from "@/components/AdminGiveItemsDialog";
 
 export function AdminUsersTab() {
   const { toast } = useToast();
@@ -16,12 +19,13 @@ export function AdminUsersTab() {
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [searching, setSearching] = useState(false);
   const [actionDialog, setActionDialog] = useState<{
-    type: "ban" | "unban" | "wipe" | "give" | null;
+    type: "ban" | "unban" | "wipe" | null;
     user: User | null;
   }>({ type: null, user: null });
   const [banReason, setBanReason] = useState("");
-  const [giveItemId, setGiveItemId] = useState("");
-  const [items, setItems] = useState<Item[]>([]);
+  const [isPermanentBan, setIsPermanentBan] = useState(false);
+  const [banDays, setBanDays] = useState(7);
+  const [giveItemsUser, setGiveItemsUser] = useState<User | null>(null);
   const [processing, setProcessing] = useState(false);
 
   const searchUsers = async () => {
@@ -51,38 +55,88 @@ export function AdminUsersTab() {
     }
   };
 
-  const loadItems = async () => {
-    try {
-      const itemsSnapshot = await getDocs(collection(db, "items"));
-      const itemsList: Item[] = [];
-      itemsSnapshot.forEach((doc) => {
-        itemsList.push({ id: doc.id, ...doc.data() } as Item);
-      });
-      setItems(itemsList);
-    } catch (error) {
-      console.error("Error loading items:", error);
-    }
-  };
 
   const handleBan = async () => {
     if (!actionDialog.user) return;
 
+    if (actionDialog.user.userId === 1) {
+      toast({
+        title: "Cannot ban Admin",
+        description: "Admin user cannot be banned",
+        variant: "destructive",
+      });
+      setActionDialog({ type: null, user: null });
+      return;
+    }
+
     setProcessing(true);
     try {
       const userRef = doc(db, "users", actionDialog.user.id);
-      await updateDoc(userRef, {
-        isBanned: true,
-        banReason: banReason || "No reason provided",
-      });
+      const banExpiresAt = isPermanentBan ? undefined : Date.now() + (banDays * 24 * 60 * 60 * 1000);
 
-      toast({
-        title: "User banned",
-        description: `${actionDialog.user.username} has been banned`,
-      });
+      const updateData: any = {
+        isBanned: true,
+        isPermanentBan: isPermanentBan,
+        banReason: banReason || "No reason provided",
+      };
+
+      if (banExpiresAt) {
+        updateData.banExpiresAt = banExpiresAt;
+      }
+
+      if (isPermanentBan) {
+        const usersRef = collection(db, "users");
+        const adminQuery = query(usersRef, where("userId", "==", 1));
+        const adminSnapshot = await getDocs(adminQuery);
+        
+        if (adminSnapshot.empty) {
+          throw new Error("Admin user not found. Cannot process permanent ban.");
+        }
+
+        const adminDocId = adminSnapshot.docs[0].id;
+
+        await runTransaction(db, async (transaction) => {
+          const targetUserRef = doc(db, "users", actionDialog.user!.id);
+          const adminRef = doc(db, "users", adminDocId);
+
+          const targetUserDoc = await transaction.get(targetUserRef);
+          const adminDoc = await transaction.get(adminRef);
+
+          if (!targetUserDoc.exists() || !adminDoc.exists()) {
+            throw new Error("User or Admin not found");
+          }
+
+          const targetUserInventory = targetUserDoc.data().inventory || [];
+          const adminInventory = adminDoc.data().inventory || [];
+
+          transaction.update(targetUserRef, {
+            ...updateData,
+            inventory: [],
+          });
+
+          transaction.update(adminRef, {
+            inventory: [...adminInventory, ...targetUserInventory],
+          });
+        });
+
+        toast({
+          title: "User permanently banned",
+          description: `${actionDialog.user.username} has been permanently banned and their inventory wiped`,
+        });
+      } else {
+        await updateDoc(userRef, updateData);
+
+        toast({
+          title: "User banned",
+          description: `${actionDialog.user.username} has been banned for ${banDays} days`,
+        });
+      }
 
       searchUsers();
       setActionDialog({ type: null, user: null });
       setBanReason("");
+      setIsPermanentBan(false);
+      setBanDays(7);
     } catch (error: any) {
       console.error("Error banning user:", error);
       toast({
@@ -103,7 +157,9 @@ export function AdminUsersTab() {
       const userRef = doc(db, "users", actionDialog.user.id);
       await updateDoc(userRef, {
         isBanned: false,
+        isPermanentBan: false,
         banReason: "",
+        banExpiresAt: undefined,
       });
 
       toast({
@@ -128,26 +184,58 @@ export function AdminUsersTab() {
   const handleWipeInventory = async () => {
     if (!actionDialog.user) return;
 
+    if (actionDialog.user.userId === 1) {
+      toast({
+        title: "Cannot wipe Admin",
+        description: "Admin user's inventory cannot be wiped",
+        variant: "destructive",
+      });
+      setActionDialog({ type: null, user: null });
+      return;
+    }
+
     setProcessing(true);
     try {
-      const inventoryQuery = query(
-        collection(db, "inventory"),
-        where("userId", "==", actionDialog.user.firebaseUid)
-      );
-      const snapshot = await getDocs(inventoryQuery);
+      const usersRef = collection(db, "users");
+      const adminQuery = query(usersRef, where("userId", "==", 1));
+      const adminSnapshot = await getDocs(adminQuery);
+      
+      if (adminSnapshot.empty) {
+        throw new Error("Admin user not found. Cannot wipe inventory.");
+      }
 
-      const batch = writeBatch(db);
-      snapshot.forEach((doc) => {
-        batch.delete(doc.ref);
+      const adminDocId = adminSnapshot.docs[0].id;
+
+      await runTransaction(db, async (transaction) => {
+        const userRef = doc(db, "users", actionDialog.user!.id);
+        const adminRef = doc(db, "users", adminDocId);
+
+        const userDoc = await transaction.get(userRef);
+        const adminDoc = await transaction.get(adminRef);
+
+        if (!userDoc.exists() || !adminDoc.exists()) {
+          throw new Error("User or Admin not found");
+        }
+
+        const userInventory = userDoc.data().inventory || [];
+        const adminInventory = adminDoc.data().inventory || [];
+
+        transaction.update(adminRef, {
+          inventory: [...adminInventory, ...userInventory],
+        });
+
+        transaction.update(userRef, {
+          inventory: [],
+        });
       });
-      await batch.commit();
 
       toast({
         title: "Inventory wiped",
-        description: `Deleted ${snapshot.size} items from ${actionDialog.user.username}'s inventory`,
+        description: `All items from ${actionDialog.user.username}'s inventory have been transferred to Admin`,
       });
 
       setActionDialog({ type: null, user: null });
+      searchUsers();
     } catch (error: any) {
       console.error("Error wiping inventory:", error);
       toast({
@@ -160,43 +248,6 @@ export function AdminUsersTab() {
     }
   };
 
-  const handleGiveItem = async () => {
-    if (!actionDialog.user || !giveItemId) return;
-
-    setProcessing(true);
-    try {
-      const itemDoc = await getDocs(query(collection(db, "items"), where("__name__", "==", giveItemId)));
-      if (itemDoc.empty) {
-        throw new Error("Item not found");
-      }
-
-      const item = { id: itemDoc.docs[0].id, ...itemDoc.docs[0].data() } as Item;
-
-      await addDoc(collection(db, "inventory"), {
-        itemId: item.id,
-        userId: actionDialog.user.firebaseUid,
-        serialNumber: null,
-        rolledAt: Date.now(),
-      });
-
-      toast({
-        title: "Item given",
-        description: `Gave ${item.name} to ${actionDialog.user.username}`,
-      });
-
-      setActionDialog({ type: null, user: null });
-      setGiveItemId("");
-    } catch (error: any) {
-      console.error("Error giving item:", error);
-      toast({
-        title: "Give failed",
-        description: error.message || "An error occurred",
-        variant: "destructive",
-      });
-    } finally {
-      setProcessing(false);
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -227,7 +278,9 @@ export function AdminUsersTab() {
                   <p className="text-sm text-muted-foreground">User ID: {user.userId}</p>
                 </div>
                 {user.isBanned && (
-                  <Badge variant="destructive">Banned</Badge>
+                  <Badge variant="destructive" data-testid={`badge-banned-${user.userId}`}>
+                    {user.isPermanentBan ? "Permanently Banned" : "Banned"}
+                  </Badge>
                 )}
                 {user.isAdmin && (
                   <Badge variant="secondary">Admin</Badge>
@@ -264,10 +317,8 @@ export function AdminUsersTab() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={async () => {
-                    await loadItems();
-                    setActionDialog({ type: "give", user });
-                  }}
+                  onClick={() => setGiveItemsUser(user)}
+                  data-testid={`button-give-item-${user.userId}`}
                 >
                   <Gift className="w-4 h-4 mr-2" />
                   Give Item
@@ -285,41 +336,70 @@ export function AdminUsersTab() {
               {actionDialog.type === "ban" && `Ban ${actionDialog.user?.username}?`}
               {actionDialog.type === "unban" && `Unban ${actionDialog.user?.username}?`}
               {actionDialog.type === "wipe" && `Wipe ${actionDialog.user?.username}'s Inventory?`}
-              {actionDialog.type === "give" && `Give Item to ${actionDialog.user?.username}?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {actionDialog.type === "ban" && (
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <p>This will prevent the user from accessing the game.</p>
-                  <Input
-                    placeholder="Ban reason (optional)"
-                    value={banReason}
-                    onChange={(e) => setBanReason(e.target.value)}
-                  />
+                  
+                  <div className="space-y-3">
+                    <Label>Ban Type</Label>
+                    <RadioGroup 
+                      value={isPermanentBan ? "permanent" : "temporary"} 
+                      onValueChange={(value) => setIsPermanentBan(value === "permanent")}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="temporary" id="ban-temporary" data-testid="radio-temporary-ban" />
+                        <Label htmlFor="ban-temporary" className="font-normal cursor-pointer">
+                          Temporary Ban
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="permanent" id="ban-permanent" data-testid="radio-permanent-ban" />
+                        <Label htmlFor="ban-permanent" className="font-normal cursor-pointer">
+                          Permanent Ban (Auto-wipes inventory)
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  {!isPermanentBan && (
+                    <div className="space-y-2">
+                      <Label htmlFor="ban-days">Ban Duration (days)</Label>
+                      <InputComponent
+                        id="ban-days"
+                        type="number"
+                        min="1"
+                        value={banDays}
+                        onChange={(e) => setBanDays(Math.max(1, parseInt(e.target.value) || 1))}
+                        data-testid="input-ban-days"
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="ban-reason">Ban Reason</Label>
+                    <InputComponent
+                      id="ban-reason"
+                      placeholder="Enter reason for ban..."
+                      value={banReason}
+                      onChange={(e) => setBanReason(e.target.value)}
+                      data-testid="input-ban-reason"
+                    />
+                  </div>
+
+                  {isPermanentBan && (
+                    <p className="text-sm text-destructive font-semibold">
+                      ⚠️ Permanent bans will automatically transfer all of this user's items to the Admin account.
+                    </p>
+                  )}
                 </div>
               )}
               {actionDialog.type === "unban" && "This will allow the user to access the game again."}
               {actionDialog.type === "wipe" && (
                 <span className="text-destructive font-semibold">
-                  This will permanently delete all items from this user's inventory. This action cannot be undone.
+                  This will transfer all items from this user's inventory to the Admin account. This action cannot be undone.
                 </span>
-              )}
-              {actionDialog.type === "give" && (
-                <div className="space-y-2">
-                  <p>Select an item to give to this user:</p>
-                  <Select value={giveItemId} onValueChange={setGiveItemId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select item" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {items.map((item) => (
-                        <SelectItem key={item.id} value={item.id}>
-                          {item.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -330,15 +410,25 @@ export function AdminUsersTab() {
                 if (actionDialog.type === "ban") handleBan();
                 if (actionDialog.type === "unban") handleUnban();
                 if (actionDialog.type === "wipe") handleWipeInventory();
-                if (actionDialog.type === "give") handleGiveItem();
               }}
-              disabled={processing || (actionDialog.type === "give" && !giveItemId)}
+              disabled={processing}
+              data-testid="button-confirm-action"
             >
               {processing ? "Processing..." : "Confirm"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AdminGiveItemsDialog
+        open={!!giveItemsUser}
+        onOpenChange={(open) => !open && setGiveItemsUser(null)}
+        targetUser={giveItemsUser}
+        onSuccess={() => {
+          searchUsers();
+          setGiveItemsUser(null);
+        }}
+      />
     </div>
   );
 }

@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, query, where, getDocs, doc, runTransaction } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
 import { getRarityClass, getRarityGlow, formatValue } from "@/lib/rarity";
@@ -57,18 +57,68 @@ export function ItemCreateForm({ onSuccess }: { onSuccess?: () => void }) {
     try {
       const rarity = getRarityFromValue(values.value);
       
-      await addDoc(collection(db, "items"), {
-        ...values,
-        rarity,
-        remainingStock: values.stockType === "limited" ? values.totalStock : null,
-        totalOwners: 0,
-        createdAt: Date.now(),
-        createdBy: user.id,
+      const usersRef = collection(db, "users");
+      const adminQuery = query(usersRef, where("userId", "==", 1));
+      const adminSnapshot = await getDocs(adminQuery);
+      
+      if (adminSnapshot.empty) {
+        throw new Error("Admin user not found. Cannot create items without admin user.");
+      }
+
+      const adminDocId = adminSnapshot.docs[0].id;
+      const adminDoc = adminSnapshot.docs[0].data();
+
+      const newItemRef = doc(collection(db, "items"));
+      const itemId = newItemRef.id;
+
+      await runTransaction(db, async (transaction) => {
+        const adminRef = doc(db, "users", adminDocId);
+        const adminUserDoc = await transaction.get(adminRef);
+        
+        if (!adminUserDoc.exists()) {
+          throw new Error("Admin user document not found");
+        }
+
+        const adminData = adminUserDoc.data();
+        const adminInventory = adminData.inventory || [];
+
+        transaction.set(newItemRef, {
+          ...values,
+          rarity,
+          remainingStock: values.stockType === "limited" ? values.totalStock : null,
+          totalOwners: 1,
+          createdAt: Date.now(),
+          createdBy: user.id,
+        });
+
+        const inventoryItemId = `${itemId}_${Date.now()}_admin_0`;
+        const serialNumber = values.stockType === "limited" ? 0 : null;
+        
+        const newInventoryItem = {
+          id: inventoryItemId,
+          itemId: itemId,
+          serialNumber: serialNumber,
+          rolledAt: Date.now(),
+          amount: 1,
+        };
+
+        transaction.update(adminRef, {
+          inventory: [...adminInventory, newInventoryItem],
+        });
+
+        if (values.stockType === "limited") {
+          const ownershipMarkerRef = doc(db, "items", itemId, "owners", adminDoc.firebaseUid);
+          transaction.set(ownershipMarkerRef, {
+            userId: adminDoc.firebaseUid,
+            username: adminDoc.username,
+            ownedAt: Date.now(),
+          });
+        }
       });
 
       toast({
         title: "Item created!",
-        description: `${values.name} has been added to the database.`,
+        description: `${values.name} has been added to the database and Admin received copy #${values.stockType === "limited" ? "0" : "∞"}.`,
       });
 
       form.reset();

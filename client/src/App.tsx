@@ -15,6 +15,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { AdminPanel } from "@/components/AdminPanel";
 import { GlobalRollToast } from "@/components/GlobalRollToast";
+import { BanOverlay } from "@/components/BanOverlay";
 import { Dices, Package, Database, Shield, LogOut, Sparkles, Settings as SettingsIcon } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth } from "./lib/firebase";
@@ -140,6 +141,8 @@ function AppContent() {
       </div>
 
       <GlobalRollToast />
+
+      <BanOverlay />
 
       {user.isAdmin && (
         <AdminPanel
