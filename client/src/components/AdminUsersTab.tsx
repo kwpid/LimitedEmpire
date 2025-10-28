@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { collection, query, where, getDocs, doc, updateDoc, writeBatch, runTransaction } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, updateDoc, writeBatch, runTransaction, deleteField } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Search, Ban, UserX, Trash2, Gift } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -71,6 +71,14 @@ export function AdminUsersTab() {
   const [giveItemsUser, setGiveItemsUser] = useState<User | null>(null);
   const [processing, setProcessing] = useState(false);
 
+  useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+      searchUsers();
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchTerm]);
+
   const applyBanPreset = (presetName: string) => {
     setSelectedPreset(presetName);
     
@@ -92,17 +100,24 @@ export function AdminUsersTab() {
   };
 
   const searchUsers = async () => {
-    if (!searchTerm.trim()) return;
+    if (!searchTerm.trim()) {
+      setSearchResults([]);
+      return;
+    }
 
     setSearching(true);
     try {
       const usersRef = collection(db, "users");
-      const q = query(usersRef, where("username", ">=", searchTerm), where("username", "<=", searchTerm + "\uf8ff"));
-      const snapshot = await getDocs(q);
+      const snapshot = await getDocs(usersRef);
       
+      const searchLower = searchTerm.toLowerCase();
       const users: User[] = [];
-      snapshot.forEach((doc) => {
-        users.push({ id: doc.id, ...doc.data() } as User);
+      snapshot.forEach((docSnap) => {
+        const userData = docSnap.data() as User;
+        const username = userData.username || "";
+        if (username.toLowerCase().includes(searchLower)) {
+          users.push({ ...userData, id: docSnap.id });
+        }
       });
 
       setSearchResults(users);
@@ -224,7 +239,7 @@ export function AdminUsersTab() {
         isBanned: false,
         isPermanentBan: false,
         banReason: "",
-        banExpiresAt: undefined,
+        banExpiresAt: deleteField(),
       });
 
       toast({
