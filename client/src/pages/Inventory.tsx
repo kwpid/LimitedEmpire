@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
@@ -46,18 +46,43 @@ export default function Inventory() {
     setLoading(true);
 
     try {
-      const inventoryRef = collection(db, "inventory");
-      const q = query(inventoryRef, where("userId", "==", user.firebaseUid));
-      const snapshot = await getDocs(q);
+      const userDocRef = doc(db, "users", user.id);
+      const userDocSnap = await getDoc(userDocRef);
+      
+      if (!userDocSnap.exists()) {
+        setInventory([]);
+        setLoading(false);
+        return;
+      }
+
+      const userData = userDocSnap.data();
+      const userInventory = userData.inventory || [];
 
       const items: InventoryItemWithDetails[] = [];
-      for (const doc of snapshot.docs) {
-        const invItem = { id: doc.id, ...doc.data() } as any;
-        const itemDoc = await getDocs(query(collection(db, "items"), where("__name__", "==", invItem.itemId)));
+      const itemCache = new Map<string, Item>();
+
+      for (const invItem of userInventory) {
+        let item: Item | undefined = itemCache.get(invItem.itemId);
         
-        if (!itemDoc.empty) {
-          const item = { id: itemDoc.docs[0].id, ...itemDoc.docs[0].data() } as Item;
-          items.push({ ...invItem, item });
+        if (!item) {
+          const itemDocRef = doc(db, "items", invItem.itemId);
+          const itemDoc = await getDoc(itemDocRef);
+          
+          if (itemDoc.exists()) {
+            item = { id: itemDoc.id, ...itemDoc.data() } as Item;
+            itemCache.set(invItem.itemId, item);
+          }
+        }
+        
+        if (item) {
+          items.push({ 
+            id: invItem.id,
+            itemId: invItem.itemId,
+            userId: user.firebaseUid,
+            serialNumber: invItem.serialNumber,
+            rolledAt: invItem.rolledAt,
+            item 
+          });
         }
       }
 
