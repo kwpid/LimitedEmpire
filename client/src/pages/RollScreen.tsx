@@ -23,6 +23,16 @@ interface UserStats {
   rarestItem: { item: Item; count: number } | null;
 }
 
+interface SavedRoll {
+  id: string;
+  item: Item;
+  timestamp: number;
+  serialNumber?: number;
+}
+
+const BEST_ROLLS_STORAGE_KEY = "limitedempire_best_rolls";
+const GLOBAL_ROLLS_STORAGE_KEY = "limitedempire_global_rolls";
+
 export default function RollScreen() {
   const { user, refetchUser } = useAuth();
   const { toast } = useToast();
@@ -30,8 +40,8 @@ export default function RollScreen() {
   const [rolling, setRolling] = useState(false);
   const [autoRoll, setAutoRoll] = useState(false);
   const [rolledItem, setRolledItem] = useState<Item | null>(null);
-  const [bestRolls, setBestRolls] = useState<InventoryItemWithDetails[]>([]);
-  const [globalRolls, setGlobalRolls] = useState<any[]>([]);
+  const [bestRolls, setBestRolls] = useState<SavedRoll[]>([]);
+  const [globalRolls, setGlobalRolls] = useState<SavedRoll[]>([]);
   const [isAnimating, setIsAnimating] = useState(false);
   const [userStats, setUserStats] = useState<UserStats>({
     totalRolls: 0,
@@ -45,6 +55,10 @@ export default function RollScreen() {
   const autoRollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    loadSavedRolls();
+  }, []);
+
+  useEffect(() => {
     loadItems();
     if (user) {
       loadBestRolls();
@@ -52,6 +66,48 @@ export default function RollScreen() {
       loadUserStats();
     }
   }, [user]);
+
+  const loadSavedRolls = () => {
+    try {
+      const savedBest = localStorage.getItem(BEST_ROLLS_STORAGE_KEY);
+      const savedGlobal = localStorage.getItem(GLOBAL_ROLLS_STORAGE_KEY);
+      
+      if (savedBest) {
+        setBestRolls(JSON.parse(savedBest));
+      }
+      if (savedGlobal) {
+        setGlobalRolls(JSON.parse(savedGlobal));
+      }
+    } catch (error) {
+      console.error("Error loading saved rolls:", error);
+    }
+  };
+
+  const saveRollToStorage = (item: Item, serialNumber?: number, isGlobal: boolean = false) => {
+    const newRoll: SavedRoll = {
+      id: `${Date.now()}-${item.id}`,
+      item,
+      timestamp: Date.now(),
+      serialNumber,
+    };
+
+    try {
+      if (isGlobal && item.value >= 2500000) {
+        const current = globalRolls.filter(r => Date.now() - r.timestamp < 5 * 60 * 1000);
+        const updated = [newRoll, ...current].slice(0, 10);
+        setGlobalRolls(updated);
+        localStorage.setItem(GLOBAL_ROLLS_STORAGE_KEY, JSON.stringify(updated));
+      }
+
+      if (item.value >= 250000) {
+        const updated = [newRoll, ...bestRolls].slice(0, 10);
+        setBestRolls(updated);
+        localStorage.setItem(BEST_ROLLS_STORAGE_KEY, JSON.stringify(updated));
+      }
+    } catch (error) {
+      console.error("Error saving roll:", error);
+    }
+  };
 
   const loadUserStats = async () => {
     if (!user) return;
@@ -125,28 +181,50 @@ export default function RollScreen() {
     const q = query(inventoryRef, where("userId", "==", user.firebaseUid), orderBy("rolledAt", "desc"), limit(20));
     const snapshot = await getDocs(q);
     
-    const rolls: InventoryItemWithDetails[] = [];
+    const rolls: SavedRoll[] = [];
     for (const doc of snapshot.docs) {
       const invItem = { id: doc.id, ...doc.data() } as any;
       const itemDoc = await getDocs(query(collection(db, "items"), where("__name__", "==", invItem.itemId)));
       if (!itemDoc.empty) {
         const item = { id: itemDoc.docs[0].id, ...itemDoc.docs[0].data() } as Item;
         if (item.value >= 250000) {
-          rolls.push({ ...invItem, item });
+          rolls.push({
+            id: doc.id,
+            item,
+            timestamp: invItem.rolledAt || Date.now(),
+            serialNumber: invItem.serialNumber,
+          });
         }
       }
     }
-    setBestRolls(rolls.slice(0, 8));
+    const updated = rolls.slice(0, 10);
+    setBestRolls(updated);
+    localStorage.setItem(BEST_ROLLS_STORAGE_KEY, JSON.stringify(updated));
   };
 
   const loadGlobalRolls = async () => {
     const rollsRef = collection(db, "globalRolls");
     const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-    const q = query(rollsRef, where("timestamp", ">=", fiveMinutesAgo), orderBy("timestamp", "desc"), limit(8));
+    const q = query(rollsRef, where("timestamp", ">=", fiveMinutesAgo), orderBy("timestamp", "desc"), limit(10));
     const snapshot = await getDocs(q);
-    const rolls: any[] = [];
-    snapshot.forEach((doc) => rolls.push(doc.data()));
+    const rolls: SavedRoll[] = [];
+    
+    for (const doc of snapshot.docs) {
+      const data = doc.data();
+      const itemDoc = await getDocs(query(collection(db, "items"), where("__name__", "==", data.itemId)));
+      if (!itemDoc.empty) {
+        const item = { id: itemDoc.docs[0].id, ...itemDoc.docs[0].data() } as Item;
+        rolls.push({
+          id: doc.id,
+          item,
+          timestamp: data.timestamp,
+          serialNumber: data.serialNumber,
+        });
+      }
+    }
+    
     setGlobalRolls(rolls);
+    localStorage.setItem(GLOBAL_ROLLS_STORAGE_KEY, JSON.stringify(rolls));
   };
 
   const performRoll = useCallback(async () => {
@@ -166,6 +244,8 @@ export default function RollScreen() {
       
       setIsAnimating(false);
       
+      saveRollToStorage(result.item, result.serialNumber ?? undefined, result.item.value >= 2500000);
+      
       if (result.autoSold) {
         toast({
           title: "Auto-Sold!",
@@ -181,6 +261,7 @@ export default function RollScreen() {
       await Promise.all([
         loadItems(),
         loadBestRolls(),
+        loadGlobalRolls(),
         loadUserStats(),
         refetchUser(),
       ]);
@@ -196,7 +277,7 @@ export default function RollScreen() {
       setRolling(false);
       rollingRef.current = false;
     }
-  }, [user, rolling, toast]);
+  }, [user, rolling, toast, bestRolls, globalRolls]);
 
   useEffect(() => {
     autoRollRef.current = autoRoll;
@@ -207,7 +288,7 @@ export default function RollScreen() {
       await performRoll();
       
       if (autoRollRef.current) {
-        autoRollTimeoutRef.current = setTimeout(autoRollLoop, 2000);
+        autoRollTimeoutRef.current = setTimeout(autoRollLoop, 3000);
       }
     };
     
@@ -226,8 +307,22 @@ export default function RollScreen() {
   const rarityClass = rolledItem ? getRarityClass(rolledItem.rarity) : "";
   const rarityGlow = rolledItem ? getRarityGlow(rolledItem.rarity) : "";
 
+  const formatTimestamp = (timestamp: number) => {
+    const now = Date.now();
+    const diff = now - timestamp;
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) return `${days}d ago`;
+    if (hours > 0) return `${hours}h ago`;
+    if (minutes > 0) return `${minutes}m ago`;
+    return `${seconds}s ago`;
+  };
+
   return (
-    <div className="container mx-auto p-6 max-w-7xl space-y-6">
+    <div className="container mx-auto p-4 md:p-6 max-w-7xl space-y-4 md:space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Your Stats</CardTitle>
@@ -291,13 +386,47 @@ export default function RollScreen() {
         </CardContent>
       </Card>
 
-      <div className="grid lg:grid-cols-[1fr,300px,300px] gap-6">
-        <Card className="lg:col-span-1">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[300px,1fr,300px] gap-4 md:gap-6">
+        <Card className="order-1 md:order-1">
           <CardHeader>
-            <CardTitle className="text-3xl font-bold tracking-tight">Roll</CardTitle>
+            <CardTitle className="text-base md:text-lg">Your Best Rolls</CardTitle>
+            <p className="text-xs text-muted-foreground">Last 10 worth 250K+</p>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="min-h-[400px] flex items-center justify-center">
+          <CardContent>
+            <div className="space-y-2 max-h-[500px] overflow-y-auto">
+              {bestRolls.map((roll) => (
+                <div
+                  key={roll.id}
+                  className="flex items-center gap-2 md:gap-3 p-2 rounded-lg hover-elevate"
+                  data-testid={`best-roll-${roll.id}`}
+                >
+                  <img
+                    src={roll.item.imageUrl}
+                    alt={roll.item.name}
+                    className="w-10 h-10 md:w-12 md:h-12 rounded-md object-cover flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs md:text-sm font-semibold truncate">{roll.item.name}</p>
+                    <p className="text-xs text-muted-foreground">{formatValue(roll.item.value)}</p>
+                    <p className="text-[10px] md:text-xs text-muted-foreground">{formatTimestamp(roll.timestamp)}</p>
+                  </div>
+                </div>
+              ))}
+              {bestRolls.length === 0 && (
+                <p className="text-sm text-center text-muted-foreground py-8">
+                  No high-value rolls yet
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="order-2 md:order-2 md:col-span-2 lg:col-span-1">
+          <CardHeader>
+            <CardTitle className="text-2xl md:text-3xl font-bold tracking-tight">Roll</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 md:space-y-6">
+            <div className="min-h-[300px] md:min-h-[400px] flex items-center justify-center">
               <AnimatePresence mode="wait">
                 {isAnimating ? (
                   <motion.div
@@ -320,11 +449,11 @@ export default function RollScreen() {
                     <img
                       src={rolledItem.imageUrl}
                       alt={rolledItem.name}
-                      className="w-64 h-64 object-cover"
+                      className="w-48 h-48 md:w-64 md:h-64 object-cover"
                     />
-                    <div className="p-4 bg-card text-center">
-                      <h3 className="font-bold text-lg">{rolledItem.name}</h3>
-                      <p className="text-sm text-muted-foreground">{formatValue(rolledItem.value)}</p>
+                    <div className="p-3 md:p-4 bg-card text-center">
+                      <h3 className="font-bold text-base md:text-lg">{rolledItem.name}</h3>
+                      <p className="text-xs md:text-sm text-muted-foreground">{formatValue(rolledItem.value)}</p>
                     </div>
                   </motion.div>
                 ) : (
@@ -334,37 +463,37 @@ export default function RollScreen() {
                     animate={{ opacity: 1 }}
                     className="text-center text-muted-foreground"
                   >
-                    <Dices className="w-32 h-32 mx-auto mb-4 opacity-50" />
-                    <p>Click Roll to start</p>
+                    <Dices className="w-24 h-24 md:w-32 md:h-32 mx-auto mb-4 opacity-50" />
+                    <p className="text-sm md:text-base">Click Roll to start</p>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3 md:space-y-4">
               <Button
                 onClick={performRoll}
                 disabled={rolling || items.length === 0}
                 size="lg"
-                className="w-full h-16 text-xl font-bold"
+                className="w-full h-14 md:h-16 text-lg md:text-xl font-bold"
                 data-testid="button-roll"
               >
                 {rolling ? (
                   <>
-                    <Loader2 className="w-6 h-6 mr-2 animate-spin" />
+                    <Loader2 className="w-5 h-5 md:w-6 md:h-6 mr-2 animate-spin" />
                     Rolling...
                   </>
                 ) : (
                   <>
-                    <Dices className="w-6 h-6 mr-2" />
+                    <Dices className="w-5 h-5 md:w-6 md:h-6 mr-2" />
                     Roll
                   </>
                 )}
               </Button>
 
-              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                <Label htmlFor="auto-roll" className="cursor-pointer">
-                  Auto Roll
+              <div className="flex items-center justify-between p-3 md:p-4 bg-muted rounded-lg">
+                <Label htmlFor="auto-roll" className="cursor-pointer text-sm md:text-base">
+                  Auto Roll (3s delay)
                 </Label>
                 <Switch
                   id="auto-roll"
@@ -376,7 +505,7 @@ export default function RollScreen() {
               </div>
 
               {items.length === 0 && (
-                <p className="text-sm text-center text-muted-foreground">
+                <p className="text-xs md:text-sm text-center text-muted-foreground">
                   No items available to roll. Contact an admin to add items.
                 </p>
               )}
@@ -384,60 +513,28 @@ export default function RollScreen() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="order-3 md:order-3">
           <CardHeader>
-            <CardTitle className="text-lg">Your Best Rolls</CardTitle>
-            <p className="text-xs text-muted-foreground">Items worth 250K+</p>
+            <CardTitle className="text-base md:text-lg">Global Rolls</CardTitle>
+            <p className="text-xs text-muted-foreground">Last 10 worth 2.5M+</p>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {bestRolls.map((roll) => (
+            <div className="space-y-2 max-h-[500px] overflow-y-auto">
+              {globalRolls.map((roll, idx) => (
                 <div
                   key={roll.id}
-                  className="flex items-center gap-3 p-2 rounded-lg hover-elevate"
-                  data-testid={`best-roll-${roll.id}`}
+                  className="flex items-center gap-2 md:gap-3 p-2 rounded-lg hover-elevate"
+                  data-testid={`global-roll-${idx}`}
                 >
                   <img
                     src={roll.item.imageUrl}
                     alt={roll.item.name}
-                    className="w-12 h-12 rounded-md object-cover"
+                    className="w-10 h-10 md:w-12 md:h-12 rounded-md object-cover flex-shrink-0"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">{roll.item.name}</p>
-                    <p className="text-xs text-muted-foreground">{formatValue(roll.item.value)}</p>
-                  </div>
-                </div>
-              ))}
-              {bestRolls.length === 0 && (
-                <p className="text-sm text-center text-muted-foreground py-8">
-                  No high-value rolls yet
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Global Rolls</CardTitle>
-            <p className="text-xs text-muted-foreground">Items worth 2.5M+</p>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {globalRolls.map((roll, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center gap-3 p-2 rounded-lg hover-elevate"
-                  data-testid={`global-roll-${idx}`}
-                >
-                  <img
-                    src={roll.itemImageUrl}
-                    alt={roll.itemName}
-                    className="w-12 h-12 rounded-md object-cover"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate">{roll.username}</p>
-                    <p className="text-xs text-muted-foreground truncate">{roll.itemName}</p>
+                    <p className="text-xs md:text-sm font-semibold truncate">{roll.item.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{formatValue(roll.item.value)}</p>
+                    <p className="text-[10px] md:text-xs text-muted-foreground">{formatTimestamp(roll.timestamp)}</p>
                   </div>
                 </div>
               ))}

@@ -163,10 +163,11 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl" data-testid="modal-item-detail">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" data-testid="modal-item-detail">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="text-2xl">{item.name}</DialogTitle>
         </DialogHeader>
+        <ScrollArea className="flex-1 overflow-auto pr-4">
         <div className="grid md:grid-cols-[300px,1fr] gap-6">
           <div className={`aspect-square border-2 rounded-lg relative bg-black overflow-hidden ${rarityClass} ${rarityGlow}`}>
             {isInsane && (
@@ -337,6 +338,7 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
             <p className="text-sm text-center text-muted-foreground">Loading owners...</p>
           </div>
         )}
+        </ScrollArea>
       </DialogContent>
 
       <AlertDialog open={showSellDialog} onOpenChange={setShowSellDialog}>

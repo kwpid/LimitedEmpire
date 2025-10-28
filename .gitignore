@@ -4,3 +4,7 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Firebase credentials - NEVER commit these
+firebase-service-account.json
+*-service-account.json
