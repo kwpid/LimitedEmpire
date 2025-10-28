@@ -3,14 +3,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription } from "@/components/ui/alert-dialog";
 import type { User, Item } from "@shared/schema";
 import { formatValue } from "@/lib/rarity";
-import { ArrowRightLeft, Flag, Ban, User as UserIcon, Dices, DollarSign, Clock, Calendar, Package, Hash } from "lucide-react";
+import { ArrowRightLeft, Flag, Ban, User as UserIcon, Dices, DollarSign, Clock, Calendar, Package, Hash, HelpCircle } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { doc, getDoc, collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ItemCard } from "@/components/ItemCard";
-import { calculateUserBadges, calculateLeaderboardPositions, type BadgeConfig } from "@/lib/badgeConfig";
+import { calculateUserBadges, calculateLeaderboardPositions, type BadgeConfig, BADGE_ICONS } from "@/lib/badgeConfig";
 
 interface PlayerProfileModalProps {
   player: User | null;
@@ -23,6 +24,7 @@ export function PlayerProfileModal({ player, open, onOpenChange }: PlayerProfile
   const [inventoryItems, setInventoryItems] = useState<{ item: Item; serialNumber: number | null; stackCount: number; inventoryIds: string[] }[]>([]);
   const [loading, setLoading] = useState(true);
   const [badges, setBadges] = useState<BadgeConfig[]>([]);
+  const [badgeInfoOpen, setBadgeInfoOpen] = useState(false);
 
   useEffect(() => {
     if (!player || !open) {
@@ -146,6 +148,13 @@ export function PlayerProfileModal({ player, open, onOpenChange }: PlayerProfile
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" data-testid="modal-player-profile">
+        {player.isBanned && (
+          <div className="bg-red-600 text-white px-4 py-2 text-center font-bold flex items-center justify-center gap-2" data-testid="banner-user-banned">
+            <Ban className="w-5 h-5" />
+            USER IS BANNED
+            {player.banReason && <span className="text-sm font-normal">- {player.banReason}</span>}
+          </div>
+        )}
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="text-2xl flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
@@ -229,10 +238,21 @@ export function PlayerProfileModal({ player, open, onOpenChange }: PlayerProfile
               </Card>
             )}
 
-            {badges.length > 0 && (
-              <Card>
-                <CardContent className="p-4">
-                  <h3 className="text-sm font-medium text-muted-foreground mb-3">Player Badges</h3>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-medium text-muted-foreground">Player Badges</h3>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={() => setBadgeInfoOpen(true)}
+                    data-testid="button-badge-info"
+                  >
+                    <HelpCircle className="w-4 h-4" />
+                  </Button>
+                </div>
+                {badges.length > 0 ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                     {badges.map((badge) => (
                       <div
@@ -261,9 +281,11 @@ export function PlayerProfileModal({ player, open, onOpenChange }: PlayerProfile
                       </div>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">No badges earned yet</p>
+                )}
+              </CardContent>
+            </Card>
 
             {showcaseItems.length > 0 && (
               <Card>
@@ -318,6 +340,96 @@ export function PlayerProfileModal({ player, open, onOpenChange }: PlayerProfile
           </div>
         </ScrollArea>
       </DialogContent>
+
+      <AlertDialog open={badgeInfoOpen} onOpenChange={setBadgeInfoOpen}>
+        <AlertDialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl">All Badges</AlertDialogTitle>
+            <AlertDialogDescription>
+              Here are all the badges you can earn in the game and how to obtain them:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-4 mt-4">
+            <div className="flex items-start gap-3 p-3 rounded-lg border bg-card">
+              <img src={BADGE_ICONS.developer} alt="Developer" className="w-10 h-10 object-contain" />
+              <div>
+                <p className="font-semibold text-blue-500">Developer</p>
+                <p className="text-sm text-muted-foreground">Exclusive to platform developers (User ID 2)</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-3 rounded-lg border bg-card">
+              <img src={BADGE_ICONS.admin} alt="Admin" className="w-10 h-10 object-contain" />
+              <div>
+                <p className="font-semibold text-red-500">Admin</p>
+                <p className="text-sm text-muted-foreground">Exclusive to platform administrators</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-3 rounded-lg border bg-card">
+              <img src={BADGE_ICONS.veteran} alt="Veteran" className="w-10 h-10 object-contain" />
+              <div>
+                <p className="font-semibold text-purple-500">Veteran</p>
+                <p className="text-sm text-muted-foreground">Early adopter (User ID below 100)</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-3 rounded-lg border bg-card">
+              <img src={BADGE_ICONS.millionaire} alt="Millionaire" className="w-10 h-10 object-contain" />
+              <div>
+                <p className="font-semibold text-yellow-500">Millionaire</p>
+                <p className="text-sm text-muted-foreground">Have an inventory worth over $1,000,000</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-3 rounded-lg border bg-card">
+              <img src={BADGE_ICONS.roller} alt="Roller" className="w-10 h-10 object-contain" />
+              <div>
+                <p className="font-semibold text-green-500">Roller</p>
+                <p className="text-sm text-muted-foreground">Perform 1,000+ rolls</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-3 rounded-lg border bg-card">
+              <img src={BADGE_ICONS.advancedGambler} alt="Advanced Gambler" className="w-10 h-10 object-contain" />
+              <div>
+                <p className="font-semibold text-orange-500">Advanced Gambler</p>
+                <p className="text-sm text-muted-foreground">Perform 10,000+ rolls</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-3 rounded-lg border bg-card">
+              <img src={BADGE_ICONS.veteranGambler} alt="Veteran Gambler" className="w-10 h-10 object-contain" />
+              <div>
+                <p className="font-semibold text-red-600">Veteran Gambler</p>
+                <p className="text-sm text-muted-foreground">Perform 50,000+ rolls</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-3 rounded-lg border bg-card">
+              <img src={BADGE_ICONS.leaderboardTop1} alt="Leaderboard #1" className="w-10 h-10 object-contain" />
+              <div>
+                <p className="font-semibold text-yellow-400">#1 on Leaderboard</p>
+                <p className="text-sm text-muted-foreground">Rank #1 in any leaderboard category</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-3 rounded-lg border bg-card">
+              <img src={BADGE_ICONS.leaderboardTop3} alt="Leaderboard Top 3" className="w-10 h-10 object-contain" />
+              <div>
+                <p className="font-semibold text-orange-400">Top 3 on Leaderboard</p>
+                <p className="text-sm text-muted-foreground">Rank in top 3 of any leaderboard category</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-3 rounded-lg border bg-card">
+              <img src={BADGE_ICONS.leaderboardTop10} alt="Leaderboard Top 10" className="w-10 h-10 object-contain" />
+              <div>
+                <p className="font-semibold text-purple-400">Top 10 on Leaderboard</p>
+                <p className="text-sm text-muted-foreground">Rank in top 10 of any leaderboard category</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-3 rounded-lg border bg-card">
+              <img src={BADGE_ICONS.leaderboardTop30} alt="Leaderboard Top 30" className="w-10 h-10 object-contain" />
+              <div>
+                <p className="font-semibold text-blue-400">Top 30 on Leaderboard</p>
+                <p className="text-sm text-muted-foreground">Rank in top 30 of any leaderboard category</p>
+              </div>
+            </div>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

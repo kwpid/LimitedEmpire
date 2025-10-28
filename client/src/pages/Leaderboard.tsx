@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Trophy, TrendingUp, Package, DollarSign, Dices } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Trophy, TrendingUp, Package, DollarSign, Dices, Clock } from "lucide-react";
 import type { User, Item } from "@shared/schema";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -22,6 +23,8 @@ export default function Leaderboard() {
   const [loading, setLoading] = useState(true);
   const [selectedPlayer, setSelectedPlayer] = useState<User | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [hasRendered, setHasRendered] = useState(false);
+  const [timeUntilRefresh, setTimeUntilRefresh] = useState(300);
 
   const loadLeaderboards = async () => {
     setLoading(true);
@@ -95,10 +98,25 @@ export default function Leaderboard() {
   };
 
   useEffect(() => {
-    loadLeaderboards();
-    const interval = setInterval(loadLeaderboards, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
+    if (!hasRendered) {
+      loadLeaderboards();
+      setHasRendered(true);
+    }
+    
+    const refreshInterval = setInterval(() => {
+      loadLeaderboards();
+      setTimeUntilRefresh(300);
+    }, 5 * 60 * 1000);
+    
+    const timerInterval = setInterval(() => {
+      setTimeUntilRefresh(prev => Math.max(0, prev - 1));
+    }, 1000);
+    
+    return () => {
+      clearInterval(refreshInterval);
+      clearInterval(timerInterval);
+    };
+  }, [hasRendered]);
 
   const handlePlayerClick = (player: User) => {
     setSelectedPlayer(player);
@@ -106,10 +124,16 @@ export default function Leaderboard() {
   };
 
   const getRankGradient = (rank: number) => {
-    if (rank === 1) return "bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600";
-    if (rank === 2) return "bg-gradient-to-br from-gray-300 via-gray-400 to-gray-500";
-    if (rank === 3) return "bg-gradient-to-br from-amber-600 via-amber-700 to-amber-800";
+    if (rank === 1) return "bg-gradient-to-br from-yellow-400/60 via-yellow-500/60 to-yellow-600/60";
+    if (rank === 2) return "bg-gradient-to-br from-gray-300/50 via-gray-400/50 to-gray-500/50";
+    if (rank === 3) return "bg-gradient-to-br from-amber-600/50 via-amber-700/50 to-amber-800/50";
     return "bg-card";
+  };
+  
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
   };
 
   const getRankTextColor = (rank: number) => {
@@ -128,14 +152,14 @@ export default function Leaderboard() {
     data: LeaderboardPlayer[]; 
     valueFormatter: (value: number) => string;
   }) => (
-    <Card className="flex-1">
-      <CardHeader className="pb-3">
+    <Card className="flex-1 flex flex-col">
+      <CardHeader className="pb-3 flex-shrink-0">
         <CardTitle className="flex items-center gap-2">
           <Icon className="w-5 h-5" />
           {title}
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-1 overflow-hidden">
         {loading ? (
           <div className="space-y-2">
             {[1, 2, 3, 4, 5].map((i) => (
@@ -143,44 +167,54 @@ export default function Leaderboard() {
             ))}
           </div>
         ) : (
-          <div className="space-y-2">
-            {data.map((entry) => (
-              <div
-                key={entry.user.id}
-                className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:opacity-80 transition-all ${getRankGradient(entry.rank)} ${getRankTextColor(entry.rank)}`}
-                onClick={() => handlePlayerClick(entry.user)}
-                data-testid={`leaderboard-entry-${entry.user.userId}`}
-              >
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-background/20 font-bold text-sm flex-shrink-0">
-                  {entry.rank}
+          <ScrollArea className="h-[600px]">
+            <div className="space-y-2 pr-4">
+              {data.map((entry) => (
+                <div
+                  key={entry.user.id}
+                  className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:opacity-80 transition-all ${getRankGradient(entry.rank)} ${getRankTextColor(entry.rank)}`}
+                  onClick={() => handlePlayerClick(entry.user)}
+                  data-testid={`leaderboard-entry-${entry.user.userId}`}
+                >
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-background/20 font-bold text-sm flex-shrink-0">
+                    {entry.rank}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold truncate" data-testid={`text-player-name-${entry.user.userId}`}>
+                      {entry.user.username}
+                    </p>
+                  </div>
+                  <Badge variant={entry.rank <= 3 ? "secondary" : "outline"} className={entry.rank <= 3 ? "bg-background/30 text-white border-white/30" : ""}>
+                    {valueFormatter(entry.value)}
+                  </Badge>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold truncate" data-testid={`text-player-name-${entry.user.userId}`}>
-                    {entry.user.username}
-                  </p>
-                </div>
-                <Badge variant={entry.rank <= 3 ? "secondary" : "outline"} className={entry.rank <= 3 ? "bg-background/30 text-white border-white/30" : ""}>
-                  {valueFormatter(entry.value)}
-                </Badge>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </ScrollArea>
         )}
       </CardContent>
     </Card>
   );
 
   return (
-    <div className="container mx-auto p-4 md:p-6 max-w-7xl">
+    <div className="container mx-auto p-4 md:p-6 max-w-[1600px]">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight mb-2 flex items-center gap-2">
-          <Trophy className="w-8 h-8" />
-          Leaderboards
-        </h1>
-        <p className="text-muted-foreground">Top players across all categories</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight mb-2 flex items-center gap-2">
+              <Trophy className="w-8 h-8" />
+              Leaderboards
+            </h1>
+            <p className="text-muted-foreground">Top players across all categories</p>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground" data-testid="text-refresh-timer">
+            <Clock className="w-4 h-4" />
+            <span>Refreshes in {formatTime(timeUntilRefresh)}</span>
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <LeaderboardFrame
           title="Top Value"
           icon={TrendingUp}

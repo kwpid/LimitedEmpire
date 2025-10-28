@@ -91,7 +91,8 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
       itemUpdates.totalOwners = (selectedItem.totalOwners || 0) + 1;
     }
 
-    const shouldAutoSell = user.settings?.autoSellRarities?.includes(selectedItem.rarity) || false;
+    const isMythicOrHigher = selectedItem.rarity === "MYTHIC" || selectedItem.rarity === "INSANE";
+    const shouldAutoSell = !isMythicOrHigher && (user.settings?.autoSellRarities?.includes(selectedItem.rarity) || false);
     let playerEarned = 0;
 
     if (shouldAutoSell) {

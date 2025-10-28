@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import type { Item } from "@shared/schema";
 import { getRarityClass, getRarityGlow } from "@/lib/rarity";
@@ -12,6 +12,22 @@ interface SlotMachineRollProps {
 export function SlotMachineRoll({ items, finalItem, isRolling }: SlotMachineRollProps) {
   const [displayItems, setDisplayItems] = useState<Item[]>([]);
   const [hasBuiltArray, setHasBuiltArray] = useState(false);
+  const rollKeyRef = useRef<string>("");
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(900);
+
+  useEffect(() => {
+    const updateContainerWidth = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.offsetWidth);
+      }
+    };
+    
+    updateContainerWidth();
+    window.addEventListener('resize', updateContainerWidth);
+    
+    return () => window.removeEventListener('resize', updateContainerWidth);
+  }, []);
 
   useEffect(() => {
     if (isRolling && items.length > 0 && finalItem && !hasBuiltArray) {
@@ -27,6 +43,7 @@ export function SlotMachineRoll({ items, finalItem, isRolling }: SlotMachineRoll
       
       setDisplayItems(repeatedItems);
       setHasBuiltArray(true);
+      rollKeyRef.current = `roll-${finalItem.id}-${Date.now()}`;
     }
     
     if (!isRolling) {
@@ -38,25 +55,27 @@ export function SlotMachineRoll({ items, finalItem, isRolling }: SlotMachineRoll
     return null;
   }
 
-  const itemHeight = 280;
+  const itemWidth = 280;
   const visibleHeight = 320;
-  const finalPosition = -(14 * itemHeight);
+  const finalItemIndex = 14;
+  const centerOffset = containerWidth / 2 - itemWidth / 2;
+  const finalPosition = -(finalItemIndex * itemWidth - centerOffset);
 
   return (
-    <div className="relative overflow-hidden rounded-lg border-4 border-primary/30 bg-black/40 backdrop-blur-sm" style={{ height: `${visibleHeight}px`, width: '280px' }}>
-      <div className="absolute inset-0 pointer-events-none z-10 flex items-center">
-        <div className="w-full h-[280px] border-y-4 border-primary/50 shadow-[0_0_20px_rgba(124,58,237,0.5)]" />
+    <div ref={containerRef} className="relative overflow-hidden rounded-lg border-4 border-primary/30 bg-black/40 backdrop-blur-sm" style={{ width: '100%', maxWidth: '900px', height: `${visibleHeight}px` }}>
+      <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
+        <div className="w-[280px] h-full border-x-4 border-primary/50 shadow-[0_0_20px_rgba(124,58,237,0.5)]" />
       </div>
       
       <motion.div
-        key={`roll-${finalItem?.id}-${Date.now()}`}
-        initial={{ y: 0 }}
-        animate={{ y: finalPosition }}
+        key={rollKeyRef.current}
+        initial={{ x: 0 }}
+        animate={{ x: finalPosition }}
         transition={{
-          duration: 2,
+          duration: 3.5,
           ease: [0.22, 1, 0.36, 1],
         }}
-        className="flex flex-col"
+        className="flex flex-row h-full items-center"
       >
         {displayItems.map((item, idx) => {
           const rarityClass = getRarityClass(item.rarity);
@@ -66,13 +85,13 @@ export function SlotMachineRoll({ items, finalItem, isRolling }: SlotMachineRoll
             <div
               key={`${item.id}-${idx}`}
               className="flex-shrink-0"
-              style={{ height: `${itemHeight}px` }}
+              style={{ width: `${itemWidth}px` }}
             >
-              <div className={`m-2 h-[264px] rounded-lg overflow-hidden border-4 ${rarityClass} ${rarityGlow} bg-card`}>
+              <div className={`m-2 h-[300px] rounded-lg overflow-hidden border-4 ${rarityClass} ${rarityGlow} bg-card`}>
                 <img
                   src={item.imageUrl}
                   alt={item.name}
-                  className="w-full h-[180px] object-cover"
+                  className="w-full h-[200px] object-cover"
                   onError={(e) => {
                     e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect width='200' height='200' fill='%23333'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23fff' font-size='48' font-weight='bold'%3E%3F%3C/text%3E%3C/svg%3E";
                   }}
@@ -87,8 +106,8 @@ export function SlotMachineRoll({ items, finalItem, isRolling }: SlotMachineRoll
         })}
       </motion.div>
       
-      <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-black to-transparent pointer-events-none z-20" />
-      <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black to-transparent pointer-events-none z-20" />
+      <div className="absolute top-0 left-0 bottom-0 w-32 bg-gradient-to-r from-black to-transparent pointer-events-none z-20" />
+      <div className="absolute top-0 right-0 bottom-0 w-32 bg-gradient-to-l from-black to-transparent pointer-events-none z-20" />
     </div>
   );
 }
