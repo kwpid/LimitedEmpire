@@ -41,13 +41,25 @@ export function AdminAuditLogTab() {
       });
 
       setLogs(auditLogs);
-    } catch (error) {
+      console.log(`Loaded ${auditLogs.length} audit logs successfully`);
+    } catch (error: any) {
       console.error("Error loading audit logs:", error);
-      toast({
-        title: "Failed to load audit logs",
-        description: "An error occurred while loading the audit logs",
-        variant: "destructive",
-      });
+      
+      // Check if it's an index error
+      if (error.code === 'failed-precondition' && error.message.includes('index')) {
+        console.error("INDEX ERROR: You need to create a Firestore index. Check the console for the index creation link.");
+        toast({
+          title: "Index Required",
+          description: "Check the browser console for a link to create the required Firestore index",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Failed to load audit logs",
+          description: error.message || "An error occurred while loading the audit logs",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }

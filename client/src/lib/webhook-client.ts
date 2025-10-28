@@ -1,15 +1,19 @@
 import { auth } from "@/lib/firebase";
 
 export async function sendWebhookRequest(endpoint: string, data: any): Promise<void> {
+  console.log(`[WEBHOOK] Attempting to send webhook to ${endpoint}`, data);
+  
   try {
     const user = auth.currentUser;
     if (!user) {
-      console.error('No authenticated user for webhook request');
+      console.error('[WEBHOOK] ERROR: No authenticated user for webhook request');
       return;
     }
 
+    console.log('[WEBHOOK] Getting ID token...');
     const idToken = await user.getIdToken();
 
+    console.log(`[WEBHOOK] Sending POST request to ${endpoint}...`);
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -19,13 +23,22 @@ export async function sendWebhookRequest(endpoint: string, data: any): Promise<v
       body: JSON.stringify(data),
     });
 
+    console.log(`[WEBHOOK] Response status: ${response.status}`);
+    
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Webhook request to ${endpoint} failed:`, response.status, errorText);
+      console.error(`[WEBHOOK] ERROR: Request to ${endpoint} failed with status ${response.status}`);
+      console.error(`[WEBHOOK] ERROR Response:`, errorText);
     } else {
-      console.log(`Webhook sent successfully to ${endpoint}`);
+      const responseData = await response.json();
+      console.log(`[WEBHOOK] SUCCESS: Webhook sent to ${endpoint}`, responseData);
     }
-  } catch (error) {
-    console.error(`Failed to send webhook to ${endpoint}:`, error);
+  } catch (error: any) {
+    console.error(`[WEBHOOK] EXCEPTION: Failed to send webhook to ${endpoint}:`, error);
+    console.error(`[WEBHOOK] Error details:`, {
+      message: error.message,
+      code: error.code,
+      stack: error.stack
+    });
   }
 }
