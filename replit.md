@@ -196,7 +196,35 @@ None specified yet.
 
 ## Recent Changes
 
-### October 28, 2025
+### October 28, 2025 (Latest)
+- **Sell System**: Complete transactional sell system with 80/20 revenue split
+  - Players receive 80% of item value when selling
+  - Admin account (user ID 1) receives 20% of all sales
+  - Sell button in item detail modals (inventory view only)
+  - Support for selling single items or entire stacks
+  - All currency calculations use whole numbers (no decimals)
+  - Atomic transactions ensure data consistency
+- **Settings Page**: New settings interface with tabbed navigation
+  - Auto-sell preferences: choose which rarities to auto-sell after rolling
+  - Settings saved to user document in Firestore
+  - Clean UI with shadcn tabs component
+  - Available from roll screen navigation
+- **Auto-Sell Integration**: Automatic selling during rolls
+  - Items matching user's auto-sell preferences are sold immediately after rolling
+  - Toast notification shows earnings instead of item addition
+  - Bypasses inventory completely for matched rarities
+  - 80/20 split applies to auto-sold items
+- **CSS Fixes**: Improved visual layering
+  - Stock/serial tags positioned on right side of cards
+  - Tags z-index above images for visibility
+  - Chroma rainbow effect z-index behind tags for INSANE items
+  - Proper layering hierarchy maintained
+- **Roll Animation Fix**: Fixed item switching during animation
+  - Animation now displays correct final item throughout sequence
+  - No more switching from one item to another mid-animation
+  - Smooth deceleration with accurate final result
+
+### October 28, 2025 (Earlier)
 - **User Stats System**: Added comprehensive stats tracking (roll count, total/unique items, inventory value, rarest item, user ID)
   - Stats displayed on roll screen with icons and proper formatting
   - Efficient batched loading using Promise.all to avoid race conditions
