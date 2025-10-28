@@ -1,16 +1,20 @@
+import { auth } from "@/lib/firebase";
+
 export async function sendWebhookRequest(endpoint: string, data: any): Promise<void> {
   try {
-    const adminSecret = import.meta.env.VITE_ADMIN_WEBHOOK_SECRET;
-    if (!adminSecret) {
-      console.error('VITE_ADMIN_WEBHOOK_SECRET not configured');
+    const user = auth.currentUser;
+    if (!user) {
+      console.error('No authenticated user');
       return;
     }
+
+    const idToken = await user.getIdToken();
 
     await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-admin-secret': adminSecret,
+        'Authorization': `Bearer ${idToken}`,
       },
       body: JSON.stringify(data),
     });

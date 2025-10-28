@@ -2,23 +2,39 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { sendItemReleaseWebhook, sendAdminLogWebhook } from "./lib/discord-webhooks";
+import { verifyIdToken, checkIsAdmin, initializeFirebaseAdmin } from "./lib/firebase-admin";
 
-// Simple admin verification middleware
-// In production, this should validate Firebase Admin tokens
-const requireAdmin = (req: any, res: any, next: any) => {
-  // For now, we'll add a simple secret key check
-  // The client will need to send this in headers
-  const adminSecret = req.headers['x-admin-secret'];
-  const expectedSecret = process.env.ADMIN_WEBHOOK_SECRET || 'change-this-in-production';
-  
-  if (adminSecret !== expectedSecret) {
-    return res.status(403).json({ error: "Unauthorized" });
+const requireAdmin = async (req: any, res: any, next: any) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: "Unauthorized - No token provided" });
+    }
+
+    const idToken = authHeader.split('Bearer ')[1];
+    const decodedToken = await verifyIdToken(idToken);
+    
+    if (!decodedToken) {
+      return res.status(401).json({ error: "Unauthorized - Invalid token" });
+    }
+
+    const isAdmin = await checkIsAdmin(decodedToken.uid);
+    if (!isAdmin) {
+      return res.status(403).json({ error: "Forbidden - Admin access required" });
+    }
+
+    req.user = decodedToken;
+    next();
+  } catch (error) {
+    console.error('Auth middleware error:', error);
+    return res.status(500).json({ error: "Internal server error" });
   }
-  
-  next();
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Initialize Firebase Admin SDK
+  initializeFirebaseAdmin();
+
   // Webhook endpoint for item releases (admin only)
   app.post("/api/webhooks/item-release", requireAdmin, async (req, res) => {
     try {
