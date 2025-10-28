@@ -1,0 +1,91 @@
+in html/css/js i want to make a game called Limited Empire
+
+the site will use firebase for its databse and auth systems
+
+<script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyCUu26HfADp6J6bHqwu8YBDMdmIv-bXWTE",
+    authDomain: "limited-empire.firebaseapp.com",
+    projectId: "limited-empire",
+    storageBucket: "limited-empire.firebasestorage.app",
+    messagingSenderId: "1086982242747",
+    appId: "1:1086982242747:web:55fd59fb74ff25cf5cc49e",
+    measurementId: "G-Z81LXQTVZF"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+</script>
+
+also provide firebase rules needed
+
+use the google auth w/ a popup. After this, they are asked for a username. usernames are 2-20 characters, must be unique w/ no spaces, english characters only and only max of 2 underscores
+all users also have a user id (like 1, 2, 3 etc)
+when they sign up, they stay logged in until they log out
+ensure on first sign up, all data in the databse is created dynamically 
+have a "isAdmin: true/false" (false by default) value for users, that way i can make some players admins.
+
+main screeen:
+- roll screen, players can turn on autoroll and it rolls, it starts fast and slows down before stopping
+- two boxes showing players best rolls (items with 250,000 or moer value), and global rolls (items with 2.5m+ value, and it shows a message whenever someone rolls it)
+
+inventory screen
+complete with search and filtering, as well as items being sorted frmo highst value to lowest, with item cards. clicking on an item brings up more data about that specifc item
+
+
+items:
+- admins have an admin pannel system (popup with tabs for different things), one of those tabs is Create Item
+- admin can input item image (via a link), item name, item description, and item value. then some options to allow for modifiers or not (more on this later)
+items are also placed into categories, and the roll % is based off value
+admins can also check "Off-Sale" to make it so the item cant be rolled currently
+when an item is uploaded,it gets put into the databse and can be rolled (if not off-sale)
+items can also have a stock system:
+- when uploading an item, admins can choose the stock (limited or inf), inf just means no stock, stock means there a limted amount of this item
+when a stock item is rolled, then that item gets +1 owner, and that owner can see the serial # of that item (serial # system), players can own multiple of the same stock item, jsut with differnet serial #'s
+once an item goes out of stock, it cant be rolled ever again UNLESS admins change stock (still shows up in item index)
+for the item creation popup, ensure the layout on here is good, with an item image preview, item %, item value and rarity previews (when the user types in a value)
+
+ensure the roll system pulls frmo the item DB, players cant roll if db is empty, and any item in teh DB (besids ones marked as off-sale) can be rolled)
+
+item index:
+- basically an item database, sorting from highest value to lowest, with searching / filtering. When clicking on an item brings a popup with more data on that item
+Admins see a button in this popup called Edit, and they can edit the item (change name/desc/value, make off-sale,
+
+Common (white):
+1-2499 Value
+Uncommon (lightgreen):
+2500-9999 Value
+Rare (lightblue):
+10000-49999 Value
+Ultra Rare (dark blue)
+50000-250,999 Value
+Epic (purple):
+250,000-750,000 
+Ultra Epic (dark purple)
+750,000-2,500,000 value
+Mythic (red)
+2,5000,000 = 9,999,999 Value
+Insane (rainbow)
+10 million or more value
+
+item values decide the items % of being rolled:
+Item Value	Chance (%)	Odds (1 in X)
+100	20%	1 in 5
+1,000	5%	1 in 20
+10,000	0.5%	1 in 200
+100,000	0.05%	1 in 2,000
+1,000,000	0.005%	1 in 20,000
+10,000,000	0.000001%	1 in 100,000,000
+
+
+site theme:
+- dark /black, simplistc but modern theme with gradients
