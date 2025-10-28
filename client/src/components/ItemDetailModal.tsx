@@ -106,37 +106,37 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
               </Badge>
             )}
           </div>
-          <div className="space-y-4">
-            <Card>
-              <CardContent className="p-4">
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">Description</h3>
-                <p className="text-sm" data-testid="text-item-description">{item.description}</p>
-              </CardContent>
-            </Card>
-            
+          <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <Card>
-                <CardContent className="p-3">
-                  <h3 className="text-xs font-medium text-muted-foreground mb-1">Value</h3>
-                  <p className="font-bold text-lg tabular-nums" data-testid="text-detail-value">
+              <Card className="rounded-lg">
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Value</h3>
+                  <p className="font-bold text-2xl tabular-nums" data-testid="text-detail-value">
                     {formatValue(item.value)}
                   </p>
                 </CardContent>
               </Card>
-              <Card>
-                <CardContent className="p-3">
-                  <h3 className="text-xs font-medium text-muted-foreground mb-1">Roll Chance</h3>
-                  <p className="text-sm tabular-nums font-semibold" data-testid="text-roll-chance">
+              <Card className="rounded-lg">
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Roll Chance</h3>
+                  <p className="text-2xl tabular-nums font-bold" data-testid="text-roll-chance">
                     {rollChance.toFixed(Math.max(2, Math.ceil(-Math.log10(rollChance))))}%
                   </p>
                 </CardContent>
               </Card>
             </div>
 
+            <Card className="rounded-lg">
+              <CardContent className="p-4">
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">Description</h3>
+                <p className="text-sm" data-testid="text-item-description">{item.description}</p>
+              </CardContent>
+            </Card>
+
             {creatorUsername && (
-              <Card>
-                <CardContent className="p-3">
-                  <h3 className="text-xs font-medium text-muted-foreground mb-1">Uploaded By</h3>
+              <Card className="rounded-lg">
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Uploaded By</h3>
                   <p className="text-sm font-medium" data-testid="text-creator-username">
                     {creatorUsername}
                   </p>

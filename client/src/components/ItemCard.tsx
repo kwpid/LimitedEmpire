@@ -53,18 +53,20 @@ export function ItemCard({ item, serialNumber, onClick, stackCount }: ItemCardPr
             color: "white",
             borderColor: "white"
           }}
+          data-testid={`badge-rarity-${item.id}`}
         >
           {RARITY_TIERS[item.rarity].name}
         </Badge>
-        {item.stockType === "limited" && !serialNumber && (
-          <Badge variant="secondary" className="absolute top-2 right-2 text-xs z-20">
-            {item.remainingStock}/{item.totalStock}
-          </Badge>
-        )}
-        {serialNumber !== undefined && (
-          <Badge variant="secondary" className="absolute top-2 right-2 text-xs z-20">
+        {serialNumber !== undefined ? (
+          <Badge variant="secondary" className="absolute top-2 right-2 text-xs z-20" data-testid={`badge-serial-${serialNumber}`}>
             #{serialNumber}
           </Badge>
+        ) : (
+          item.stockType === "limited" && (
+            <Badge variant="secondary" className="absolute top-2 right-2 text-xs z-20" data-testid={`badge-stock-${item.id}`}>
+              {item.remainingStock}/{item.totalStock}
+            </Badge>
+          )
         )}
         {item.offSale && (
           <Badge variant="destructive" className="absolute bottom-2 right-2 z-20">
@@ -81,7 +83,7 @@ export function ItemCard({ item, serialNumber, onClick, stackCount }: ItemCardPr
             {formatValue(item.value)}
           </span>
           {stackCount && stackCount > 1 && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-muted-foreground" data-testid={`text-stack-total-${item.id}`}>
               x{stackCount} ({formatValue(item.value * stackCount)})
             </span>
           )}
