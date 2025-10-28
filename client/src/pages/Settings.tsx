@@ -5,11 +5,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { RARITY_TIERS, type RarityTier } from "@shared/schema";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
-import { Settings as SettingsIcon, DollarSign, ArrowRightLeft, Save } from "lucide-react";
+import { Settings as SettingsIcon, DollarSign, ArrowRightLeft, Save, User } from "lucide-react";
 import { getRarityColor } from "@/lib/rarity";
 import { Badge } from "@/components/ui/badge";
 
@@ -19,7 +21,10 @@ export default function Settings() {
   const [autoSellRarities, setAutoSellRarities] = useState<RarityTier[]>(
     user?.settings?.autoSellRarities || []
   );
+  const [customStatus, setCustomStatus] = useState(user?.customStatus || "");
+  const [description, setDescription] = useState(user?.description || "");
   const [saving, setSaving] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
 
   const toggleRarity = (rarity: RarityTier) => {
     setAutoSellRarities((prev) => {
@@ -60,6 +65,38 @@ export default function Settings() {
   };
 
   const hasChanges = JSON.stringify(autoSellRarities) !== JSON.stringify(user?.settings?.autoSellRarities || []);
+  const hasProfileChanges = 
+    customStatus !== (user?.customStatus || "") || 
+    description !== (user?.description || "");
+
+  const saveProfile = async () => {
+    if (!user) return;
+
+    setSavingProfile(true);
+    try {
+      const userRef = doc(db, "users", user.id);
+      await updateDoc(userRef, {
+        customStatus,
+        description,
+      });
+
+      await refetchUser();
+
+      toast({
+        title: "Profile saved",
+        description: "Your profile has been updated",
+      });
+    } catch (error: any) {
+      console.error("Save profile error:", error);
+      toast({
+        title: "Save failed",
+        description: error.message || "An error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   return (
     <div className="container mx-auto p-6 max-w-5xl">
@@ -73,8 +110,16 @@ export default function Settings() {
 
       <div className="flex gap-6">
         <div className="w-64 space-y-2">
-          <Tabs defaultValue="sell" orientation="vertical" className="h-full">
+          <Tabs defaultValue="profile" orientation="vertical" className="h-full">
             <TabsList className="flex flex-col h-auto w-full bg-transparent space-y-1">
+              <TabsTrigger 
+                value="profile" 
+                className="w-full justify-start data-[state=active]:bg-primary/10"
+                data-testid="tab-profile-settings"
+              >
+                <User className="w-4 h-4 mr-2" />
+                Profile
+              </TabsTrigger>
               <TabsTrigger 
                 value="sell" 
                 className="w-full justify-start data-[state=active]:bg-primary/10"
@@ -98,7 +143,63 @@ export default function Settings() {
         </div>
 
         <div className="flex-1">
-          <Tabs defaultValue="sell">
+          <Tabs defaultValue="profile">
+            <TabsContent value="profile" className="mt-0">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Profile Settings</CardTitle>
+                  <CardDescription>
+                    Customize your public profile that other players can view
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="custom-status">Custom Status</Label>
+                    <Input
+                      id="custom-status"
+                      placeholder="What's on your mind?"
+                      value={customStatus}
+                      onChange={(e) => setCustomStatus(e.target.value.slice(0, 120))}
+                      maxLength={120}
+                      data-testid="input-custom-status"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {customStatus.length}/120 characters
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Profile Description</Label>
+                    <Textarea
+                      id="description"
+                      placeholder="Tell others about yourself..."
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value.slice(0, 1000))}
+                      maxLength={1000}
+                      rows={6}
+                      className="resize-none"
+                      data-testid="textarea-description"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {description.length}/1000 characters
+                    </p>
+                  </div>
+
+                  <div className="flex gap-3 pt-4 border-t">
+                    <Button
+                      onClick={saveProfile}
+                      disabled={!hasProfileChanges || savingProfile}
+                      className="flex-1"
+                      data-testid="button-save-profile"
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      {savingProfile ? "Saving..." : "Save Profile"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             <TabsContent value="sell" className="mt-0">
               <Card>
                 <CardHeader>
