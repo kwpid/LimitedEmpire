@@ -118,7 +118,12 @@ export function ItemCreateForm({ onSuccess }: { onSuccess?: () => void }) {
         }
       });
 
+      console.log("=== ITEM CREATED SUCCESSFULLY ===");
+      console.log("Item ID:", itemId);
+      console.log("Now creating audit log and sending webhooks...");
+
       // Create audit log
+      console.log("Creating audit log...");
       await createAuditLog({
         timestamp: Date.now(),
         adminId: user.id,
@@ -140,16 +145,20 @@ export function ItemCreateForm({ onSuccess }: { onSuccess?: () => void }) {
           },
         },
       });
+      console.log("Audit log created successfully");
 
       // Send item release webhook
+      console.log("About to send item release webhook...");
       await sendWebhookRequest('/api/webhooks/item-release', {
         name: values.name,
         rarity,
         value: values.value,
         stock: values.stockType === "limited" ? values.totalStock : null,
       });
+      console.log("Item release webhook request completed");
 
       // Send admin log webhook
+      console.log("About to send admin log webhook...");
       await sendWebhookRequest('/api/webhooks/admin-log', {
         action: "Item Released",
         adminUsername: user.username,
@@ -161,6 +170,7 @@ export function ItemCreateForm({ onSuccess }: { onSuccess?: () => void }) {
         ],
         color: 0x5865F2,
       });
+      console.log("Admin log webhook request completed");
 
       toast({
         title: "Item created!",
