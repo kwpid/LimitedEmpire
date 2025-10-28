@@ -6,10 +6,15 @@ Limited Empire is a web-based collection game where players acquire rare items t
 
 ## Recent Changes (October 28, 2025)
 
-**Latest Updates (Evening Session):**
+**Latest Updates (Evening Session - Final):**
+- **Roll Animation Container Fix**: Fixed container size issue - animation now stays within bounds and doesn't expand or move other elements off-screen
+- **Mobile-Friendly Tabs**: Navigation tabs now show only icons on mobile screens (< sm breakpoint) for a cleaner, more compact interface
+- **Leaderboard Cleanup**: Removed the countdown refresh timer for a cleaner appearance (auto-refresh every 5 minutes still works)
+- **Badge UI Simplification**: Removed the help button from badge section for a streamlined profile interface
+
+**Earlier Evening Session Updates:**
 - **Banned User Banner**: Player profiles now display a prominent red banner at the top when viewing banned users, with ban reason if available
 - **Auto-Sell Protection**: Mythic and Insane rarity items can no longer be auto-sold, preventing accidental loss of high-value items
-- **Leaderboard Refresh Timer**: Added countdown timer showing when leaderboards will next refresh (every 5 minutes)
 - **Leaderboard Layout Redesign**: 
   - Changed to side-by-side layout (4 columns on XL screens, 2 on medium screens)
   - Reduced gradient brightness for better readability (added opacity)
@@ -21,11 +26,6 @@ Limited Empire is a web-based collection game where players acquire rare items t
   - Increased animation duration from 2s to 3.5s for better anticipation
   - Fixed autoroll speed-up bug by using stable ref-based animation keys
   - Implemented responsive centering that works across all viewport sizes
-- **Badge System Enhancements**:
-  - Badge section now always visible on profiles (removed "coming soon" placeholder)
-  - Added help button (?) that opens detailed badge information dialog
-  - Dialog explains all available badges and how to earn them
-  - Improved badge display with proper empty states
 
 **Major New Features:**
 - **Leaderboard System**: Added comprehensive leaderboard tab with 4 categories:
