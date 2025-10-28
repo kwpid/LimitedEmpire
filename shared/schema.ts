@@ -35,6 +35,13 @@ export function calculateRollChance(value: number): number {
 }
 
 // User Schema
+// PERFORMANCE OPTIMIZATION: Inventory is stored as an array in the user document
+// Benefits:
+// 1. Single document read instead of N+1 queries (1 user doc + N inventory docs)
+// 2. Atomic updates with Firestore transactions
+// 3. Better scalability with thousands of concurrent players
+// 4. Reduced read costs (1 read vs. potentially hundreds per user)
+// 5. Inventory cached with user data, reducing latency
 export const userSchema = z.object({
   id: z.string(), // Firestore document ID
   firebaseUid: z.string(),
