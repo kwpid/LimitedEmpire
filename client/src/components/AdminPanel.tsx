@@ -5,6 +5,8 @@ import { ItemCreateForm } from "@/components/ItemCreateForm";
 import { ItemEditForm } from "@/components/ItemEditForm";
 import { AdminUsersTab } from "@/components/AdminUsersTab";
 import { AdminGameTab } from "@/components/AdminGameTab";
+import { AdminAuditLogTab } from "@/components/AdminAuditLogTab";
+import { AdminReportsTab } from "@/components/AdminReportsTab";
 import type { Item } from "@shared/schema";
 
 interface AdminPanelProps {
@@ -30,7 +32,7 @@ export function AdminPanel({ open, onOpenChange, editingItem, onItemSaved }: Adm
           <DialogTitle className="text-2xl">Admin Panel</DialogTitle>
         </DialogHeader>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="create" data-testid="tab-create-item">
               Create Item
             </TabsTrigger>
@@ -39,6 +41,12 @@ export function AdminPanel({ open, onOpenChange, editingItem, onItemSaved }: Adm
             </TabsTrigger>
             <TabsTrigger value="users" data-testid="tab-users">
               Users
+            </TabsTrigger>
+            <TabsTrigger value="audit" data-testid="tab-audit-log">
+              Audit Log
+            </TabsTrigger>
+            <TabsTrigger value="reports" data-testid="tab-reports">
+              Reports
             </TabsTrigger>
             <TabsTrigger value="game" data-testid="tab-game">
               Game
@@ -58,6 +66,12 @@ export function AdminPanel({ open, onOpenChange, editingItem, onItemSaved }: Adm
           </TabsContent>
           <TabsContent value="users" className="space-y-4 mt-6">
             <AdminUsersTab />
+          </TabsContent>
+          <TabsContent value="audit" className="space-y-4 mt-6">
+            <AdminAuditLogTab />
+          </TabsContent>
+          <TabsContent value="reports" className="space-y-4 mt-6">
+            <AdminReportsTab />
           </TabsContent>
           <TabsContent value="game" className="space-y-4 mt-6">
             <AdminGameTab />
