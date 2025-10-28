@@ -483,7 +483,7 @@ export default function RollScreen() {
 
               <div className="flex items-center justify-between p-3 md:p-4 bg-muted rounded-lg">
                 <Label htmlFor="auto-roll" className="cursor-pointer text-sm md:text-base">
-                  Auto Roll (3s delay)
+                  Auto Roll
                 </Label>
                 <Switch
                   id="auto-roll"
