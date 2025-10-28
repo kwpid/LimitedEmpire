@@ -16,6 +16,16 @@ export default {
         foreground: "hsl(var(--foreground) / <alpha-value>)",
         border: "hsl(var(--border) / <alpha-value>)",
         input: "hsl(var(--input) / <alpha-value>)",
+        // Rarity colors for Limited Empire
+        rarity: {
+          common: "hsl(var(--rarity-common) / <alpha-value>)",
+          uncommon: "hsl(var(--rarity-uncommon) / <alpha-value>)",
+          rare: "hsl(var(--rarity-rare) / <alpha-value>)",
+          "ultra-rare": "hsl(var(--rarity-ultra-rare) / <alpha-value>)",
+          epic: "hsl(var(--rarity-epic) / <alpha-value>)",
+          "ultra-epic": "hsl(var(--rarity-ultra-epic) / <alpha-value>)",
+          mythic: "hsl(var(--rarity-mythic) / <alpha-value>)",
+        },
         card: {
           DEFAULT: "hsl(var(--card) / <alpha-value>)",
           foreground: "hsl(var(--card-foreground) / <alpha-value>)",
@@ -96,10 +106,30 @@ export default {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "rainbow": {
+          "0%, 100%": { borderColor: "#ff0000" },
+          "14%": { borderColor: "#ff7f00" },
+          "28%": { borderColor: "#ffff00" },
+          "42%": { borderColor: "#00ff00" },
+          "57%": { borderColor: "#0000ff" },
+          "71%": { borderColor: "#4b0082" },
+          "85%": { borderColor: "#9400d3" },
+        },
+        "spin-slow": {
+          from: { transform: "rotate(0deg)" },
+          to: { transform: "rotate(360deg)" },
+        },
+        "roll-spin": {
+          "0%": { transform: "rotateY(0deg)" },
+          "100%": { transform: "rotateY(360deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "rainbow": "rainbow 3s linear infinite",
+        "spin-slow": "spin-slow 2s linear infinite",
+        "roll-spin": "roll-spin 0.1s linear infinite",
       },
     },
   },

@@ -1,0 +1,188 @@
+# Firebase Security Rules for Limited Empire
+
+## Firestore Security Rules
+
+Copy these rules to your Firebase Console under Firestore Database → Rules:
+
+```javascript
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      // Anyone authenticated can read user profiles
+      allow read: if isAuthenticated();
+      
+      // CRITICAL: Users can ONLY create their own document with the correct firebaseUid
+      // The document ID MUST match their Firebase Auth UID
+      allow create: if isAuthenticated() && 
+                      request.auth.uid == userId &&
+                      request.resource.data.firebaseUid == request.auth.uid &&
+                      request.resource.data.isAdmin == false; // MUST be false - admins set manually
+      
+      // Users can only update their own document (but CANNOT change admin status, userId, or firebaseUid)
+      allow update: if isAuthenticated() &&
+                      request.auth.uid == userId && 
+                      !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'userId', 'firebaseUid']);
+      
+      // Only admins can delete users
+      allow delete: if isAdmin();
+    }
+    
+    // Items collection
+    match /items/{itemId} {
+      // Anyone can read items
+      allow read: if true;
+      
+      // Only admins can create, update, or delete items
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // Inventory collection
+    match /inventory/{inventoryId} {
+      // Users can read their own inventory using their Firebase Auth UID
+      allow read: if isAuthenticated() && 
+                    resource.data.userId == request.auth.uid;
+      
+      // Users can add to their own inventory (from rolling)
+      // CRITICAL: userId MUST match their Firebase Auth UID
+      allow create: if isAuthenticated() && 
+                      request.resource.data.userId == request.auth.uid &&
+                      request.resource.data.rolledAt is int;
+      
+      // Admins can read and delete any inventory
+      allow read, delete: if isAdmin();
+      
+      // No updates allowed (inventory items are immutable)
+      allow update: if false;
+    }
+    
+    // Global rolls collection (recent high-value rolls)
+    match /globalRolls/{rollId} {
+      // Anyone can read global rolls
+      allow read: if true;
+      
+      // Authenticated users can create global rolls (when they roll high-value items)
+      allow create: if isAuthenticated() &&
+                      request.resource.data.timestamp is int &&
+                      request.resource.data.itemValue >= 2500000;
+      
+      // Admins can delete old rolls
+      allow delete: if isAdmin();
+      
+      // No updates allowed
+      allow update: if false;
+    }
+    
+    // Counters collection (for sequential user IDs)
+    match /counters/{counterId} {
+      // Anyone authenticated can read counters
+      allow read: if isAuthenticated();
+      
+      // Only allow incrementing the userId counter during user creation
+      allow write: if isAuthenticated() && 
+                     counterId == 'userId';
+    }
+  }
+}
+```
+
+## Storage Rules (if using Firebase Storage for images)
+
+If you plan to allow users to upload images directly to Firebase Storage, add these rules:
+
+```javascript
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Item images folder - only admins can upload
+    match /items/{imageId} {
+      allow read: if true;
+      allow write: if request.auth != null && 
+                     firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    // Deny all other uploads
+    match /{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}
+```
+
+## Important Notes
+
+1. **Username Uniqueness**: The rules above don't enforce username uniqueness at the database level. This is handled in the application code by checking for existing usernames before creating a user document.
+
+2. **Admin Creation**: The first admin must be manually set in the Firebase Console:
+   - Go to Firestore Database
+   - Find the user document you want to make admin
+   - Edit the document and set `isAdmin: true`
+
+3. **Item Stock Management**: The rules allow admins to update items, including stock values. The application logic prevents users from rolling items that are out of stock.
+
+4. **Global Rolls Cleanup**: You may want to set up a Cloud Function to periodically delete old global rolls (older than 24 hours) to keep the collection size manageable.
+
+5. **Rate Limiting**: Consider implementing Cloud Functions to rate limit rolling actions if abuse becomes a concern.
+
+## Firebase Console Setup Checklist
+
+- [ ] Enable Google Authentication in Firebase Console
+- [ ] Add authorized domains (Replit dev URL and deployment URL)
+- [ ] Deploy Firestore Security Rules above
+- [ ] Deploy Storage Rules if using image uploads
+- [ ] Create initial `counters/userId` document with `{ current: 0 }`
+- [ ] Set up first admin user manually
+- [ ] (Optional) Set up Cloud Functions for cleanup tasks
+
+## Testing Security Rules
+
+You can test these rules in the Firebase Console under Firestore Database → Rules → Rules Playground:
+
+**Test Case 1: User can read their own inventory**
+```
+Operation: get
+Path: /inventory/test-doc
+Auth UID: user123
+Document data: { userId: "user123", itemId: "item1", rolledAt: timestamp }
+Result: Should ALLOW
+```
+
+**Test Case 2: Non-admin cannot create items**
+```
+Operation: create
+Path: /items/new-item
+Auth UID: user123
+User is admin: false
+Result: Should DENY
+```
+
+**Test Case 3: User cannot make themselves admin**
+```
+Operation: update
+Path: /users/user123
+Existing data: { isAdmin: false }
+New data: { isAdmin: true }
+Result: Should DENY
+```
