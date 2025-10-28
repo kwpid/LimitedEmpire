@@ -155,3 +155,47 @@ export type GlobalRollEvent = {
 export type InventoryItemWithDetails = InventoryItem & {
   item: Item;
 };
+
+// Audit Log Schema
+export const auditLogSchema = z.object({
+  id: z.string(), // Firestore document ID
+  timestamp: z.number(), // When the action occurred
+  adminId: z.string(), // Firestore ID of the admin who performed the action
+  adminUsername: z.string(), // Username of the admin
+  actionType: z.enum([
+    "user_ban",
+    "user_unban",
+    "user_wipe_inventory",
+    "user_give_items",
+    "item_create",
+    "item_edit",
+    "item_delete",
+    "game_reset_economy",
+  ]),
+  targetUserId: z.string().optional(), // Firestore ID of the affected user (if applicable)
+  targetUsername: z.string().optional(), // Username of the affected user
+  details: z.record(z.any()), // Additional details about the action
+  metadata: z.object({
+    banReason: z.string().optional(),
+    banDuration: z.number().optional(), // in milliseconds
+    isPermanentBan: z.boolean().optional(),
+    itemsWiped: z.number().optional(),
+    itemsGiven: z.array(z.object({
+      itemId: z.string(),
+      itemName: z.string(),
+      quantity: z.number(),
+    })).optional(),
+    itemData: z.object({
+      itemId: z.string(),
+      itemName: z.string(),
+      value: z.number(),
+      rarity: z.string(),
+      stock: z.number().nullable(),
+    }).optional(),
+  }).optional(),
+});
+
+export const insertAuditLogSchema = auditLogSchema.omit({ id: true });
+
+export type AuditLog = z.infer<typeof auditLogSchema>;
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
