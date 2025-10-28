@@ -202,7 +202,17 @@ None specified yet.
 
 ## Recent Changes
 
-### October 28, 2025 (Latest)
+### October 28, 2025 (Latest) - Firebase Permission Fixes
+- **Firebase Security Rules**: Fixed "Insufficient or missing permissions" error when rolling
+  - Updated rules to allow authenticated users to update stock-related fields (remainingStock, totalOwners)
+  - Admins retain exclusive control over critical fields (name, value, rarity, offSale, stockType, totalStock)
+  - **ACTION REQUIRED**: Deploy updated rules from FIREBASE_RULES.md to Firebase Console
+- **Sell Transaction Fix**: Fixed "require all reads to be executed before all writes" error
+  - Reorganized sellService.ts transaction to ensure all reads happen before writes
+  - Maintains data consistency and follows Firebase transaction requirements
+- See FIREBASE_SETUP_INSTRUCTIONS.md for detailed setup instructions
+
+### October 28, 2025 (Earlier)
 - **Sell System**: Complete transactional sell system with 80/20 revenue split
   - Players receive 80% of item value when selling
   - Admin account (user ID 1) receives 20% of all sales
