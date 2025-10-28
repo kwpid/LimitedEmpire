@@ -1,4 +1,4 @@
-import { collection, doc, runTransaction, getDocs, query, where } from "firebase/firestore";
+import { collection, doc, runTransaction, getDocs, query, where, arrayUnion } from "firebase/firestore";
 import { db } from "./firebase";
 import type { Item, User } from "@shared/schema";
 
@@ -122,14 +122,6 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
         rollCount: currentRollCount + 1,
       });
     } else {
-      const inventoryRef = doc(collection(db, "inventory"));
-      transaction.set(inventoryRef, {
-        itemId: selectedItem.id,
-        userId: user.firebaseUid,
-        serialNumber,
-        rolledAt: Date.now(),
-      });
-
       const userRef = doc(db, "users", user.id);
       const userDoc = await transaction.get(userRef);
       
@@ -138,9 +130,15 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
       }
       
       const currentRollCount = userDoc.data()?.rollCount || 0;
+      const currentInventory = userDoc.data()?.inventory || [];
       
       transaction.update(userRef, {
         rollCount: currentRollCount + 1,
+        inventory: arrayUnion({
+          itemId: selectedItem.id,
+          serialNumber,
+          rolledAt: Date.now(),
+        }),
       });
     }
 
