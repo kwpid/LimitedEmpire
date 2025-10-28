@@ -4,6 +4,23 @@
 
 Limited Empire is a web-based collection game where players acquire rare items through a probability-based rolling system. The project aims to provide an engaging user experience with Google authentication, a sophisticated item rarity and stock system, and comprehensive administrative tools for item and user management. Key features include an animated rolling interface, inventory management, a real-time global roll notification system for high-value items, and advanced admin capabilities like item creation (with admin auto-ownership of serial #0), flexible item gifting, and a robust ban system with inventory wiping. The game's economy is centered around a probability-based item acquisition and selling mechanism, with plans for future expansion into reporting and analytics.
 
+## Recent Changes (October 28, 2025)
+
+**Performance & UX Optimizations:**
+- Optimized roll tab loading - now loads items once on mount and only updates stats when switching to the roll tab
+- Removed 3-second roll delay - players can now roll again immediately after an item is shown
+- Simplified autoroll logic to prevent double-rolling issues
+
+**UI Improvements:**
+- Removed "rarest item" display from roll tab stats section for cleaner layout
+- Fixed settings tab switching - profile and sell settings tabs now synchronize properly
+- Enhanced player cards with fixed-height layout and showcase item boxes
+- Added empty state indicators (Ban icon) for showcase slots without items
+- Limited players "all" tab to show 10 players for optimization (unlimited when searching)
+
+**Admin Features:**
+- Fixed admin account appearing in item owners list - admin users are now filtered out from the owners display
+
 ## User Preferences
 
 None specified yet.
