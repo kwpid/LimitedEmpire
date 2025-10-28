@@ -17,6 +17,17 @@ Limited Empire is a web-based collection game where players acquire rare items t
   - Auto-refreshes every 5 minutes
   - Clicking any player opens their profile modal
 
+- **Badge System**: Implemented configurable player badge system
+  - Developer badge for userId 2
+  - Admin badge for admin users
+  - Veteran badge for early users (userId < 100)
+  - Millionaire badge for inventory value >= 1M
+  - Roller tier badges (1K+, 10K+, 50K+ rolls) with dynamic names
+  - Leaderboard tier badges (Top 30, Top 10, Top 3, Top 1) based on position
+  - Badges displayed in player profile modal with colored icons and descriptions
+  - Icon URLs configured in badgeConfig.ts for easy customization
+  - Badge calculation uses leaderboard positions to prevent incorrect assignments
+
 **Performance & UX Optimizations:**
 - Optimized roll tab with React.memo - now renders exactly once on site load and never re-renders when switching tabs
 - Roll component remains mounted but hidden with CSS display property when switching tabs
@@ -32,8 +43,16 @@ Limited Empire is a web-based collection game where players acquire rare items t
   - Ensured consistent sizing regardless of whether player has custom status
   - Showcase items reduced to 64px for proportional scaling
   - Removed padding for cleaner, denser layout
+- **Player Profile Modal Enhancements**:
+  - Added player ID display with Hash icon next to username
+  - Integrated badge system with grid display of earned badges
+  - Badges show icon, name, description, and color-coded styling
+  - Removed "Add Friend" button
+- **Item Detail Modal Fix**:
+  - Fixed z-index issue where rarity/stock/serial badges appeared behind image
+  - Badges now display properly in front with improved backdrop-blur
+  - Added off-sale badge to image overlay for consistency
 - Removed "rarest item" display from roll tab stats section for cleaner layout
-- Removed "Add Friend" button from player profile modal
 - Fixed settings tab switching - profile and sell settings tabs now synchronize properly
 - Added empty state indicators (Ban icon) for showcase slots without items
 - Limited players "all" tab to show 10 players for optimization (unlimited when searching)
