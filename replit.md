@@ -34,22 +34,26 @@ client/src/
 ├── components/          # Reusable UI components
 │   ├── ui/             # shadcn components
 │   ├── ItemCard.tsx    # Item display card
-│   ├── ItemDetailModal.tsx
+│   ├── ItemDetailModal.tsx  # Modal with sell functionality
 │   ├── ItemCreateForm.tsx
 │   ├── ItemEditForm.tsx
 │   ├── AdminPanel.tsx
-│   └── GlobalRollToast.tsx
+│   ├── GlobalRollToast.tsx
+│   └── SlotMachineRoll.tsx  # Roll animation
 ├── contexts/
 │   └── AuthContext.tsx # Firebase auth state
 ├── lib/
 │   ├── firebase.ts     # Firebase config
 │   ├── rarity.ts       # Rarity utility functions
+│   ├── rollService.ts  # Roll logic with auto-sell
+│   ├── sellService.ts  # Sell system with 80/20 split
 │   └── queryClient.ts
 ├── pages/
 │   ├── Login.tsx       # Google sign-in
 │   ├── UsernameSetup.tsx
 │   ├── RollScreen.tsx  # Main rolling interface
 │   ├── Inventory.tsx   # User's collection
+│   ├── Settings.tsx    # User settings with auto-sell
 │   └── ItemIndex.tsx   # All items database
 └── App.tsx            # Main app with routing
 
@@ -70,6 +74,8 @@ server/
 - isAdmin: boolean
 - cash: number (starting balance: 1,000)
 - rollCount: number (total rolls performed)
+- settings: object (optional)
+  - autoSellRarities: array of rarity strings to auto-sell
 - createdAt: timestamp
 
 **items/**
