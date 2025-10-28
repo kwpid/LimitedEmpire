@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -5,6 +6,8 @@ import type { Item } from "@shared/schema";
 import { getRarityClass, getRarityGlow, formatValue } from "@/lib/rarity";
 import { RARITY_TIERS, calculateRollChance } from "@shared/schema";
 import { useAuth } from "@/contexts/AuthContext";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 interface ItemDetailModalProps {
   item: Item | null;
@@ -16,6 +19,32 @@ interface ItemDetailModalProps {
 
 export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit }: ItemDetailModalProps) {
   const { user } = useAuth();
+  const [creatorUsername, setCreatorUsername] = useState<string>("");
+
+  useEffect(() => {
+    async function fetchCreator() {
+      if (!item?.createdBy) {
+        setCreatorUsername("");
+        return;
+      }
+
+      try {
+        const userDoc = await getDoc(doc(db, "users", item.createdBy));
+        if (userDoc.exists()) {
+          setCreatorUsername(userDoc.data().username || "Unknown");
+        } else {
+          setCreatorUsername("Unknown");
+        }
+      } catch (error) {
+        console.error("Error fetching creator:", error);
+        setCreatorUsername("Unknown");
+      }
+    }
+
+    if (open && item) {
+      fetchCreator();
+    }
+  }, [item, open]);
 
   if (!item) return null;
 
@@ -79,6 +108,14 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
                 <Badge variant="secondary" data-testid="badge-serial-number">
                   #{serialNumber}
                 </Badge>
+              </div>
+            )}
+            {creatorUsername && (
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-1">Uploaded By</h3>
+                <p className="text-sm font-medium" data-testid="text-creator-username">
+                  {creatorUsername}
+                </p>
               </div>
             )}
             {item.offSale && (

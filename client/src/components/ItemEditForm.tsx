@@ -10,11 +10,13 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, deleteDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
 import { getRarityClass, getRarityGlow, formatValue } from "@/lib/rarity";
+import { Trash2 } from "lucide-react";
 import { z } from "zod";
 
 interface ItemEditFormProps {
@@ -26,6 +28,9 @@ export function ItemEditForm({ item, onSuccess }: ItemEditFormProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [inventoryCount, setInventoryCount] = useState(0);
   const [imagePreview, setImagePreview] = useState(item.imageUrl);
 
   const form = useForm<z.infer<typeof insertItemSchema>>({
@@ -54,6 +59,51 @@ export function ItemEditForm({ item, onSuccess }: ItemEditFormProps) {
   const rollChance = calculateRollChance(watchedValue || 100);
   const rarityClass = getRarityClass(rarity);
   const rarityGlow = getRarityGlow(rarity);
+
+  const checkInventoryCount = async () => {
+    try {
+      const inventoryQuery = query(
+        collection(db, "inventory"),
+        where("itemId", "==", item.id)
+      );
+      const snapshot = await getDocs(inventoryQuery);
+      setInventoryCount(snapshot.size);
+    } catch (error) {
+      console.error("Error checking inventory:", error);
+    }
+  };
+
+  const handleDeleteClick = async () => {
+    await checkInventoryCount();
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!user) return;
+
+    setDeleting(true);
+    try {
+      const itemRef = doc(db, "items", item.id);
+      await deleteDoc(itemRef);
+
+      toast({
+        title: "Item deleted!",
+        description: `${item.name} has been permanently deleted.`,
+      });
+
+      setShowDeleteDialog(false);
+      onSuccess?.();
+    } catch (error: any) {
+      console.error("Error deleting item:", error);
+      toast({
+        title: "Deletion failed",
+        description: error.message || "An error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const onSubmit = async (values: z.infer<typeof insertItemSchema>) => {
     if (!user) return;
@@ -260,8 +310,48 @@ export function ItemEditForm({ item, onSuccess }: ItemEditFormProps) {
           <Button type="submit" className="w-full" disabled={loading} data-testid="button-update-item">
             {loading ? "Updating..." : "Update Item"}
           </Button>
+
+          <Button 
+            type="button" 
+            variant="destructive" 
+            className="w-full" 
+            onClick={handleDeleteClick}
+            disabled={loading || deleting}
+            data-testid="button-delete-item"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Delete Item
+          </Button>
         </form>
       </Form>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {item.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {inventoryCount > 0 ? (
+                <span className="text-destructive font-semibold">
+                  Warning: This item is currently owned by {inventoryCount} inventory entr{inventoryCount === 1 ? "y" : "ies"}.
+                  Deleting this item will remove it from all inventories. This action cannot be undone.
+                </span>
+              ) : (
+                "This will permanently delete this item. This action cannot be undone."
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

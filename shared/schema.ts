@@ -41,6 +41,8 @@ export const userSchema = z.object({
   username: z.string(),
   userId: z.number(), // Sequential ID (1, 2, 3, etc.)
   isAdmin: z.boolean(),
+  isBanned: z.boolean().default(false),
+  banReason: z.string().optional(),
   createdAt: z.number(), // timestamp
 });
 
@@ -73,6 +75,7 @@ export const itemSchema = z.object({
   stockType: z.enum(["limited", "infinite"]),
   totalStock: z.number().nullable(), // null for infinite stock
   remainingStock: z.number().nullable(), // null for infinite stock
+  totalOwners: z.number().nonnegative().default(0), // Track unique users who own this item
   createdAt: z.number(),
   createdBy: z.string(), // userId who created it
 });

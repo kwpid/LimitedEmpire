@@ -3,6 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ItemCreateForm } from "@/components/ItemCreateForm";
 import { ItemEditForm } from "@/components/ItemEditForm";
+import { AdminUsersTab } from "@/components/AdminUsersTab";
+import { AdminGameTab } from "@/components/AdminGameTab";
 import type { Item } from "@shared/schema";
 
 interface AdminPanelProps {
@@ -28,12 +30,18 @@ export function AdminPanel({ open, onOpenChange, editingItem, onItemSaved }: Adm
           <DialogTitle className="text-2xl">Admin Panel</DialogTitle>
         </DialogHeader>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="create" data-testid="tab-create-item">
               Create Item
             </TabsTrigger>
             <TabsTrigger value="edit" data-testid="tab-edit-item">
               Edit Item
+            </TabsTrigger>
+            <TabsTrigger value="users" data-testid="tab-users">
+              Users
+            </TabsTrigger>
+            <TabsTrigger value="game" data-testid="tab-game">
+              Game
             </TabsTrigger>
           </TabsList>
           <TabsContent value="create" className="space-y-4 mt-6">
@@ -47,6 +55,12 @@ export function AdminPanel({ open, onOpenChange, editingItem, onItemSaved }: Adm
                 Select an item from the Item Index to edit
               </p>
             )}
+          </TabsContent>
+          <TabsContent value="users" className="space-y-4 mt-6">
+            <AdminUsersTab />
+          </TabsContent>
+          <TabsContent value="game" className="space-y-4 mt-6">
+            <AdminGameTab />
           </TabsContent>
         </Tabs>
       </DialogContent>

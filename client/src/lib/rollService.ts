@@ -3,42 +3,42 @@ import { db } from "./firebase";
 import type { Item, User } from "@shared/schema";
 
 export async function performRoll(user: User): Promise<{ item: Item; serialNumber: number | null }> {
+  const itemsRef = collection(db, "items");
+  const q = query(itemsRef, where("offSale", "==", false));
+  const itemsSnapshot = await getDocs(q);
+  
+  const eligibleItems: Item[] = [];
+  itemsSnapshot.forEach((doc) => {
+    const item = { id: doc.id, ...doc.data() } as Item;
+    if (item.stockType === "infinite" || (item.remainingStock && item.remainingStock > 0)) {
+      eligibleItems.push(item);
+    }
+  });
+
+  if (eligibleItems.length === 0) {
+    throw new Error("No items available to roll");
+  }
+
+  let totalWeight = 0;
+  const weights = eligibleItems.map((item) => {
+    const weight = 1 / item.value;
+    totalWeight += weight;
+    return weight;
+  });
+
+  const random = Math.random() * totalWeight;
+  let cumulative = 0;
+  let selectedItemId = eligibleItems[0].id;
+
+  for (let i = 0; i < eligibleItems.length; i++) {
+    cumulative += weights[i];
+    if (random <= cumulative) {
+      selectedItemId = eligibleItems[i].id;
+      break;
+    }
+  }
+
   const result = await runTransaction(db, async (transaction) => {
-    const itemsRef = collection(db, "items");
-    const q = query(itemsRef, where("offSale", "==", false));
-    const itemsSnapshot = await getDocs(q);
-    
-    const eligibleItems: Item[] = [];
-    itemsSnapshot.forEach((doc) => {
-      const item = { id: doc.id, ...doc.data() } as Item;
-      if (item.stockType === "infinite" || (item.remainingStock && item.remainingStock > 0)) {
-        eligibleItems.push(item);
-      }
-    });
-
-    if (eligibleItems.length === 0) {
-      throw new Error("No items available to roll");
-    }
-
-    let totalWeight = 0;
-    const weights = eligibleItems.map((item) => {
-      const weight = 1 / item.value;
-      totalWeight += weight;
-      return weight;
-    });
-
-    const random = Math.random() * totalWeight;
-    let cumulative = 0;
-    let selectedItemId = eligibleItems[0].id;
-
-    for (let i = 0; i < eligibleItems.length; i++) {
-      cumulative += weights[i];
-      if (random <= cumulative) {
-        selectedItemId = eligibleItems[i].id;
-        break;
-      }
-    }
-
     const itemRef = doc(db, "items", selectedItemId);
     const itemDoc = await transaction.get(itemRef);
     
@@ -51,19 +51,30 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
     if (selectedItem.offSale) {
       throw new Error("Item is off-sale and cannot be rolled");
     }
+
+    const ownershipMarkerRef = doc(db, "items", selectedItemId, "owners", user.firebaseUid);
+    const ownershipDoc = await transaction.get(ownershipMarkerRef);
+    const isFirstTimeOwning = !ownershipDoc.exists();
     
     let serialNumber: number | null = null;
+    const updates: any = {};
 
     if (selectedItem.stockType === "limited") {
       if (!selectedItem.remainingStock || selectedItem.remainingStock <= 0) {
         throw new Error("Item is out of stock");
       }
 
-      transaction.update(itemRef, {
-        remainingStock: selectedItem.remainingStock - 1,
-      });
-
+      updates.remainingStock = selectedItem.remainingStock - 1;
       serialNumber = (selectedItem.totalStock || 0) - selectedItem.remainingStock + 1;
+    }
+
+    if (isFirstTimeOwning) {
+      updates.totalOwners = (selectedItem.totalOwners || 0) + 1;
+      transaction.set(ownershipMarkerRef, { ownedAt: Date.now() });
+    }
+
+    if (Object.keys(updates).length > 0) {
+      transaction.update(itemRef, updates);
     }
 
     const inventoryRef = doc(collection(db, "inventory"));

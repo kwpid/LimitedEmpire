@@ -14,9 +14,20 @@ export function getRarityClass(rarity: RarityTier): string {
     EPIC: "border-rarity-epic",
     ULTRA_EPIC: "border-rarity-ultra-epic",
     MYTHIC: "border-rarity-mythic",
-    INSANE: "border-transparent animate-rainbow-slow",
+    INSANE: "border-transparent",
   };
   return map[rarity];
+}
+
+export function getRarityBadgeColor(rarity: RarityTier): string {
+  const color = getRarityColor(rarity);
+  if (color === "rainbow") {
+    return "";
+  }
+  const rgb = hexToRgb(color);
+  if (!rgb) return "";
+  
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`;
 }
 
 export function getRarityGlow(rarity: RarityTier): string {

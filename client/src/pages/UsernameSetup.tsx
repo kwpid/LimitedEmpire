@@ -57,6 +57,7 @@ export default function UsernameSetup() {
         username: values.username,
         userId: nextUserId,
         isAdmin: false,
+        isBanned: false,
         createdAt: Date.now(),
       });
 

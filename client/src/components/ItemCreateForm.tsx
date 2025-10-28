@@ -61,6 +61,7 @@ export function ItemCreateForm({ onSuccess }: { onSuccess?: () => void }) {
         ...values,
         rarity,
         remainingStock: values.stockType === "limited" ? values.totalStock : null,
+        totalOwners: 0,
         createdAt: Date.now(),
         createdBy: user.id,
       });

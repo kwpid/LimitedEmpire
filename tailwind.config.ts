@@ -124,6 +124,11 @@ export default {
           "71%": { borderColor: "#4b0082", opacity: "0.8" },
           "85%": { borderColor: "#9400d3", opacity: "1" },
         },
+        "chroma-gradient": {
+          "0%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
+          "100%": { backgroundPosition: "0% 50%" },
+        },
         "spin-slow": {
           from: { transform: "rotate(0deg)" },
           to: { transform: "rotate(360deg)" },
@@ -138,6 +143,7 @@ export default {
         "accordion-up": "accordion-up 0.2s ease-out",
         "rainbow": "rainbow 3s linear infinite",
         "rainbow-slow": "rainbow-slow 8s ease-in-out infinite",
+        "chroma-gradient": "chroma-gradient 8s ease infinite",
         "spin-slow": "spin-slow 2s linear infinite",
         "roll-spin": "roll-spin 0.1s linear infinite",
       },

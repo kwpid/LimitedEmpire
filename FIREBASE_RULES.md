@@ -35,12 +35,16 @@ service cloud.firestore {
       allow create: if isAuthenticated() && 
                       request.auth.uid == userId &&
                       request.resource.data.firebaseUid == request.auth.uid &&
-                      request.resource.data.isAdmin == false; // MUST be false - admins set manually
+                      request.resource.data.isAdmin == false && // MUST be false - admins set manually
+                      request.resource.data.isBanned == false; // MUST be false on creation
       
-      // Users can only update their own document (but CANNOT change admin status, userId, or firebaseUid)
-      allow update: if isAuthenticated() &&
-                      request.auth.uid == userId && 
-                      !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'userId', 'firebaseUid']);
+      // Users can only update their own document (but CANNOT change admin status, ban status, userId, or firebaseUid)
+      // Admins can update ban status and ban reason for any user
+      allow update: if (isAuthenticated() &&
+                       request.auth.uid == userId && 
+                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isBanned', 'banReason', 'userId', 'firebaseUid'])) ||
+                      (isAdmin() &&
+                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'userId', 'firebaseUid']));
       
       // Only admins can delete users
       allow delete: if isAdmin();
@@ -55,6 +59,21 @@ service cloud.firestore {
       allow create: if isAdmin();
       allow update: if isAdmin();
       allow delete: if isAdmin();
+      
+      // Ownership markers subcollection (for tracking unique owners)
+      match /owners/{userId} {
+        // Anyone authenticated can read ownership markers
+        allow read: if isAuthenticated();
+        
+        // Only allow creating ownership markers during item rolls
+        allow create: if isAuthenticated() && request.auth.uid == userId;
+        
+        // Admins can delete ownership markers (for economy reset)
+        allow delete: if isAdmin();
+        
+        // No updates allowed
+        allow update: if false;
+      }
     }
     
     // Inventory collection

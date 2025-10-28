@@ -10,10 +10,18 @@ import type { InventoryItemWithDetails, Item } from "@shared/schema";
 import { Search, Package } from "lucide-react";
 import { RARITY_TIERS } from "@shared/schema";
 
+type StackedInventoryItem = {
+  item: Item;
+  count: number;
+  serialNumber?: number;
+  inventoryIds: string[];
+};
+
 export default function Inventory() {
   const { user } = useAuth();
   const [inventory, setInventory] = useState<InventoryItemWithDetails[]>([]);
-  const [filteredInventory, setFilteredInventory] = useState<InventoryItemWithDetails[]>([]);
+  const [stackedInventory, setStackedInventory] = useState<StackedInventoryItem[]>([]);
+  const [filteredInventory, setFilteredInventory] = useState<StackedInventoryItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [rarityFilter, setRarityFilter] = useState<string>("all");
   const [selectedItem, setSelectedItem] = useState<{ item: Item; serialNumber?: number } | null>(null);
@@ -26,8 +34,12 @@ export default function Inventory() {
   }, [user]);
 
   useEffect(() => {
+    stackItems();
+  }, [inventory]);
+
+  useEffect(() => {
     filterInventory();
-  }, [inventory, searchTerm, rarityFilter]);
+  }, [stackedInventory, searchTerm, rarityFilter]);
 
   const loadInventory = async () => {
     if (!user) return;
@@ -58,8 +70,41 @@ export default function Inventory() {
     }
   };
 
+  const stackItems = () => {
+    const grouped = new Map<string, StackedInventoryItem>();
+
+    inventory.forEach((invItem) => {
+      const isLimitedWithSerial = invItem.item.stockType === "limited" && invItem.serialNumber !== null;
+      
+      if (isLimitedWithSerial) {
+        const uniqueKey = `${invItem.itemId}-${invItem.serialNumber}`;
+        grouped.set(uniqueKey, {
+          item: invItem.item,
+          count: 1,
+          serialNumber: invItem.serialNumber || undefined,
+          inventoryIds: [invItem.id],
+        });
+      } else {
+        const existing = grouped.get(invItem.itemId);
+        if (existing) {
+          existing.count += 1;
+          existing.inventoryIds.push(invItem.id);
+        } else {
+          grouped.set(invItem.itemId, {
+            item: invItem.item,
+            count: 1,
+            inventoryIds: [invItem.id],
+          });
+        }
+      }
+    });
+
+    const stacked = Array.from(grouped.values()).sort((a, b) => b.item.value - a.item.value);
+    setStackedInventory(stacked);
+  };
+
   const filterInventory = () => {
-    let filtered = [...inventory];
+    let filtered = [...stackedInventory];
 
     if (searchTerm) {
       filtered = filtered.filter((item) =>
@@ -79,7 +124,7 @@ export default function Inventory() {
       <div className="mb-6">
         <h1 className="text-3xl font-bold tracking-tight mb-2">Inventory</h1>
         <p className="text-muted-foreground">
-          {inventory.length} item{inventory.length !== 1 ? "s" : ""} collected
+          {inventory.length} item{inventory.length !== 1 ? "s" : ""} collected ({stackedInventory.length} unique)
         </p>
       </div>
 
@@ -118,18 +163,24 @@ export default function Inventory() {
         </div>
       ) : filteredInventory.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {filteredInventory.map((invItem) => (
-            <ItemCard
-              key={invItem.id}
-              item={invItem.item}
-              serialNumber={invItem.serialNumber || undefined}
-              onClick={() =>
-                setSelectedItem({
-                  item: invItem.item,
-                  serialNumber: invItem.serialNumber || undefined,
-                })
-              }
-            />
+          {filteredInventory.map((stackedItem, index) => (
+            <div key={`${stackedItem.item.id}-${stackedItem.serialNumber || index}`} className="relative">
+              <ItemCard
+                item={stackedItem.item}
+                serialNumber={stackedItem.serialNumber}
+                onClick={() =>
+                  setSelectedItem({
+                    item: stackedItem.item,
+                    serialNumber: stackedItem.serialNumber,
+                  })
+                }
+              />
+              {stackedItem.count > 1 && (
+                <div className="absolute top-2 right-2 bg-black/80 text-white px-2 py-1 rounded-md text-xs font-bold border border-white/20">
+                  x{stackedItem.count}
+                </div>
+              )}
+            </div>
           ))}
         </div>
       ) : (
