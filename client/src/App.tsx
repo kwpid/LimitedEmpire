@@ -77,6 +77,11 @@ function AppContent() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <div className="px-3 py-1.5 bg-primary/10 rounded-md border border-primary/20">
+              <span className="text-sm font-bold text-primary tabular-nums">
+                ${(user.cash ?? 1000).toLocaleString()}
+              </span>
+            </div>
             {user.isAdmin && (
               <Button
                 variant="outline"

@@ -44,6 +44,8 @@ export const userSchema = z.object({
   isBanned: z.boolean().default(false),
   banReason: z.string().optional(),
   createdAt: z.number(), // timestamp
+  rollCount: z.number().default(0), // Total number of rolls performed
+  cash: z.number().default(1000), // User's currency
 });
 
 export const insertUserSchema = userSchema.omit({ id: true });

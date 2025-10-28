@@ -98,6 +98,11 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
       });
     }
 
+    const userRef = doc(db, "users", user.firebaseUid);
+    transaction.update(userRef, {
+      rollCount: (user.rollCount || 0) + 1,
+    });
+
     return { item: selectedItem, serialNumber };
   });
 

@@ -129,6 +129,11 @@ export default {
           "50%": { backgroundPosition: "100% 50%" },
           "100%": { backgroundPosition: "0% 50%" },
         },
+        "gradient-slow": {
+          "0%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" },
+          "100%": { backgroundPosition: "0% 50%" },
+        },
         "spin-slow": {
           from: { transform: "rotate(0deg)" },
           to: { transform: "rotate(360deg)" },
@@ -144,6 +149,7 @@ export default {
         "rainbow": "rainbow 3s linear infinite",
         "rainbow-slow": "rainbow-slow 8s ease-in-out infinite",
         "chroma-gradient": "chroma-gradient 8s ease infinite",
+        "gradient-slow": "gradient-slow 12s ease infinite",
         "spin-slow": "spin-slow 2s linear infinite",
         "roll-spin": "roll-spin 0.1s linear infinite",
       },

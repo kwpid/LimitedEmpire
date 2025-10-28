@@ -164,23 +164,18 @@ export default function Inventory() {
       ) : filteredInventory.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {filteredInventory.map((stackedItem, index) => (
-            <div key={`${stackedItem.item.id}-${stackedItem.serialNumber || index}`} className="relative">
-              <ItemCard
-                item={stackedItem.item}
-                serialNumber={stackedItem.serialNumber}
-                onClick={() =>
-                  setSelectedItem({
-                    item: stackedItem.item,
-                    serialNumber: stackedItem.serialNumber,
-                  })
-                }
-              />
-              {stackedItem.count > 1 && (
-                <div className="absolute top-2 right-2 bg-black/80 text-white px-2 py-1 rounded-md text-xs font-bold border border-white/20">
-                  x{stackedItem.count}
-                </div>
-              )}
-            </div>
+            <ItemCard
+              key={`${stackedItem.item.id}-${stackedItem.serialNumber || index}`}
+              item={stackedItem.item}
+              serialNumber={stackedItem.serialNumber}
+              stackCount={stackedItem.count}
+              onClick={() =>
+                setSelectedItem({
+                  item: stackedItem.item,
+                  serialNumber: stackedItem.serialNumber,
+                })
+              }
+            />
           ))}
         </div>
       ) : (

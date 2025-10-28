@@ -10,12 +10,21 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ItemCard } from "@/components/ItemCard";
 import { SlotMachineRoll } from "@/components/SlotMachineRoll";
 import { getRarityClass, getRarityGlow, formatValue } from "@/lib/rarity";
-import { Dices, Loader2 } from "lucide-react";
+import { Dices, Loader2, TrendingUp, Package, Gem, Hash } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
+import { RARITY_TIERS } from "@shared/schema";
+
+interface UserStats {
+  totalRolls: number;
+  totalItems: number;
+  uniqueItems: number;
+  totalValue: number;
+  rarestItem: { item: Item; count: number } | null;
+}
 
 export default function RollScreen() {
-  const { user } = useAuth();
+  const { user, refetchUser } = useAuth();
   const { toast } = useToast();
   const [items, setItems] = useState<Item[]>([]);
   const [rolling, setRolling] = useState(false);
@@ -24,6 +33,13 @@ export default function RollScreen() {
   const [bestRolls, setBestRolls] = useState<InventoryItemWithDetails[]>([]);
   const [globalRolls, setGlobalRolls] = useState<any[]>([]);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [userStats, setUserStats] = useState<UserStats>({
+    totalRolls: 0,
+    totalItems: 0,
+    uniqueItems: 0,
+    totalValue: 0,
+    rarestItem: null,
+  });
   const rollingRef = useRef(false);
 
   useEffect(() => {
@@ -31,8 +47,62 @@ export default function RollScreen() {
     if (user) {
       loadBestRolls();
       loadGlobalRolls();
+      loadUserStats();
     }
   }, [user]);
+
+  const loadUserStats = async () => {
+    if (!user) return;
+
+    const inventoryRef = collection(db, "inventory");
+    const q = query(inventoryRef, where("userId", "==", user.firebaseUid));
+    const snapshot = await getDocs(q);
+
+    const itemIdCounts = new Map<string, number>();
+    const uniqueItemIds = new Set<string>();
+
+    snapshot.docs.forEach((doc) => {
+      const invItem = doc.data();
+      const itemId = invItem.itemId;
+      uniqueItemIds.add(itemId);
+      itemIdCounts.set(itemId, (itemIdCounts.get(itemId) || 0) + 1);
+    });
+
+    const itemPromises = Array.from(uniqueItemIds).map(async (itemId) => {
+      const itemDoc = await getDocs(query(collection(db, "items"), where("__name__", "==", itemId)));
+      if (!itemDoc.empty) {
+        return { id: itemDoc.docs[0].id, ...itemDoc.docs[0].data() } as Item;
+      }
+      return null;
+    });
+
+    const itemResults = await Promise.all(itemPromises);
+    const items = itemResults.filter((item): item is Item => item !== null);
+
+    const itemCounts = new Map<string, { item: Item; count: number }>();
+    let totalValue = 0;
+
+    items.forEach((item) => {
+      const count = itemIdCounts.get(item.id) || 0;
+      totalValue += item.value * count;
+      itemCounts.set(item.id, { item, count });
+    });
+
+    let rarestItem: { item: Item; count: number } | null = null;
+    for (const itemData of Array.from(itemCounts.values())) {
+      if (!rarestItem || itemData.item.value > rarestItem.item.value) {
+        rarestItem = itemData;
+      }
+    }
+
+    setUserStats({
+      totalRolls: user.rollCount || 0,
+      totalItems: snapshot.size,
+      uniqueItems: itemCounts.size,
+      totalValue,
+      rarestItem,
+    });
+  };
 
   const loadItems = async () => {
     const itemsRef = collection(db, "items");
@@ -100,8 +170,12 @@ export default function RollScreen() {
         description: `${result.item.name} - ${formatValue(result.item.value)}${result.serialNumber ? ` #${result.serialNumber}` : ""}`,
       });
 
-      await loadItems();
-      await loadBestRolls();
+      await Promise.all([
+        loadItems(),
+        loadBestRolls(),
+        loadUserStats(),
+        refetchUser(),
+      ]);
     } catch (error: any) {
       console.error("Roll error:", error);
       setIsAnimating(false);
@@ -131,6 +205,69 @@ export default function RollScreen() {
 
   return (
     <div className="container mx-auto p-6 max-w-7xl space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Your Stats</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="text-center">
+              <div className="flex items-center justify-center mb-2">
+                <Dices className="w-5 h-5 text-primary" />
+              </div>
+              <p className="text-2xl font-bold tabular-nums">{userStats.totalRolls.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">Rolls</p>
+            </div>
+            <div className="text-center">
+              <div className="flex items-center justify-center mb-2">
+                <Package className="w-5 h-5 text-primary" />
+              </div>
+              <p className="text-2xl font-bold tabular-nums">{userStats.totalItems.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">Total Items</p>
+            </div>
+            <div className="text-center">
+              <div className="flex items-center justify-center mb-2">
+                <Gem className="w-5 h-5 text-primary" />
+              </div>
+              <p className="text-2xl font-bold tabular-nums">{userStats.uniqueItems.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">Unique Items</p>
+            </div>
+            <div className="text-center">
+              <div className="flex items-center justify-center mb-2">
+                <TrendingUp className="w-5 h-5 text-primary" />
+              </div>
+              <p className="text-2xl font-bold tabular-nums">{formatValue(userStats.totalValue)}</p>
+              <p className="text-xs text-muted-foreground">Total Value</p>
+            </div>
+            <div className="text-center">
+              <div className="flex items-center justify-center mb-2">
+                <Hash className="w-5 h-5 text-primary" />
+              </div>
+              <p className="text-2xl font-bold tabular-nums">#{user?.userId || 0}</p>
+              <p className="text-xs text-muted-foreground">User ID</p>
+            </div>
+          </div>
+          {userStats.rarestItem && (
+            <div className="mt-4 pt-4 border-t">
+              <p className="text-xs text-muted-foreground mb-2">Rarest Item</p>
+              <div className="flex items-center gap-3">
+                <img
+                  src={userStats.rarestItem.item.imageUrl}
+                  alt={userStats.rarestItem.item.name}
+                  className="w-12 h-12 rounded-md object-cover"
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold">{userStats.rarestItem.item.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatValue(userStats.rarestItem.item.value)} • x{userStats.rarestItem.count}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid lg:grid-cols-[1fr,300px,300px] gap-6">
         <Card className="lg:col-span-1">
           <CardHeader>

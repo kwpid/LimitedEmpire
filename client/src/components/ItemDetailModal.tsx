@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import type { Item } from "@shared/schema";
-import { getRarityClass, getRarityGlow, formatValue } from "@/lib/rarity";
+import { getRarityClass, getRarityGlow, formatValue, getRarityColor } from "@/lib/rarity";
 import { RARITY_TIERS, calculateRollChance } from "@shared/schema";
 import { useAuth } from "@/contexts/AuthContext";
 import { doc, getDoc } from "firebase/firestore";
@@ -50,7 +51,9 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
 
   const rarityClass = getRarityClass(item.rarity);
   const rarityGlow = getRarityGlow(item.rarity);
+  const rarityColor = getRarityColor(item.rarity);
   const rollChance = calculateRollChance(item.value);
+  const isInsane = item.rarity === "INSANE";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -59,68 +62,94 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
           <DialogTitle className="text-2xl">{item.name}</DialogTitle>
         </DialogHeader>
         <div className="grid md:grid-cols-[300px,1fr] gap-6">
-          <div className={`aspect-square border-2 rounded-lg overflow-hidden ${rarityClass} ${rarityGlow}`}>
+          <div className={`aspect-square border-2 rounded-lg overflow-hidden relative ${rarityClass} ${rarityGlow}`}>
+            {isInsane && (
+              <div 
+                className="absolute inset-0 opacity-30 animate-gradient-slow"
+                style={{
+                  background: "linear-gradient(135deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3)",
+                  backgroundSize: "400% 400%",
+                }}
+              />
+            )}
             <img
               src={item.imageUrl}
               alt={item.name}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover relative z-10"
               onError={(e) => {
                 e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Crect width='300' height='300' fill='%23333'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23fff' font-size='72' font-weight='bold'%3E%3F%3C/text%3E%3C/svg%3E";
               }}
             />
+            <Badge 
+              variant="outline" 
+              className="absolute top-3 left-3 text-sm font-bold z-20"
+              style={!isInsane ? { 
+                backgroundColor: `${rarityColor}20`,
+                borderColor: rarityColor,
+                color: rarityColor
+              } : {
+                background: "linear-gradient(135deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff)",
+                color: "white",
+                borderColor: "white"
+              }}
+            >
+              {RARITY_TIERS[item.rarity].name}
+            </Badge>
+            <Badge variant="secondary" className="absolute bottom-3 left-3 text-sm z-20" data-testid="text-stock-info">
+              {item.stockType === "infinite"
+                ? "∞ Stock"
+                : `${item.remainingStock}/${item.totalStock}`}
+            </Badge>
+            {serialNumber !== undefined && (
+              <Badge variant="secondary" className="absolute top-3 right-3 text-sm z-20" data-testid="badge-serial-number">
+                #{serialNumber}
+              </Badge>
+            )}
           </div>
           <div className="space-y-4">
-            <div>
-              <h3 className="text-sm font-medium text-muted-foreground mb-2">Description</h3>
-              <p className="text-sm" data-testid="text-item-description">{item.description}</p>
+            <Card>
+              <CardContent className="p-4">
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">Description</h3>
+                <p className="text-sm" data-testid="text-item-description">{item.description}</p>
+              </CardContent>
+            </Card>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <Card>
+                <CardContent className="p-3">
+                  <h3 className="text-xs font-medium text-muted-foreground mb-1">Value</h3>
+                  <p className="font-bold text-lg tabular-nums" data-testid="text-detail-value">
+                    {formatValue(item.value)}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-3">
+                  <h3 className="text-xs font-medium text-muted-foreground mb-1">Roll Chance</h3>
+                  <p className="text-sm tabular-nums font-semibold" data-testid="text-roll-chance">
+                    {rollChance.toFixed(Math.max(2, Math.ceil(-Math.log10(rollChance))))}%
+                  </p>
+                </CardContent>
+              </Card>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Rarity</h3>
-                <Badge variant="outline" data-testid="badge-item-rarity">
-                  {RARITY_TIERS[item.rarity].name}
-                </Badge>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Value</h3>
-                <p className="font-bold text-lg tabular-nums" data-testid="text-detail-value">
-                  {formatValue(item.value)}
-                </p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Roll Chance</h3>
-                <p className="text-sm tabular-nums" data-testid="text-roll-chance">
-                  {rollChance.toFixed(Math.max(2, Math.ceil(-Math.log10(rollChance))))}%
-                </p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Stock</h3>
-                <p className="text-sm" data-testid="text-stock-info">
-                  {item.stockType === "infinite"
-                    ? "Infinite"
-                    : `${item.remainingStock}/${item.totalStock}`}
-                </p>
-              </div>
-            </div>
-            {serialNumber !== undefined && (
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Serial Number</h3>
-                <Badge variant="secondary" data-testid="badge-serial-number">
-                  #{serialNumber}
-                </Badge>
-              </div>
-            )}
+
             {creatorUsername && (
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground mb-1">Uploaded By</h3>
-                <p className="text-sm font-medium" data-testid="text-creator-username">
-                  {creatorUsername}
-                </p>
-              </div>
+              <Card>
+                <CardContent className="p-3">
+                  <h3 className="text-xs font-medium text-muted-foreground mb-1">Uploaded By</h3>
+                  <p className="text-sm font-medium" data-testid="text-creator-username">
+                    {creatorUsername}
+                  </p>
+                </CardContent>
+              </Card>
             )}
+
             {item.offSale && (
-              <Badge variant="destructive">Currently Off-Sale</Badge>
+              <Badge variant="destructive" className="w-full justify-center py-2">
+                Currently Off-Sale
+              </Badge>
             )}
+            
             {user?.isAdmin && onEdit && (
               <Button onClick={onEdit} className="w-full" data-testid="button-edit-item">
                 Edit Item
