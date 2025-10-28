@@ -7,10 +7,21 @@
 
 **Solution**: Updated the security rules to allow authenticated users to update stock-related fields (`remainingStock`, `totalOwners`) while keeping admin-only control over critical fields (`name`, `value`, `rarity`, `offSale`, `stockType`, `totalStock`).
 
-### 2. "Require all reads to be executed before all writes" when selling
-**Problem**: The sell transaction was performing a read operation after write operations, violating Firebase's transaction requirement.
+### 2. "Require all reads to be executed before all writes" errors
+**Problem**: Both roll and sell transactions were performing write operations before all reads completed, violating Firebase's strict transaction requirement.
 
-**Solution**: Reorganized the transaction in `sellService.ts` to ensure all reads happen before any writes.
+**Solution**: 
+- Fixed `rollService.ts`: Moved all transaction writes (item updates, ownership creation, user/admin updates) to the end of the transaction after all reads complete
+- Fixed `sellService.ts`: Reorganized to ensure all reads (user, admin, item) happen before any writes
+- Both services now follow Firebase's read-before-write contract
+
+### 3. Auto-roll not stopping properly
+**Problem**: Auto-roll would continue even after being toggled off due to stale closure-captured state.
+
+**Solution**: 
+- Implemented refs to track current auto-roll state and timeout handles
+- Recursive setTimeout pattern waits 2 seconds after each roll completes (including 2.1s animation)
+- Properly cleans up timeouts when auto-roll is disabled
 
 ## Next Steps - IMPORTANT
 

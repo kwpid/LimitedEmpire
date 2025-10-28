@@ -202,14 +202,19 @@ None specified yet.
 
 ## Recent Changes
 
-### October 28, 2025 (Latest) - Firebase Permission Fixes
+### October 28, 2025 (Latest) - Firebase & Auto-Roll Fixes
+- **Firebase Transaction Fixes**: Fixed "require all reads to be executed before all writes" errors
+  - Fixed rollService.ts transaction: moved all writes (item, ownership, user, admin) to end of transaction
+  - Fixed sellService.ts transaction: ensured all reads happen before any writes
+  - Both services now follow Firebase's strict read-before-write rule
 - **Firebase Security Rules**: Fixed "Insufficient or missing permissions" error when rolling
   - Updated rules to allow authenticated users to update stock-related fields (remainingStock, totalOwners)
   - Admins retain exclusive control over critical fields (name, value, rarity, offSale, stockType, totalStock)
   - **ACTION REQUIRED**: Deploy updated rules from FIREBASE_RULES.md to Firebase Console
-- **Sell Transaction Fix**: Fixed "require all reads to be executed before all writes" error
-  - Reorganized sellService.ts transaction to ensure all reads happen before writes
-  - Maintains data consistency and follows Firebase transaction requirements
+- **Auto-Roll Enhancement**: Fixed auto-roll to properly stop when toggled off
+  - Now uses refs to track current state instead of closure-captured values
+  - Waits exactly 2 seconds after each roll completes (after 2.1s animation) before next roll
+  - Properly cleans up timeouts when disabled
 - See FIREBASE_SETUP_INSTRUCTIONS.md for detailed setup instructions
 
 ### October 28, 2025 (Earlier)
