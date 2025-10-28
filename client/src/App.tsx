@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import { Route, Switch, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -12,15 +12,18 @@ import Inventory from "./pages/Inventory";
 import ItemIndex from "./pages/ItemIndex";
 import Settings from "./pages/Settings";
 import Players from "./pages/Players";
+import Leaderboard from "./pages/Leaderboard";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { AdminPanel } from "@/components/AdminPanel";
 import { GlobalRollToast } from "@/components/GlobalRollToast";
 import { BanOverlay } from "@/components/BanOverlay";
-import { Dices, Package, Database, Shield, LogOut, Sparkles, Settings as SettingsIcon, Users } from "lucide-react";
+import { Dices, Package, Database, Shield, LogOut, Sparkles, Settings as SettingsIcon, Users, Trophy } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth } from "./lib/firebase";
 import type { Item } from "@shared/schema";
+
+const MemoizedRollScreen = memo(RollScreen);
 
 function AppContent() {
   const { firebaseUser, user, loading } = useAuth();
@@ -111,7 +114,7 @@ function AppContent() {
 
       <div className="flex-1 container mx-auto px-4 py-4 pb-8">
         <Tabs value={currentTab} onValueChange={(value) => setLocation(value === "roll" ? "/" : `/${value}`)}>
-          <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-5 mb-6">
+          <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-6 mb-6">
             <TabsTrigger value="roll" data-testid="tab-roll">
               <Dices className="w-4 h-4 mr-2" />
               Roll
@@ -124,6 +127,10 @@ function AppContent() {
               <Users className="w-4 h-4 mr-2" />
               Players
             </TabsTrigger>
+            <TabsTrigger value="leaderboard" data-testid="tab-leaderboard">
+              <Trophy className="w-4 h-4 mr-2" />
+              Leaderboard
+            </TabsTrigger>
             <TabsTrigger value="index" data-testid="tab-index">
               <Database className="w-4 h-4 mr-2" />
               Index
@@ -135,15 +142,21 @@ function AppContent() {
           </TabsList>
         </Tabs>
 
-        <Switch>
-          <Route path="/" component={RollScreen} />
-          <Route path="/inventory" component={Inventory} />
-          <Route path="/players" component={Players} />
-          <Route path="/index">
-            {() => <ItemIndex onEditItem={openAdminPanel} />}
-          </Route>
-          <Route path="/settings" component={Settings} />
-        </Switch>
+        <div style={{ display: currentTab === "roll" ? "block" : "none" }}>
+          <MemoizedRollScreen />
+        </div>
+
+        <div style={{ display: currentTab !== "roll" ? "block" : "none" }}>
+          <Switch>
+            <Route path="/inventory" component={Inventory} />
+            <Route path="/players" component={Players} />
+            <Route path="/leaderboard" component={Leaderboard} />
+            <Route path="/index">
+              {() => <ItemIndex onEditItem={openAdminPanel} />}
+            </Route>
+            <Route path="/settings" component={Settings} />
+          </Switch>
+        </div>
       </div>
 
       <footer className="w-full border-t bg-muted/30 py-6 mt-auto">

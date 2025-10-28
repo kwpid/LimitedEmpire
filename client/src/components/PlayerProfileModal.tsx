@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { User, Item } from "@shared/schema";
 import { formatValue } from "@/lib/rarity";
-import { UserPlus, ArrowRightLeft, Flag, Ban, User as UserIcon, Dices, DollarSign, Clock, Calendar, Package } from "lucide-react";
+import { ArrowRightLeft, Flag, Ban, User as UserIcon, Dices, DollarSign, Clock, Calendar, Package } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { doc, getDoc, collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -180,10 +180,6 @@ export function PlayerProfileModal({ player, open, onOpenChange }: PlayerProfile
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" disabled data-testid="button-add-friend">
-                <UserPlus className="w-4 h-4 mr-2" />
-                Add Friend
-              </Button>
               <Button variant="outline" disabled data-testid="button-send-trade">
                 <ArrowRightLeft className="w-4 h-4 mr-2" />
                 Send Trade
