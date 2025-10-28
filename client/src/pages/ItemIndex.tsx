@@ -10,7 +10,11 @@ import { Search, Database } from "lucide-react";
 import { RARITY_TIERS } from "@shared/schema";
 import { useAuth } from "@/contexts/AuthContext";
 
-export default function ItemIndex() {
+interface ItemIndexProps {
+  onEditItem?: (item: Item) => void;
+}
+
+export default function ItemIndex({ onEditItem }: ItemIndexProps = {}) {
   const { user } = useAuth();
   const [items, setItems] = useState<Item[]>([]);
   const [filteredItems, setFilteredItems] = useState<Item[]>([]);
@@ -18,7 +22,6 @@ export default function ItemIndex() {
   const [rarityFilter, setRarityFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
-  const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -72,8 +75,8 @@ export default function ItemIndex() {
   };
 
   const handleEdit = () => {
-    if (selectedItem) {
-      setEditingItem(selectedItem);
+    if (selectedItem && onEditItem) {
+      onEditItem(selectedItem);
       setSelectedItem(null);
     }
   };

@@ -126,7 +126,7 @@ export function ItemEditForm({ item, onSuccess }: ItemEditFormProps) {
           <div>
             <p className="text-xs text-muted-foreground mb-1">Roll Chance</p>
             <p className="text-sm tabular-nums" data-testid="edit-preview-chance">
-              {rollChance < 0.01 ? rollChance.toExponential(2) : rollChance.toFixed(4)}%
+              {rollChance.toFixed(Math.max(2, Math.ceil(-Math.log10(rollChance))))}%
             </p>
           </div>
         </div>

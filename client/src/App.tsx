@@ -122,7 +122,9 @@ function AppContent() {
         <Switch>
           <Route path="/" component={RollScreen} />
           <Route path="/inventory" component={Inventory} />
-          <Route path="/index" component={ItemIndex} />
+          <Route path="/index">
+            {() => <ItemIndex onEditItem={openAdminPanel} />}
+          </Route>
         </Switch>
       </div>
 

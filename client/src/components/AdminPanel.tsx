@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ItemCreateForm } from "@/components/ItemCreateForm";
@@ -14,6 +14,12 @@ interface AdminPanelProps {
 
 export function AdminPanel({ open, onOpenChange, editingItem, onItemSaved }: AdminPanelProps) {
   const [activeTab, setActiveTab] = useState(editingItem ? "edit" : "create");
+
+  useEffect(() => {
+    if (open && editingItem) {
+      setActiveTab("edit");
+    }
+  }, [open, editingItem]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
