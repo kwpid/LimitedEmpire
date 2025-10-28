@@ -58,8 +58,14 @@ export const userSchema = z.object({
   banReason: z.string().optional(),
   banExpiresAt: z.number().optional(), // timestamp for temporary bans
   createdAt: z.number(), // timestamp
+  dateJoined: z.number().default(1730079600000), // Oct 28 2025 USA (midnight EST) - for existing users
   rollCount: z.number().default(0), // Total number of rolls performed
   cash: z.number().default(1000), // User's currency
+  customStatus: z.string().max(120).default(""), // User's custom status message
+  description: z.string().max(1000).default(""), // User's profile description
+  showcaseItems: z.array(z.string()).max(5).default([]), // Array of inventory item IDs (max 5)
+  timeSpentOnSite: z.number().default(0), // Total time spent on site in milliseconds
+  lastActive: z.number().default(Date.now), // Last activity timestamp for online/offline tracking
   settings: z.object({
     autoSellRarities: z.array(z.enum(["COMMON", "UNCOMMON", "RARE", "ULTRA_RARE", "EPIC", "ULTRA_EPIC", "MYTHIC", "INSANE"])).default([]),
   }).default({ autoSellRarities: [] }),
