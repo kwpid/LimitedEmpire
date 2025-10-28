@@ -43,7 +43,7 @@ export function ItemCard({ item, serialNumber, onClick, stackCount }: ItemCardPr
         />
         <Badge 
           variant="outline" 
-          className="absolute top-2 left-2 text-xs font-bold z-[20]"
+          className="absolute top-2 left-2 text-xs font-bold z-[30] backdrop-blur-sm"
           style={!isInsane ? { 
             backgroundColor: `${rarityColor}20`,
             borderColor: rarityColor,
@@ -58,18 +58,18 @@ export function ItemCard({ item, serialNumber, onClick, stackCount }: ItemCardPr
           {RARITY_TIERS[item.rarity].name}
         </Badge>
         {serialNumber !== undefined ? (
-          <Badge variant="secondary" className="absolute top-2 right-2 text-xs z-[20] bg-secondary/90 backdrop-blur-sm" data-testid={`badge-serial-${serialNumber}`}>
+          <Badge variant="secondary" className="absolute top-2 right-2 text-xs z-[30] bg-secondary/90 backdrop-blur-sm" data-testid={`badge-serial-${serialNumber}`}>
             #{serialNumber}
           </Badge>
         ) : (
           item.stockType === "limited" && (
-            <Badge variant="secondary" className="absolute top-2 right-2 text-xs z-[20] bg-secondary/90 backdrop-blur-sm" data-testid={`badge-stock-${item.id}`}>
+            <Badge variant="secondary" className="absolute top-2 right-2 text-xs z-[30] bg-secondary/90 backdrop-blur-sm" data-testid={`badge-stock-${item.id}`}>
               {item.remainingStock}/{item.totalStock}
             </Badge>
           )
         )}
         {item.offSale && (
-          <Badge variant="destructive" className="absolute bottom-2 right-2 z-[20] bg-destructive/90 backdrop-blur-sm">
+          <Badge variant="destructive" className="absolute bottom-2 right-2 z-[30] bg-destructive/90 backdrop-blur-sm">
             Off-Sale
           </Badge>
         )}
