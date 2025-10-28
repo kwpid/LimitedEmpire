@@ -1,19 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { collection, getDocs, query, where, orderBy, limit } from "firebase/firestore";
+import { collection, getDocs, query, where, orderBy, limit, doc, updateDoc, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import type { Item, InventoryItemWithDetails } from "@shared/schema";
+import type { Item } from "@shared/schema";
 import { useAuth } from "@/contexts/AuthContext";
-import { ItemCard } from "@/components/ItemCard";
 import { SlotMachineRoll } from "@/components/SlotMachineRoll";
 import { getRarityClass, getRarityGlow, formatValue } from "@/lib/rarity";
 import { Dices, Loader2, TrendingUp, Package, Gem, Hash } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
-import { RARITY_TIERS } from "@shared/schema";
+import type { RarityTier } from "@shared/schema";
 
 interface UserStats {
   totalRolls: number;
@@ -24,14 +23,14 @@ interface UserStats {
 }
 
 interface SavedRoll {
-  id: string;
-  item: Item;
+  itemId: string;
+  itemName: string;
+  itemImageUrl: string;
+  itemValue: number;
+  itemRarity: RarityTier;
+  serialNumber?: number | null;
   timestamp: number;
-  serialNumber?: number;
 }
-
-const BEST_ROLLS_STORAGE_KEY = "limitedempire_best_rolls";
-const GLOBAL_ROLLS_STORAGE_KEY = "limitedempire_global_rolls";
 
 export default function RollScreen() {
   const { user, refetchUser } = useAuth();
@@ -55,10 +54,6 @@ export default function RollScreen() {
   const autoRollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    loadSavedRolls();
-  }, []);
-
-  useEffect(() => {
     loadItems();
     if (user) {
       loadBestRolls();
@@ -66,48 +61,6 @@ export default function RollScreen() {
       loadUserStats();
     }
   }, [user]);
-
-  const loadSavedRolls = () => {
-    try {
-      const savedBest = localStorage.getItem(BEST_ROLLS_STORAGE_KEY);
-      const savedGlobal = localStorage.getItem(GLOBAL_ROLLS_STORAGE_KEY);
-      
-      if (savedBest) {
-        setBestRolls(JSON.parse(savedBest));
-      }
-      if (savedGlobal) {
-        setGlobalRolls(JSON.parse(savedGlobal));
-      }
-    } catch (error) {
-      console.error("Error loading saved rolls:", error);
-    }
-  };
-
-  const saveRollToStorage = (item: Item, serialNumber?: number, isGlobal: boolean = false) => {
-    const newRoll: SavedRoll = {
-      id: `${Date.now()}-${item.id}`,
-      item,
-      timestamp: Date.now(),
-      serialNumber,
-    };
-
-    try {
-      if (isGlobal && item.value >= 2500000) {
-        const current = globalRolls.filter(r => Date.now() - r.timestamp < 5 * 60 * 1000);
-        const updated = [newRoll, ...current].slice(0, 10);
-        setGlobalRolls(updated);
-        localStorage.setItem(GLOBAL_ROLLS_STORAGE_KEY, JSON.stringify(updated));
-      }
-
-      if (item.value >= 250000) {
-        const updated = [newRoll, ...bestRolls].slice(0, 10);
-        setBestRolls(updated);
-        localStorage.setItem(BEST_ROLLS_STORAGE_KEY, JSON.stringify(updated));
-      }
-    } catch (error) {
-      console.error("Error saving roll:", error);
-    }
-  };
 
   const loadUserStats = async () => {
     if (!user) return;
@@ -175,56 +128,86 @@ export default function RollScreen() {
     setItems(loadedItems);
   };
 
-  const loadBestRolls = async () => {
+  const loadBestRolls = () => {
     if (!user) return;
-    const inventoryRef = collection(db, "inventory");
-    const q = query(inventoryRef, where("userId", "==", user.firebaseUid), orderBy("rolledAt", "desc"), limit(20));
-    const snapshot = await getDocs(q);
-    
-    const rolls: SavedRoll[] = [];
-    for (const doc of snapshot.docs) {
-      const invItem = { id: doc.id, ...doc.data() } as any;
-      const itemDoc = await getDocs(query(collection(db, "items"), where("__name__", "==", invItem.itemId)));
-      if (!itemDoc.empty) {
-        const item = { id: itemDoc.docs[0].id, ...itemDoc.docs[0].data() } as Item;
-        if (item.value >= 250000) {
-          rolls.push({
-            id: doc.id,
-            item,
-            timestamp: invItem.rolledAt || Date.now(),
-            serialNumber: invItem.serialNumber,
-          });
-        }
-      }
-    }
-    const updated = rolls.slice(0, 10);
-    setBestRolls(updated);
-    localStorage.setItem(BEST_ROLLS_STORAGE_KEY, JSON.stringify(updated));
+    const rolls = user.bestRolls || [];
+    setBestRolls(rolls.slice(0, 10));
   };
 
   const loadGlobalRolls = async () => {
-    const rollsRef = collection(db, "globalRolls");
-    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-    const q = query(rollsRef, where("timestamp", ">=", fiveMinutesAgo), orderBy("timestamp", "desc"), limit(10));
-    const snapshot = await getDocs(q);
-    const rolls: SavedRoll[] = [];
-    
-    for (const doc of snapshot.docs) {
-      const data = doc.data();
-      const itemDoc = await getDocs(query(collection(db, "items"), where("__name__", "==", data.itemId)));
-      if (!itemDoc.empty) {
-        const item = { id: itemDoc.docs[0].id, ...itemDoc.docs[0].data() } as Item;
+    try {
+      const rollsRef = collection(db, "globalRolls");
+      const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+      const q = query(rollsRef, where("timestamp", ">=", fiveMinutesAgo), orderBy("timestamp", "desc"), limit(10));
+      const snapshot = await getDocs(q);
+      
+      const rolls: SavedRoll[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
         rolls.push({
-          id: doc.id,
-          item,
-          timestamp: data.timestamp,
+          itemId: data.itemId || '',
+          itemName: data.itemName || '',
+          itemImageUrl: data.itemImageUrl || '',
+          itemValue: data.itemValue || 0,
+          itemRarity: data.rarity || 'COMMON',
           serialNumber: data.serialNumber,
+          timestamp: data.timestamp || Date.now(),
         });
-      }
+      });
+      
+      setGlobalRolls(rolls);
+    } catch (error) {
+      console.error("Error loading global rolls:", error);
+      setGlobalRolls([]);
     }
-    
-    setGlobalRolls(rolls);
-    localStorage.setItem(GLOBAL_ROLLS_STORAGE_KEY, JSON.stringify(rolls));
+  };
+
+  const saveRollToDatabase = async (item: Item, serialNumber?: number | null) => {
+    if (!user) return;
+
+    const newRoll: SavedRoll = {
+      itemId: item.id,
+      itemName: item.name,
+      itemImageUrl: item.imageUrl,
+      itemValue: item.value,
+      itemRarity: item.rarity,
+      serialNumber,
+      timestamp: Date.now(),
+    };
+
+    try {
+      // Save to user's best rolls if >= 250K
+      if (item.value >= 250000) {
+        const currentBest = user.bestRolls || [];
+        const updated = [newRoll, ...currentBest].slice(0, 10);
+        
+        const userRef = doc(db, "users", user.firebaseUid);
+        await updateDoc(userRef, {
+          bestRolls: updated
+        });
+        
+        setBestRolls(updated);
+      }
+
+      // Save to global rolls if >= 2.5M
+      if (item.value >= 2500000) {
+        await addDoc(collection(db, "globalRolls"), {
+          username: user.username,
+          itemId: item.id,
+          itemName: item.name,
+          itemImageUrl: item.imageUrl,
+          itemValue: item.value,
+          rarity: item.rarity,
+          serialNumber,
+          timestamp: Date.now(),
+        });
+        
+        // Reload global rolls to show the new one
+        await loadGlobalRolls();
+      }
+    } catch (error) {
+      console.error("Error saving roll to database:", error);
+    }
   };
 
   const performRoll = useCallback(async () => {
@@ -244,7 +227,7 @@ export default function RollScreen() {
       
       setIsAnimating(false);
       
-      saveRollToStorage(result.item, result.serialNumber ?? undefined, result.item.value >= 2500000);
+      await saveRollToDatabase(result.item, result.serialNumber ?? undefined);
       
       if (result.autoSold) {
         toast({
@@ -260,11 +243,11 @@ export default function RollScreen() {
 
       await Promise.all([
         loadItems(),
-        loadBestRolls(),
-        loadGlobalRolls(),
         loadUserStats(),
         refetchUser(),
       ]);
+      
+      loadBestRolls();
     } catch (error: any) {
       console.error("Roll error:", error);
       setIsAnimating(false);
@@ -277,7 +260,7 @@ export default function RollScreen() {
       setRolling(false);
       rollingRef.current = false;
     }
-  }, [user, rolling, toast, bestRolls, globalRolls]);
+  }, [user, rolling, toast]);
 
   useEffect(() => {
     autoRollRef.current = autoRoll;
@@ -394,20 +377,20 @@ export default function RollScreen() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2 max-h-[500px] overflow-y-auto">
-              {bestRolls.map((roll) => (
+              {bestRolls.map((roll, idx) => (
                 <div
-                  key={roll.id}
+                  key={`${roll.itemId}-${roll.timestamp}-${idx}`}
                   className="flex items-center gap-2 md:gap-3 p-2 rounded-lg hover-elevate"
-                  data-testid={`best-roll-${roll.id}`}
+                  data-testid={`best-roll-${idx}`}
                 >
                   <img
-                    src={roll.item.imageUrl}
-                    alt={roll.item.name}
+                    src={roll.itemImageUrl}
+                    alt={roll.itemName}
                     className="w-10 h-10 md:w-12 md:h-12 rounded-md object-cover flex-shrink-0"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs md:text-sm font-semibold truncate">{roll.item.name}</p>
-                    <p className="text-xs text-muted-foreground">{formatValue(roll.item.value)}</p>
+                    <p className="text-xs md:text-sm font-semibold truncate">{roll.itemName}</p>
+                    <p className="text-xs text-muted-foreground">{formatValue(roll.itemValue)}</p>
                     <p className="text-[10px] md:text-xs text-muted-foreground">{formatTimestamp(roll.timestamp)}</p>
                   </div>
                 </div>
@@ -522,18 +505,18 @@ export default function RollScreen() {
             <div className="space-y-2 max-h-[500px] overflow-y-auto">
               {globalRolls.map((roll, idx) => (
                 <div
-                  key={roll.id}
+                  key={`${roll.itemId}-${roll.timestamp}-${idx}`}
                   className="flex items-center gap-2 md:gap-3 p-2 rounded-lg hover-elevate"
                   data-testid={`global-roll-${idx}`}
                 >
                   <img
-                    src={roll.item.imageUrl}
-                    alt={roll.item.name}
+                    src={roll.itemImageUrl}
+                    alt={roll.itemName}
                     className="w-10 h-10 md:w-12 md:h-12 rounded-md object-cover flex-shrink-0"
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs md:text-sm font-semibold truncate">{roll.item.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{formatValue(roll.item.value)}</p>
+                    <p className="text-xs md:text-sm font-semibold truncate">{roll.itemName}</p>
+                    <p className="text-xs text-muted-foreground truncate">{formatValue(roll.itemValue)}</p>
                     <p className="text-[10px] md:text-xs text-muted-foreground">{formatTimestamp(roll.timestamp)}</p>
                   </div>
                 </div>

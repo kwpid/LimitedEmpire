@@ -70,6 +70,15 @@ export const userSchema = z.object({
     rolledAt: z.number(),
     amount: z.number().default(1),
   })).default([]),
+  bestRolls: z.array(z.object({
+    itemId: z.string(),
+    itemName: z.string(),
+    itemImageUrl: z.string(),
+    itemValue: z.number(),
+    itemRarity: z.enum(["COMMON", "UNCOMMON", "RARE", "ULTRA_RARE", "EPIC", "ULTRA_EPIC", "MYTHIC", "INSANE"]),
+    serialNumber: z.number().nullable().optional(),
+    timestamp: z.number(),
+  })).optional().default([]), // Last 10 high-value rolls (250K+)
 });
 
 export const insertUserSchema = userSchema.omit({ id: true });
