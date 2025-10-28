@@ -5,11 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { User, Item } from "@shared/schema";
 import { formatValue } from "@/lib/rarity";
-import { ArrowRightLeft, Flag, Ban, User as UserIcon, Dices, DollarSign, Clock, Calendar, Package } from "lucide-react";
+import { ArrowRightLeft, Flag, Ban, User as UserIcon, Dices, DollarSign, Clock, Calendar, Package, Hash } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { doc, getDoc, collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ItemCard } from "@/components/ItemCard";
+import { calculateUserBadges, calculateLeaderboardPositions, type BadgeConfig } from "@/lib/badgeConfig";
 
 interface PlayerProfileModalProps {
   player: User | null;
@@ -21,6 +22,7 @@ export function PlayerProfileModal({ player, open, onOpenChange }: PlayerProfile
   const [showcaseItems, setShowcaseItems] = useState<(Item & { serialNumber: number | null })[]>([]);
   const [inventoryItems, setInventoryItems] = useState<{ item: Item; serialNumber: number | null; stackCount: number; inventoryIds: string[] }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [badges, setBadges] = useState<BadgeConfig[]>([]);
 
   useEffect(() => {
     if (!player || !open) {
@@ -106,6 +108,21 @@ export function PlayerProfileModal({ player, open, onOpenChange }: PlayerProfile
     return inventoryItems.reduce((total, { item, stackCount }) => total + (item.value * stackCount), 0);
   }, [inventoryItems]);
 
+  useEffect(() => {
+    async function loadBadges() {
+      if (!player || !open) {
+        setBadges([]);
+        return;
+      }
+
+      const leaderboardPositions = await calculateLeaderboardPositions(player.userId);
+      const userBadges = await calculateUserBadges(player, totalInventoryValue, leaderboardPositions);
+      setBadges(userBadges);
+    }
+
+    loadBadges();
+  }, [player, open, totalInventoryValue]);
+
   const formatTimeSpent = (ms: number) => {
     const hours = Math.floor(ms / (1000 * 60 * 60));
     const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
@@ -139,9 +156,16 @@ export function PlayerProfileModal({ player, open, onOpenChange }: PlayerProfile
                 {player.username}
                 {player.isAdmin && <Badge variant="destructive">Admin</Badge>}
               </div>
-              {player.customStatus && (
-                <p className="text-sm font-normal text-muted-foreground">{player.customStatus}</p>
-              )}
+              <div className="flex items-center gap-2 text-sm font-normal text-muted-foreground">
+                <Hash className="w-3 h-3" />
+                <span>ID: {player.userId}</span>
+                {player.customStatus && (
+                  <>
+                    <span>•</span>
+                    <span>{player.customStatus}</span>
+                  </>
+                )}
+              </div>
             </div>
           </DialogTitle>
         </DialogHeader>
@@ -205,15 +229,41 @@ export function PlayerProfileModal({ player, open, onOpenChange }: PlayerProfile
               </Card>
             )}
 
-            <Card>
-              <CardContent className="p-4">
-                <h3 className="text-sm font-medium text-muted-foreground mb-2">Player Badges</h3>
-                <div className="text-center py-8">
-                  <Package className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                  <p className="text-sm text-muted-foreground">Coming Soon</p>
-                </div>
-              </CardContent>
-            </Card>
+            {badges.length > 0 && (
+              <Card>
+                <CardContent className="p-4">
+                  <h3 className="text-sm font-medium text-muted-foreground mb-3">Player Badges</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {badges.map((badge) => (
+                      <div
+                        key={badge.id}
+                        className="flex flex-col items-center gap-2 p-3 rounded-lg border bg-card hover:bg-accent transition-colors"
+                        data-testid={`badge-${badge.id}`}
+                      >
+                        <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: `${badge.color}20` }}>
+                          <img
+                            src={badge.icon}
+                            alt={badge.name}
+                            className="w-8 h-8 object-contain"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs font-semibold" style={{ color: badge.color }}>
+                            {badge.name}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            {badge.description}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {showcaseItems.length > 0 && (
               <Card>

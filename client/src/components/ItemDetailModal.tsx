@@ -170,10 +170,10 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
         </DialogHeader>
         <ScrollArea className="flex-1 overflow-auto pr-4">
         <div className="grid md:grid-cols-[300px,1fr] gap-6">
-          <div className={`aspect-square border-2 rounded-lg relative bg-black overflow-hidden ${rarityClass} ${rarityGlow}`}>
+          <div className={`aspect-square border-2 rounded-lg relative bg-black overflow-visible ${rarityClass} ${rarityGlow}`}>
             {isInsane && (
               <div 
-                className="absolute inset-0 opacity-30 z-[0] animate-gradient-slow pointer-events-none"
+                className="absolute inset-0 opacity-30 z-[1] animate-gradient-slow pointer-events-none"
                 style={{
                   background: "linear-gradient(135deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3)",
                   backgroundSize: "400% 400%",
@@ -183,16 +183,16 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
             <img
               src={item.imageUrl}
               alt={item.name}
-              className="absolute inset-0 w-full h-full object-cover z-[1]"
+              className="absolute inset-0 w-full h-full object-cover z-0 rounded-lg"
               onError={(e) => {
                 e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Crect width='300' height='300' fill='%23333'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23fff' font-size='72' font-weight='bold'%3E%3F%3C/text%3E%3C/svg%3E";
               }}
             />
             <Badge 
               variant="outline" 
-              className="absolute top-3 left-3 text-sm font-bold z-[30] backdrop-blur-sm"
+              className="absolute top-3 left-3 text-sm font-bold z-10 backdrop-blur-md"
               style={!isInsane ? { 
-                backgroundColor: `${rarityColor}20`,
+                backgroundColor: `${rarityColor}40`,
                 borderColor: rarityColor,
                 color: rarityColor
               } : {
@@ -204,13 +204,18 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
               {RARITY_TIERS[item.rarity].name}
             </Badge>
             {item.stockType === "limited" && (
-              <Badge variant="secondary" className="absolute top-3 right-3 text-sm z-[30] bg-secondary/90 backdrop-blur-sm" data-testid="text-stock-info">
+              <Badge variant="secondary" className="absolute top-3 right-3 text-sm z-10 bg-secondary backdrop-blur-md" data-testid="text-stock-info">
                 {item.remainingStock}/{item.totalStock}
               </Badge>
             )}
             {serialNumber !== undefined && (
-              <Badge variant="secondary" className="absolute bottom-3 left-3 text-sm z-[30] bg-secondary/90 backdrop-blur-sm" data-testid="badge-serial-number">
+              <Badge variant="secondary" className="absolute bottom-3 left-3 text-sm z-10 bg-secondary backdrop-blur-md" data-testid="badge-serial-number">
                 #{serialNumber}
+              </Badge>
+            )}
+            {item.offSale && (
+              <Badge variant="destructive" className="absolute bottom-3 right-3 z-10 bg-destructive backdrop-blur-md">
+                Off-Sale
               </Badge>
             )}
           </div>
