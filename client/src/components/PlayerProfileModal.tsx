@@ -11,7 +11,6 @@ import { doc, getDoc, collection, getDocs, query, where } from "firebase/firesto
 import { db } from "@/lib/firebase";
 import { ItemCard } from "@/components/ItemCard";
 import { calculateUserBadges, calculateLeaderboardPositions, type BadgeConfig } from "@/lib/badgeConfig";
-import { TradeDialog } from "@/components/TradeDialog";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface PlayerProfileModalProps {
@@ -26,7 +25,6 @@ export function PlayerProfileModal({ player, open, onOpenChange }: PlayerProfile
   const [inventoryItems, setInventoryItems] = useState<{ item: Item; serialNumber: number | null; stackCount: number; inventoryIds: string[] }[]>([]);
   const [loading, setLoading] = useState(true);
   const [badges, setBadges] = useState<BadgeConfig[]>([]);
-  const [tradeDialogOpen, setTradeDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!player || !open) {
@@ -215,16 +213,6 @@ export function PlayerProfileModal({ player, open, onOpenChange }: PlayerProfile
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {currentUser && player && currentUser.id !== player.id && (
-                <Button
-                  variant="outline"
-                  onClick={() => setTradeDialogOpen(true)}
-                  data-testid="button-send-trade"
-                >
-                  <ArrowRightLeft className="w-4 h-4 mr-2" />
-                  Send Trade
-                </Button>
-              )}
               <Button variant="outline" disabled data-testid="button-report">
                 <Flag className="w-4 h-4 mr-2" />
                 Report
@@ -234,12 +222,6 @@ export function PlayerProfileModal({ player, open, onOpenChange }: PlayerProfile
                 Block
               </Button>
             </div>
-            
-            <TradeDialog
-              open={tradeDialogOpen}
-              onOpenChange={setTradeDialogOpen}
-              recipient={player}
-            />
 
             {player.description && (
               <Card>
