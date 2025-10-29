@@ -6,13 +6,16 @@ Limited Empire is a web-based collection game where players acquire rare items t
 
 ## Recent Changes (October 29, 2025)
 
-**Trading System Removal:**
-- Completely removed the entire trading system (both frontend and backend)
-- Removed all trade-related routes, components, and schema definitions
-- Removed TradeCenter page, TradeDialog component
-- Removed trade settings from Settings page
-- Removed trade tab from navigation
-- Project now focuses on the core rolling and collection mechanics
+**Trading System Implementation:**
+- Implemented comprehensive Roblox-style trading system with Firestore backend
+- Added trade schema with status tracking, item arrays (min 1, max 7 per side), and cash limits
+- Created backend API routes with Firestore transactions for atomic trade operations
+- Built TradeModal component with dual-sided inventory selection, search, and cash inputs
+- Created TradesPage with tabs for inbound, outbound, accepted, and inactive trades
+- Added trade button to player profile modals
+- Implemented validation for NFT-locked items, item limits, and cash constraints
+- All API calls use authenticated apiRequest helper for proper Firebase auth
+- Trades expire after 7 days of inactivity
 
 **Development Environment:**
 - Firebase Admin SDK initialization made optional
