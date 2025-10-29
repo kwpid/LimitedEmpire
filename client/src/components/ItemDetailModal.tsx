@@ -188,33 +188,33 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
                 e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Crect width='300' height='300' fill='%23333'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23fff' font-size='72' font-weight='bold'%3E%3F%3C/text%3E%3C/svg%3E";
               }}
             />
-            {/* Top left badges: Rarity and Off-sale */}
-            <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
-              <Badge 
-                variant="outline" 
-                className="text-sm font-bold backdrop-blur-md whitespace-nowrap"
-                style={!isInsane ? { 
-                  backgroundColor: `${rarityColor}40`,
-                  borderColor: rarityColor,
-                  color: rarityColor
-                } : {
-                  background: "linear-gradient(135deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff)",
-                  color: "white",
-                  borderColor: "white"
-                }}
-              >
-                {RARITY_TIERS[item.rarity].name}
-              </Badge>
-              {item.offSale && (
-                <Badge variant="destructive" className="text-sm bg-destructive backdrop-blur-md whitespace-nowrap">
-                  Off-Sale
-                </Badge>
-              )}
-            </div>
+            {/* Rarity badge - Top left */}
+            <Badge 
+              variant="outline" 
+              className="absolute top-3 left-3 text-sm font-bold z-[15] backdrop-blur-md whitespace-nowrap"
+              style={!isInsane ? { 
+                backgroundColor: `${rarityColor}40`,
+                borderColor: rarityColor,
+                color: rarityColor
+              } : {
+                background: "linear-gradient(135deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff)",
+                color: "white",
+                borderColor: "white"
+              }}
+            >
+              {RARITY_TIERS[item.rarity].name}
+            </Badge>
 
-            {/* Top right badge: Serial */}
+            {/* Off-sale badge - Below rarity on left */}
+            {item.offSale && (
+              <Badge variant="destructive" className="absolute top-14 left-3 text-sm z-[15] bg-destructive backdrop-blur-md whitespace-nowrap">
+                Off-Sale
+              </Badge>
+            )}
+
+            {/* Serial badge - Top right */}
             {serialNumber !== undefined && (
-              <Badge variant="secondary" className="absolute top-3 right-3 text-sm z-20 bg-secondary backdrop-blur-md whitespace-nowrap" data-testid="badge-serial-number">
+              <Badge variant="secondary" className="absolute top-3 right-3 text-sm z-[30] bg-secondary backdrop-blur-md whitespace-nowrap" data-testid="badge-serial-number">
                 #{serialNumber}
               </Badge>
             )}
