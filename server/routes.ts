@@ -60,6 +60,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize Firebase Admin SDK
   initializeFirebaseAdmin();
   const admin = getFirebaseAdmin();
+  
+  if (!admin) {
+    console.warn('⚠️  Skipping Firebase-dependent routes - Firebase not initialized');
+    const server = createServer(app);
+    return server;
+  }
+  
   const db = admin.firestore();
 
   // Webhook endpoint for item releases (admin only)
