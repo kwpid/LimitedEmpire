@@ -46,6 +46,7 @@ service cloud.firestore {
                       request.resource.data.isBanned == false; // MUST be false on creation
       
       // Users can only update their own document (but CANNOT change admin status, ban status, userId, or firebaseUid)
+      // Users CAN update their own inventory and cash (for trades, rolling, etc.)
       // Admins can update all fields except protected ones (isAdmin, userId, firebaseUid)
       // Moderators can ONLY update ban-related fields: isBanned, isPermanentBan, banReason, banNotes, banExpiresAt
       allow update: if (isAuthenticated() &&
