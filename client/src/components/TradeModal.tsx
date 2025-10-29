@@ -254,9 +254,9 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
     try {
       await addDoc(collection(db, "trades"), {
         status: "pending",
-        senderId: user.id,
+        senderId: user.firebaseUid,
         senderUsername: user.username,
-        receiverId: targetUser.id,
+        receiverId: targetUser.firebaseUid,
         receiverUsername: targetUser.username,
         senderOffer: {
           items: selectedOffer,
