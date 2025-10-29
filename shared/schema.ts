@@ -254,3 +254,86 @@ export const insertAuditLogSchema = auditLogSchema.omit({ id: true });
 export type AuditLog = z.infer<typeof auditLogSchema>;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 
+// Trade Schema
+// Trades are stored in Firestore with automatic expiration after 7 days
+// Countering a trade creates a new pending trade with reversed roles
+export const tradeItemSchema = z.object({
+  inventoryItemId: z.string(), // ID from user's inventory array
+  itemId: z.string(), // Reference to the item in items collection
+  itemName: z.string(), // Cached for display
+  itemImageUrl: z.string(), // Cached for display
+  itemValue: z.number(), // Cached at time of trade creation
+  serialNumber: z.number().nullable(), // Exact serial that will be transferred
+  nftLocked: z.boolean().default(false), // Cannot trade NFT-locked items
+});
+
+export const tradeOfferSchema = z.object({
+  items: z.array(tradeItemSchema).min(0).max(7), // 0-7 items (at least 1 item or cash required)
+  cash: z.number().min(0).max(50000).default(0), // 0-50,000 cash
+});
+
+export const tradeSchema = z.object({
+  id: z.string(), // Firestore document ID
+  status: z.enum(["pending", "accepted", "declined", "cancelled", "expired"]),
+  
+  // Initiator (person who sent the trade)
+  initiatorId: z.string(), // Firebase UID
+  initiatorUsername: z.string(),
+  
+  // Recipient (person receiving the trade)
+  recipientId: z.string(), // Firebase UID
+  recipientUsername: z.string(),
+  
+  // What initiator is offering
+  initiatorOffer: tradeOfferSchema,
+  
+  // What initiator is requesting from recipient
+  recipientOffer: tradeOfferSchema,
+  
+  // Optional message with the trade
+  message: z.string().max(200).default(""),
+  
+  // Timestamps
+  createdAt: z.number(), // When trade was created
+  expiresAt: z.number(), // createdAt + 7 days
+  lastActionAt: z.number().optional(), // When last action (counter/accept/decline) occurred
+  completedAt: z.number().optional(), // When trade was accepted
+  
+  // Counter tracking
+  counterCount: z.number().default(0), // How many times this trade has been countered
+  originalTradeId: z.string().optional(), // If this is a counter, reference to original trade
+  
+  // Value tracking (for auto-decline feature)
+  initiatorOfferValue: z.number(), // Total value of what initiator is giving
+  recipientOfferValue: z.number(), // Total value of what recipient is giving
+});
+
+export const insertTradeSchema = tradeSchema.omit({ id: true });
+
+export const createTradeSchema = z.object({
+  recipientId: z.string(),
+  initiatorOffer: tradeOfferSchema,
+  recipientOffer: tradeOfferSchema,
+  message: z.string().max(200).default(""),
+}).refine(
+  (data) => {
+    const hasItems = data.initiatorOffer.items.length > 0 || data.recipientOffer.items.length > 0;
+    const hasCash = data.initiatorOffer.cash > 0 || data.recipientOffer.cash > 0;
+    return hasItems || hasCash;
+  },
+  { message: "Trade must include at least one item or cash" }
+).refine(
+  (data) => {
+    const initiatorItems = data.initiatorOffer.items.length;
+    const recipientItems = data.recipientOffer.items.length;
+    return initiatorItems >= 1 && initiatorItems <= 7 && recipientItems >= 1 && recipientItems <= 7;
+  },
+  { message: "Each side must offer between 1-7 items" }
+);
+
+export type Trade = z.infer<typeof tradeSchema>;
+export type InsertTrade = z.infer<typeof insertTradeSchema>;
+export type CreateTrade = z.infer<typeof createTradeSchema>;
+export type TradeItem = z.infer<typeof tradeItemSchema>;
+export type TradeOffer = z.infer<typeof tradeOfferSchema>;
+

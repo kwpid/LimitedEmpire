@@ -11,7 +11,7 @@ import { RARITY_TIERS, type RarityTier } from "@shared/schema";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
-import { Settings as SettingsIcon, DollarSign, Save, User } from "lucide-react";
+import { Settings as SettingsIcon, DollarSign, Save, User, ArrowLeftRight } from "lucide-react";
 import { getRarityColor } from "@/lib/rarity";
 import { Badge } from "@/components/ui/badge";
 
@@ -26,6 +26,10 @@ export default function Settings() {
   const [description, setDescription] = useState(user?.description || "");
   const [saving, setSaving] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [savingTrades, setSavingTrades] = useState(false);
+  const [autoDeclineHugeLoss, setAutoDeclineHugeLoss] = useState(
+    user?.settings?.tradeSettings?.autoDeclineHugeLoss || false
+  );
 
   const toggleRarity = (rarity: RarityTier) => {
     setAutoSellRarities((prev) => {
@@ -99,6 +103,37 @@ export default function Settings() {
     }
   };
 
+  const saveTradeSettings = async () => {
+    if (!user) return;
+
+    setSavingTrades(true);
+    try {
+      const userRef = doc(db, "users", user.id);
+      await updateDoc(userRef, {
+        "settings.tradeSettings.autoDeclineHugeLoss": autoDeclineHugeLoss,
+      });
+
+      await refetchUser();
+
+      toast({
+        title: "Trade settings saved",
+        description: "Your trade preferences have been updated",
+      });
+    } catch (error: any) {
+      console.error("Save trade settings error:", error);
+      toast({
+        title: "Save failed",
+        description: error.message || "An error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingTrades(false);
+    }
+  };
+
+  const hasTradeChanges = 
+    autoDeclineHugeLoss !== (user?.settings?.tradeSettings?.autoDeclineHugeLoss || false);
+
   return (
     <div className="container mx-auto p-6 max-w-5xl">
       <div className="mb-6">
@@ -129,6 +164,15 @@ export default function Settings() {
             >
               <DollarSign className="w-4 h-4 mr-2" />
               Sell Settings
+            </Button>
+            <Button 
+              variant={activeTab === "trades" ? "secondary" : "ghost"}
+              className="w-full justify-start"
+              onClick={() => setActiveTab("trades")}
+              data-testid="tab-trade-settings"
+            >
+              <ArrowLeftRight className="w-4 h-4 mr-2" />
+              Trade Settings
             </Button>
           </div>
         </div>
@@ -266,6 +310,67 @@ export default function Settings() {
                       </CardContent>
                     </Card>
                   )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="trades" className="mt-0">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Trade Settings</CardTitle>
+                  <CardDescription>
+                    Configure your trading preferences and automatic protections
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-4">
+                    <div className="flex items-start space-x-3 p-4 rounded-lg border hover:bg-muted/50 transition-colors">
+                      <Checkbox
+                        id="auto-decline-loss"
+                        checked={autoDeclineHugeLoss}
+                        onCheckedChange={(checked) => setAutoDeclineHugeLoss(checked as boolean)}
+                        data-testid="checkbox-auto-decline-loss"
+                      />
+                      <div className="flex-1">
+                        <Label
+                          htmlFor="auto-decline-loss"
+                          className="cursor-pointer font-semibold text-foreground"
+                        >
+                          Auto-Decline 70% Loss Trades
+                        </Label>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Automatically decline incoming trades where you would lose 70% or more of the value. 
+                          This protects you from heavily unfair trades.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-4 border-t">
+                    <Button
+                      onClick={saveTradeSettings}
+                      disabled={!hasTradeChanges || savingTrades}
+                      className="flex-1"
+                      data-testid="button-save-trade-settings"
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      {savingTrades ? "Saving..." : "Save Trade Settings"}
+                    </Button>
+                  </div>
+
+                  <Card className="bg-muted/50">
+                    <CardContent className="p-4">
+                      <p className="text-sm text-muted-foreground">
+                        <strong>How it works:</strong> When someone sends you a trade, the system calculates 
+                        the total value of what you're giving versus what you're receiving. If you would lose 
+                        70% or more of the value, the trade will be automatically declined before it reaches you.
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        <strong>Example:</strong> If someone requests $1000 worth of items from you but only 
+                        offers $300 or less in return (70%+ loss), the trade is automatically declined.
+                      </p>
+                    </CardContent>
+                  </Card>
                 </CardContent>
               </Card>
             </TabsContent>
