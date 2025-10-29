@@ -6,6 +6,26 @@ Limited Empire is a web-based collection game where players acquire rare items t
 
 ## Recent Changes (October 29, 2025)
 
+**Trade Storage Architecture Redesign:**
+- **Hybrid Storage Model**: Optimized trade data storage for performance and scalability
+  - Active pending trades stored in `trades` Firestore collection for real-time queries
+  - Completed/inactive trades moved to user's `tradeHistory` array field (embedded in user document)
+  - Trades are deleted from `trades` collection upon accept/decline/cancel
+  - Historical trades reconstructed from `tradeHistory` when queried
+- **Trade History Schema**: Enhanced with complete data preservation
+  - Stores both `otherUserId` and `otherUsername` for full reconstruction
+  - Includes `isInitiator` flag to determine user's role in the trade
+  - Preserves complete offer/request data with item details and cash amounts
+  - Tracks creation and completion timestamps
+- **Transaction Safety**: All trade state changes use Firestore transactions
+  - Accept: transfers items/cash, adds to both users' history, deletes trade document
+  - Decline: adds to both users' history, deletes trade document
+  - Cancel: adds to both users' history, deletes trade document
+- **GET /api/trades Endpoint**: Intelligent query routing based on trade status
+  - Inbound/Outbound: queries `trades` collection with status filters
+  - Completed/Inactive: reads from user's `tradeHistory` array
+  - Reconstructs full Trade objects from history entries
+
 **Trading System Implementation:**
 - **Complete Roblox-Style Trading System**: Fully implemented peer-to-peer trading functionality
   - Trade up to 7 items and 50K cash per side
@@ -38,6 +58,9 @@ Limited Empire is a web-based collection game where players acquire rare items t
   - User authorization checks prevent cross-user manipulation
   - Transaction-based trade acceptance for data consistency
 - **Navigation**: Added Trades tab to main navigation for easy access
+- **Development Environment**: Firebase Admin SDK initialization made optional
+  - Graceful degradation when Firebase credentials are missing
+  - Server runs in development mode without Firebase dependencies
 
 ## Recent Changes (October 28, 2025)
 
