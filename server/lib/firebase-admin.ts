@@ -32,11 +32,6 @@ export function initializeFirebaseAdmin() {
       
       formattedPrivateKey = formattedPrivateKey.replace(/\\n/g, '\n');
       
-      console.log('[Firebase Debug] Private key starts with:', formattedPrivateKey.substring(0, 50));
-      console.log('[Firebase Debug] Private key ends with:', formattedPrivateKey.substring(formattedPrivateKey.length - 50));
-      console.log('[Firebase Debug] Contains actual newlines:', formattedPrivateKey.includes('\n'));
-      console.log('[Firebase Debug] Contains backslash-n:', formattedPrivateKey.includes('\\n'));
-      
       serviceAccount = {
         projectId,
         privateKey: formattedPrivateKey,
