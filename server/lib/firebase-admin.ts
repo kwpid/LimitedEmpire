@@ -8,17 +8,40 @@ export function initializeFirebaseAdmin() {
   }
 
   const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
+  const privateKeyEnv = process.env.FIREBASE_PRIVATE_KEY;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   
-  if (!projectId) {
+  if (!projectId || !privateKeyEnv || !clientEmail) {
     console.warn('⚠️  Firebase credentials not configured - running in development mode without Firebase');
     console.warn('⚠️  Trade and authentication features will not work in this environment');
     return null;
   }
 
   try {
+    let serviceAccount: any;
+    
+    try {
+      serviceAccount = JSON.parse(privateKeyEnv);
+      console.log('[Firebase] Parsed service account from JSON');
+    } catch {
+      let formattedPrivateKey = privateKeyEnv.trim();
+      
+      if (formattedPrivateKey.startsWith('"') && formattedPrivateKey.endsWith('"')) {
+        formattedPrivateKey = formattedPrivateKey.slice(1, -1);
+      }
+      
+      formattedPrivateKey = formattedPrivateKey.replace(/\\n/g, '\n');
+      
+      serviceAccount = {
+        projectId,
+        privateKey: formattedPrivateKey,
+        clientEmail,
+      };
+      console.log('[Firebase] Using formatted private key');
+    }
+    
     app = admin.initializeApp({
-      credential: admin.credential.applicationDefault(),
-      projectId,
+      credential: admin.credential.cert(serviceAccount),
     });
     console.log('✓ Firebase Admin SDK initialized successfully');
   } catch (error) {
