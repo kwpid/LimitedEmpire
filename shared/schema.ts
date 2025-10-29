@@ -219,3 +219,48 @@ export const insertAuditLogSchema = auditLogSchema.omit({ id: true });
 export type AuditLog = z.infer<typeof auditLogSchema>;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 
+// Trade Schema
+export const tradeSchema = z.object({
+  id: z.string(), // Firestore document ID
+  status: z.enum(["pending", "accepted", "declined", "cancelled", "completed", "inactive"]),
+  senderId: z.string(), // User ID of the trade initiator
+  senderUsername: z.string(),
+  receiverId: z.string(), // User ID of the trade recipient
+  receiverUsername: z.string(),
+  senderOffer: z.object({
+    items: z.array(z.object({
+      inventoryId: z.string(),
+      itemId: z.string(),
+      itemName: z.string(),
+      itemImageUrl: z.string(),
+      itemValue: z.number(),
+      itemRarity: z.enum(["COMMON", "UNCOMMON", "RARE", "ULTRA_RARE", "EPIC", "ULTRA_EPIC", "MYTHIC", "INSANE"]),
+      serialNumber: z.number().nullable(),
+      nftLocked: z.boolean().default(false),
+    })).min(1).max(7),
+    cash: z.number().min(0).max(50000).default(0),
+  }),
+  receiverRequest: z.object({
+    items: z.array(z.object({
+      inventoryId: z.string(),
+      itemId: z.string(),
+      itemName: z.string(),
+      itemImageUrl: z.string(),
+      itemValue: z.number(),
+      itemRarity: z.enum(["COMMON", "UNCOMMON", "RARE", "ULTRA_RARE", "EPIC", "ULTRA_EPIC", "MYTHIC", "INSANE"]),
+      serialNumber: z.number().nullable(),
+      nftLocked: z.boolean().default(false),
+    })).min(1).max(7),
+    cash: z.number().min(0).max(10000).default(0),
+  }),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+  completedAt: z.number().optional(),
+  declinedReason: z.string().optional(),
+});
+
+export const insertTradeSchema = tradeSchema.omit({ id: true });
+
+export type Trade = z.infer<typeof tradeSchema>;
+export type InsertTrade = z.infer<typeof insertTradeSchema>;
+
