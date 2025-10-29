@@ -47,24 +47,20 @@ export function SlotMachineRoll({ items, finalItem, isRolling }: SlotMachineRoll
     const totalDuration = 3500; // 3.5 seconds
     const elapsed = Date.now() - startTimeRef.current;
     
-    if (elapsed >= totalDuration) {
-      // Animation complete - show final item
-      setCurrentItem(itemsRef.current[itemsRef.current.length - 1]);
-      return;
-    }
+    // Calculate progress
+    const progress = Math.min(elapsed / totalDuration, 1);
     
-    // Calculate which item to show based on eased progress
-    const progress = elapsed / totalDuration;
-    // Quintic ease out (starts slower, smoother deceleration)
-    const easeProgress = 1 - Math.pow(1 - progress, 5);
+    // Use cubic ease out for smoother deceleration
+    const easeProgress = 1 - Math.pow(1 - progress, 3);
     
-    // Ensure we don't show the final item until animation is complete
-    // Map eased progress to indices 0 to length-2, never reaching the final item during animation
-    const maxIndex = itemsRef.current.length - 2;
-    const targetIndex = Math.min(maxIndex, Math.floor(easeProgress * (itemsRef.current.length - 1)));
+    // Map eased progress to item indices, allowing smooth landing on final item
+    const targetIndex = Math.floor(easeProgress * (itemsRef.current.length - 1));
     setCurrentItem(itemsRef.current[targetIndex]);
     
-    animationRef.current = requestAnimationFrame(animate);
+    // Continue animation until progress reaches 1
+    if (progress < 1) {
+      animationRef.current = requestAnimationFrame(animate);
+    }
   };
 
   useEffect(() => {

@@ -167,10 +167,9 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
   const groupedMyInventory = groupInventoryByItem(filteredMyInventory);
   const groupedTheirInventory = groupInventoryByItem(filteredTheirInventory);
 
-  const handleOfferQuantityChange = (itemId: string, items: InventoryItemWithDetails[], newQuantity: number) => {
-    // For trade purposes, we select inventory entries, not individual units
-    // Each inventory entry may contain multiple units (amount field)
-    const clampedQuantity = Math.min(items.length, Math.max(0, newQuantity));
+  const handleEntryChange = (itemId: string, items: InventoryItemWithDetails[], newEntryCount: number, isOffer: boolean) => {
+    // newEntryCount is the number of inventory entries to select
+    const clampedCount = Math.min(items.length, Math.max(0, newEntryCount));
     
     // Check for NFT locked items
     if (items.some(item => item.nftLocked)) {
@@ -182,32 +181,35 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
       return;
     }
 
-    // Get currently selected items of this type and other items
-    const currentlySelected = selectedOffer.filter(i => i.itemId === itemId);
-    const otherSelected = selectedOffer.filter(i => i.itemId !== itemId);
+    // Get currently selected items and determine the setter and limit message
+    const currentlySelected = isOffer 
+      ? selectedOffer.filter(i => i.itemId === itemId)
+      : selectedRequest.filter(i => i.itemId === itemId);
+    const otherSelected = isOffer
+      ? selectedOffer.filter(i => i.itemId !== itemId)
+      : selectedRequest.filter(i => i.itemId !== itemId);
+    const setter = isOffer ? setSelectedOffer : setSelectedRequest;
+    const limitMsg = isOffer ? "You can offer up to 7 items total" : "You can request up to 7 items total";
     
-    // Check if new total would exceed limit
-    if (otherSelected.length + clampedQuantity > 7) {
-      toast({
-        title: "Maximum Reached",
-        description: "You can offer up to 7 items total",
-        variant: "destructive",
-      });
+    if (currentlySelected.length === clampedCount) {
+      // No change needed
       return;
     }
-
-    // Calculate delta
-    const delta = clampedQuantity - currentlySelected.length;
     
-    if (delta === 0) {
-      // No change needed
+    // Check if new total would exceed limit (7 inventory entries max)
+    if (otherSelected.length + clampedCount > 7) {
+      toast({
+        title: "Maximum Reached",
+        description: limitMsg,
+        variant: "destructive",
+      });
       return;
     }
     
     let newSelected: InventoryItemWithDetails[];
     
-    if (delta > 0) {
-      // Need to add more items - stable sort to pick unselected items deterministically
+    if (clampedCount > currentlySelected.length) {
+      // Need to add more entries
       const currentIds = new Set(currentlySelected.map(i => i.inventoryId));
       const availableItems = items
         .filter(item => !currentIds.has(item.inventoryId))
@@ -221,76 +223,14 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
           return a.inventoryId.localeCompare(b.inventoryId);
         });
       
-      newSelected = [...currentlySelected, ...availableItems.slice(0, delta)];
+      const entriesToAdd = clampedCount - currentlySelected.length;
+      newSelected = [...currentlySelected, ...availableItems.slice(0, entriesToAdd)];
     } else {
-      // Need to remove items - remove from end (LIFO)
-      newSelected = currentlySelected.slice(0, clampedQuantity);
+      // Need to remove entries - keep first N entries
+      newSelected = currentlySelected.slice(0, clampedCount);
     }
     
-    setSelectedOffer([...otherSelected, ...newSelected]);
-  };
-
-  const handleRequestQuantityChange = (itemId: string, items: InventoryItemWithDetails[], newQuantity: number) => {
-    // For trade purposes, we select inventory entries, not individual units
-    // Each inventory entry may contain multiple units (amount field)
-    const clampedQuantity = Math.min(items.length, Math.max(0, newQuantity));
-    
-    // Check for NFT locked items
-    if (items.some(item => item.nftLocked)) {
-      toast({
-        title: "Item Locked",
-        description: "This item is marked as NFT (Not For Trade)",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Get currently selected items of this type and other items
-    const currentlySelected = selectedRequest.filter(i => i.itemId === itemId);
-    const otherSelected = selectedRequest.filter(i => i.itemId !== itemId);
-    
-    // Check if new total would exceed limit
-    if (otherSelected.length + clampedQuantity > 7) {
-      toast({
-        title: "Maximum Reached",
-        description: "You can request up to 7 items total",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Calculate delta
-    const delta = clampedQuantity - currentlySelected.length;
-    
-    if (delta === 0) {
-      // No change needed
-      return;
-    }
-    
-    let newSelected: InventoryItemWithDetails[];
-    
-    if (delta > 0) {
-      // Need to add more items - stable sort to pick unselected items deterministically
-      const currentIds = new Set(currentlySelected.map(i => i.inventoryId));
-      const availableItems = items
-        .filter(item => !currentIds.has(item.inventoryId))
-        .sort((a, b) => {
-          // Sort by serial number first (nulls last), then by inventoryId for stability
-          if (a.serialNumber !== null && b.serialNumber !== null) {
-            return a.serialNumber - b.serialNumber;
-          }
-          if (a.serialNumber !== null) return -1;
-          if (b.serialNumber !== null) return 1;
-          return a.inventoryId.localeCompare(b.inventoryId);
-        });
-      
-      newSelected = [...currentlySelected, ...availableItems.slice(0, delta)];
-    } else {
-      // Need to remove items - remove from end (LIFO)
-      newSelected = currentlySelected.slice(0, clampedQuantity);
-    }
-    
-    setSelectedRequest([...otherSelected, ...newSelected]);
+    setter([...otherSelected, ...newSelected]);
   };
 
   const removeOfferItem = (inventoryId: string) => {
@@ -395,31 +335,28 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
     const representativeItem = items[0];
     // Calculate total units (sum of amounts) for display
     const totalUnits = items.reduce((sum, item) => sum + item.amount, 0);
-    // Number of inventory entries (each entry may have amount > 1)
-    const maxSelectable = items.length;
+    // Max selectable is the total number of units available
+    const maxSelectable = totalUnits;
     const selectedItems = isOffer 
       ? selectedOffer.filter(i => i.itemId === itemId)
       : selectedRequest.filter(i => i.itemId === itemId);
-    const selectedQuantity = selectedItems.length;
+    // Calculate total selected units (sum of amounts in selected items)
+    const selectedQuantity = selectedItems.reduce((sum, item) => sum + item.amount, 0);
     const hasNftLocked = items.some(item => item.nftLocked);
 
     const handleIncrement = () => {
-      if (selectedQuantity < maxSelectable) {
-        if (isOffer) {
-          handleOfferQuantityChange(itemId, items, selectedQuantity + 1);
-        } else {
-          handleRequestQuantityChange(itemId, items, selectedQuantity + 1);
-        }
+      // Add one more inventory entry (which may contain multiple units)
+      const selectedEntries = selectedItems.length;
+      if (selectedEntries < items.length) {
+        handleEntryChange(itemId, items, selectedEntries + 1, isOffer);
       }
     };
 
     const handleDecrement = () => {
-      if (selectedQuantity > 0) {
-        if (isOffer) {
-          handleOfferQuantityChange(itemId, items, selectedQuantity - 1);
-        } else {
-          handleRequestQuantityChange(itemId, items, selectedQuantity - 1);
-        }
+      // Remove one inventory entry (which may contain multiple units)
+      const selectedEntries = selectedItems.length;
+      if (selectedEntries > 0) {
+        handleEntryChange(itemId, items, selectedEntries - 1, isOffer);
       }
     };
 
