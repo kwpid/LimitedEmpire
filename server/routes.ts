@@ -88,18 +88,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create a new trade
   app.post("/api/trades", requireAuth, async (req: any, res: any) => {
     try {
+      console.log("[Trade Creation] Starting trade creation request");
+      console.log("[Trade Creation] Request body:", JSON.stringify(req.body, null, 2));
+      
       const parsed = insertTradeSchema.parse(req.body);
+      console.log("[Trade Creation] Schema validation passed");
       
       const userDoc = await db.collection("users").where("firebaseUid", "==", req.user.uid).limit(1).get();
       if (userDoc.empty) {
+        console.error("[Trade Creation] User not found for firebaseUid:", req.user.uid);
         return res.status(403).json({ error: "User not found" });
       }
       const userData = userDoc.docs[0].data();
+      console.log("[Trade Creation] Found user:", userData.id, userData.username);
+      
       if (userData.id !== parsed.initiatorId) {
+        console.error("[Trade Creation] User ID mismatch:", userData.id, "vs", parsed.initiatorId);
         return res.status(403).json({ error: "Cannot create trades for other users" });
       }
       
       const tradeDoc = db.collection("trades").doc();
+      console.log("[Trade Creation] Generated trade doc ID:", tradeDoc.id);
+      
       const trade: Trade = {
         id: tradeDoc.id,
         status: "pending",
@@ -115,10 +125,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: parsed.message || "",
       };
 
+      console.log("[Trade Creation] About to write trade to Firestore:", trade.id);
       await tradeDoc.set(trade);
+      console.log("[Trade Creation] ✓ Successfully wrote trade to Firestore!");
+      console.log("[Trade Creation] Trade document path: trades/" + tradeDoc.id);
+      
       res.json(trade);
     } catch (error) {
-      console.error("Error creating trade:", error);
+      console.error("[Trade Creation] ❌ ERROR:", error);
+      console.error("[Trade Creation] Error stack:", error instanceof Error ? error.stack : "No stack trace");
       res.status(400).json({ error: error instanceof Error ? error.message : "Failed to create trade" });
     }
   });
@@ -127,26 +142,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/trades", requireAuth, async (req: any, res: any) => {
     try {
       const { userId, box } = req.query;
+      console.log("[Get Trades] Request for userId:", userId, "box:", box);
+      
       if (!userId || typeof userId !== "string") {
         return res.status(400).json({ error: "userId is required" });
       }
 
       const userDoc = await db.collection("users").where("firebaseUid", "==", req.user.uid).limit(1).get();
       if (userDoc.empty) {
+        console.error("[Get Trades] User not found for firebaseUid:", req.user.uid);
         return res.status(403).json({ error: "User not found" });
       }
       const userData = userDoc.docs[0].data();
+      console.log("[Get Trades] Found user:", userData.id, userData.username);
+      
       if (userData.id !== userId) {
+        console.error("[Get Trades] User ID mismatch:", userData.id, "vs", userId);
         return res.status(403).json({ error: "Cannot view trades for other users" });
       }
 
       let query = db.collection("trades");
       
       if (box === "inbound") {
+        console.log("[Get Trades] Querying inbound trades for recipientId:", userId);
         query = query.where("recipientId", "==", userId).where("status", "==", "pending") as any;
       } else if (box === "outbound") {
+        console.log("[Get Trades] Querying outbound trades for initiatorId:", userId);
         query = query.where("initiatorId", "==", userId).where("status", "==", "pending") as any;
       } else if (box === "completed") {
+        console.log("[Get Trades] Querying completed trades for userId:", userId);
         query = query.where("status", "==", "accepted") as any;
         const q1 = query.where("initiatorId", "==", userId);
         const q2 = query.where("recipientId", "==", userId);
@@ -160,8 +184,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
         
+        console.log("[Get Trades] Found", trades.length, "completed trades");
+        console.log("[Get Trades] Trade IDs:", trades.map(t => t.id).join(", ") || "none");
+        
         return res.json(trades.sort((a, b) => b.updatedAt - a.updatedAt));
       } else if (box === "inactive") {
+        console.log("[Get Trades] Querying inactive trades for userId:", userId);
         const inactiveStatuses = ["declined", "cancelled", "expired"];
         const queries = inactiveStatuses.map(status => 
           db.collection("trades").where("status", "==", status).where("initiatorId", "==", userId).get()
@@ -180,6 +208,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         });
         
+        console.log("[Get Trades] Found", trades.length, "inactive trades");
+        console.log("[Get Trades] Trade IDs:", trades.map(t => t.id).join(", ") || "none");
+        
         return res.json(trades.sort((a, b) => b.updatedAt - a.updatedAt));
       }
 
@@ -189,9 +220,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         trades.push({ id: doc.id, ...doc.data() } as Trade);
       });
 
+      console.log("[Get Trades] Found", trades.length, "trades");
+      console.log("[Get Trades] Trade IDs:", trades.map(t => t.id).join(", ") || "none");
+      
       res.json(trades);
     } catch (error) {
-      console.error("Error fetching trades:", error);
+      console.error("[Get Trades] ❌ ERROR:", error);
+      console.error("[Get Trades] Error stack:", error instanceof Error ? error.stack : "No stack trace");
       res.status(500).json({ error: "Failed to fetch trades" });
     }
   });
