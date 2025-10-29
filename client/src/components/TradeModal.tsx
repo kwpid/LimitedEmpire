@@ -429,7 +429,7 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
                   data-testid="input-search-my-items"
                 />
               </div>
-              <ScrollArea className="flex-1">
+              <ScrollArea className="h-[400px]">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 pr-4">
                   {loading ? (
                     <p className="col-span-full text-center text-muted-foreground py-8">Loading...</p>
@@ -512,7 +512,7 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
                   data-testid="input-search-their-items"
                 />
               </div>
-              <ScrollArea className="flex-1">
+              <ScrollArea className="h-[400px]">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 pr-4">
                   {loading ? (
                     <p className="col-span-full text-center text-muted-foreground py-8">Loading...</p>
