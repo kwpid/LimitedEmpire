@@ -68,12 +68,12 @@ export function ItemCard({ item, serialNumber, onClick, stackCount }: ItemCardPr
 
         {/* Top right badges: Serial or Stock */}
         {serialNumber !== undefined ? (
-          <Badge variant="secondary" className="absolute top-2 right-2 text-xs z-10 bg-secondary backdrop-blur-md whitespace-nowrap" data-testid={`badge-serial-${serialNumber}`}>
+          <Badge variant="secondary" className="absolute top-2 right-2 text-xs z-20 bg-secondary backdrop-blur-md whitespace-nowrap" data-testid={`badge-serial-${serialNumber}`}>
             #{serialNumber}
           </Badge>
         ) : (
           item.stockType === "limited" && (
-            <Badge variant="secondary" className="absolute top-2 right-2 text-xs z-10 bg-secondary backdrop-blur-md whitespace-nowrap" data-testid={`badge-stock-${item.id}`}>
+            <Badge variant="secondary" className="absolute top-2 right-2 text-xs z-20 bg-secondary backdrop-blur-md whitespace-nowrap" data-testid={`badge-stock-${item.id}`}>
               {item.remainingStock}/{item.totalStock}
             </Badge>
           )
