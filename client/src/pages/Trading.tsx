@@ -38,14 +38,14 @@ export default function Trading() {
       
       const inboundQuery = query(
         tradesRef,
-        where("receiverId", "==", user.id),
+        where("receiverId", "==", user.firebaseUid),
         where("status", "==", "pending"),
         orderBy("createdAt", "desc")
       );
       
       const outboundQuery = query(
         tradesRef,
-        where("senderId", "==", user.id),
+        where("senderId", "==", user.firebaseUid),
         where("status", "==", "pending"),
         orderBy("createdAt", "desc")
       );
@@ -82,7 +82,7 @@ export default function Trading() {
       const inactive: Trade[] = [];
       inactiveSnapshot.forEach((doc) => {
         const trade = { id: doc.id, ...doc.data() } as Trade;
-        if (trade.senderId === user.id || trade.receiverId === user.id) {
+        if (trade.senderId === user.firebaseUid || trade.receiverId === user.firebaseUid) {
           inactive.push(trade);
         }
       });
@@ -90,7 +90,7 @@ export default function Trading() {
       const completed: Trade[] = [];
       completedSnapshot.forEach((doc) => {
         const trade = { id: doc.id, ...doc.data() } as Trade;
-        if (trade.senderId === user.id || trade.receiverId === user.id) {
+        if (trade.senderId === user.firebaseUid || trade.receiverId === user.firebaseUid) {
           completed.push(trade);
         }
       });
@@ -485,7 +485,7 @@ export default function Trading() {
               </CardContent>
             </Card>
           ) : (
-            inactiveTrades.map(trade => renderTradeCard(trade, trade.receiverId === user?.id, false))
+            inactiveTrades.map(trade => renderTradeCard(trade, trade.receiverId === user?.firebaseUid, false))
           )}
         </TabsContent>
 
@@ -505,7 +505,7 @@ export default function Trading() {
               </CardContent>
             </Card>
           ) : (
-            completedTrades.map(trade => renderTradeCard(trade, trade.receiverId === user?.id, false))
+            completedTrades.map(trade => renderTradeCard(trade, trade.receiverId === user?.firebaseUid, false))
           )}
         </TabsContent>
       </Tabs>
