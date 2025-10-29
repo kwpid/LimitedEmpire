@@ -7,5 +7,10 @@ vite.config.ts.*
 
 # Firebase credentials - NEVER commit these
 firebase-service-account.json
-*-service-account.json*.json
+*-service-account.json
+*.json
 limited-empire-service-account.json
+
+# Attached assets with sensitive data
+attached_assets/Pasted*service-account*.txt
+attached_assets/*private-key*.txt
