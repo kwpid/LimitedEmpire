@@ -6,17 +6,27 @@ Limited Empire is a web-based collection game where players acquire rare items t
 
 ## Recent Changes (October 29, 2025)
 
-**Trading System Removal:**
-- Completely removed trading functionality from both frontend and backend
-- Deleted Trades page, TradeModal, and TradeCard components
-- Removed trade-related API routes and schemas
-- Removed "Send Trade" button from player profile modals
-- Updated navigation from 7 tabs to 6 tabs (removed Trades tab)
+**Trading System Implementation:**
+- Completely rebuilt trading functionality with comprehensive Firestore integration
+- Added Trading page with 4-tab interface (Inbound, Outbound, Inactive, Completed)
+- Implemented TradeModal component with dual inventory views for both players
+- Added "Trade" button to PlayerProfileModal for initiating trades
+- Updated navigation to 7 tabs (added Trading tab)
+- Features:
+  - Item selection: 1-7 items per side with serial number display
+  - Cash offers: max 50k offer, max 10k request (enforced client + server-side)
+  - NFT-locked items cannot be traded
+  - Inventories sorted by value (highest to lowest)
+  - Search functionality for both inventories
+  - Trade status flow: pending → completed/declined/cancelled
+- Firestore security rules enforce all validation constraints
+- Trade constraints validated both client-side and in Firestore rules
 
 **Development Environment:**
 - Firebase Admin SDK initialization made optional
 - Graceful degradation when Firebase credentials are missing
 - Server runs in development mode without Firebase dependencies
+- Note: API calls configured for production site (404 errors expected in Replit development)
 
 ## Recent Changes (October 28, 2025)
 
@@ -132,6 +142,7 @@ The design adopts a dark, modern theme with a near-black background and slightly
 - `globalRolls`: Records significant item rolls for public display.
 - `auditLogs`: Tracks all administrative actions.
 - `counters`: Manages sequential IDs (e.g., for users).
+- `trades`: Stores trade offers between players with sender/receiver items, cash amounts, status tracking, and timestamps.
 
 ## External Dependencies
 
