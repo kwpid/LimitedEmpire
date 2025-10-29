@@ -9,9 +9,10 @@ interface ItemCardProps {
   serialNumber?: number;
   onClick?: () => void;
   stackCount?: number;
+  showStock?: boolean; // Show stock badge (for index)
 }
 
-export function ItemCard({ item, serialNumber, onClick, stackCount }: ItemCardProps) {
+export function ItemCard({ item, serialNumber, onClick, stackCount, showStock = false }: ItemCardProps) {
   const rarityClass = getRarityClass(item.rarity);
   const rarityGlow = getRarityGlow(item.rarity);
   const isInsane = item.rarity === "INSANE";
@@ -66,17 +67,18 @@ export function ItemCard({ item, serialNumber, onClick, stackCount }: ItemCardPr
           </Badge>
         )}
 
-        {/* Serial or Stock badge - Top right */}
-        {serialNumber !== undefined ? (
-          <Badge variant="secondary" className="absolute top-2 right-2 text-xs z-[30] bg-secondary backdrop-blur-md whitespace-nowrap" data-testid={`badge-serial-${serialNumber}`}>
+        {/* Serial badge - Top right (only when serialNumber is provided) */}
+        {serialNumber !== undefined && (
+          <Badge variant="secondary" className="absolute top-2 right-2 text-xs z-[15] bg-secondary backdrop-blur-md whitespace-nowrap" data-testid={`badge-serial-${serialNumber}`}>
             #{serialNumber}
           </Badge>
-        ) : (
-          item.stockType === "limited" && (
-            <Badge variant="secondary" className="absolute top-2 right-2 text-xs z-[30] bg-secondary backdrop-blur-md whitespace-nowrap" data-testid={`badge-stock-${item.id}`}>
-              {item.remainingStock}/{item.totalStock}
-            </Badge>
-          )
+        )}
+
+        {/* Stock badge - Top right (only when showStock is true and item is limited) */}
+        {showStock && item.stockType === "limited" && serialNumber === undefined && (
+          <Badge variant="secondary" className="absolute top-2 right-2 text-xs z-[15] bg-secondary backdrop-blur-md whitespace-nowrap" data-testid={`badge-stock-${item.id}`}>
+            {item.remainingStock}/{item.totalStock}
+          </Badge>
         )}
       </div>
       <div className="p-3 space-y-1 flex-1 flex flex-col justify-between">

@@ -145,6 +145,7 @@ export default function ItemIndex({ onEditItem }: ItemIndexProps = {}) {
               key={item.id}
               item={item}
               onClick={() => setSelectedItem(item)}
+              showStock={true}
             />
           ))}
         </div>
