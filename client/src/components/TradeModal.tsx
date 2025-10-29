@@ -151,6 +151,11 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
     return grouped;
   };
 
+  // Create full grouped maps (for summary section - always shows all selected items)
+  const groupedMyInventory = groupInventoryByItem(myInventory);
+  const groupedTheirInventory = groupInventoryByItem(theirInventory);
+
+  // Create filtered inventories (for search functionality)
   const filteredMyInventory = myInventory.filter(item => {
     if (!mySearchTerm) return true;
     const searchLower = mySearchTerm.toLowerCase();
@@ -165,8 +170,9 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
            (item.serialNumber !== null && item.serialNumber.toString().includes(searchLower));
   });
 
-  const groupedMyInventory = groupInventoryByItem(filteredMyInventory);
-  const groupedTheirInventory = groupInventoryByItem(filteredTheirInventory);
+  // Create filtered grouped maps (for inventory grid display)
+  const filteredGroupedMyInventory = groupInventoryByItem(filteredMyInventory);
+  const filteredGroupedTheirInventory = groupInventoryByItem(filteredTheirInventory);
 
   // Handle quantity changes (unit-based, not entry-based)
   const handleQuantityChange = (itemId: string, items: InventoryItemWithDetails[], newQuantity: number, isOffer: boolean) => {
@@ -471,10 +477,10 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-3 lg:grid-cols-4 gap-2">
                   {loading ? (
                     <p className="col-span-full text-center text-muted-foreground py-8 text-sm">Loading...</p>
-                  ) : groupedMyInventory.size === 0 ? (
+                  ) : filteredGroupedMyInventory.size === 0 ? (
                     <p className="col-span-full text-center text-muted-foreground py-8 text-sm">No items found</p>
                   ) : (
-                    Array.from(groupedMyInventory.entries()).map(([itemId, items]) =>
+                    Array.from(filteredGroupedMyInventory.entries()).map(([itemId, items]) =>
                       renderInventoryItem(itemId, items, true)
                     )
                   )}
@@ -500,10 +506,10 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-3 lg:grid-cols-4 gap-2">
                   {loading ? (
                     <p className="col-span-full text-center text-muted-foreground py-8 text-sm">Loading...</p>
-                  ) : groupedTheirInventory.size === 0 ? (
+                  ) : filteredGroupedTheirInventory.size === 0 ? (
                     <p className="col-span-full text-center text-muted-foreground py-8 text-sm">No items found</p>
                   ) : (
-                    Array.from(groupedTheirInventory.entries()).map(([itemId, items]) =>
+                    Array.from(filteredGroupedTheirInventory.entries()).map(([itemId, items]) =>
                       renderInventoryItem(itemId, items, false)
                     )
                   )}
