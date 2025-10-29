@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { collection, query, where, getDocs, orderBy, doc, updateDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, orderBy, doc, updateDoc, runTransaction, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { Trade } from "@shared/schema";
 import { ArrowLeftRight, Check, X, Clock, Archive, DollarSign, Hash } from "lucide-react";
@@ -151,16 +151,109 @@ export default function Trading() {
     setProcessingTradeId(trade.id);
     
     try {
-      const tradeRef = doc(db, "trades", trade.id);
-      await updateDoc(tradeRef, {
-        status: "completed",
-        updatedAt: Date.now(),
-        completedAt: Date.now(),
+      // Use Firestore transaction to ensure atomic item transfer
+      await runTransaction(db, async (transaction) => {
+        // References
+        const tradeRef = doc(db, "trades", trade.id);
+        const senderRef = doc(db, "users", trade.senderId);
+        const receiverRef = doc(db, "users", trade.receiverId);
+        
+        // Get both user documents
+        const senderDoc = await transaction.get(senderRef);
+        const receiverDoc = await transaction.get(receiverRef);
+        
+        if (!senderDoc.exists() || !receiverDoc.exists()) {
+          throw new Error("One or both users not found");
+        }
+        
+        const senderData = senderDoc.data();
+        const receiverData = receiverDoc.data();
+        
+        // Get current inventories and cash
+        const senderInventory = [...(senderData.inventory || [])];
+        const receiverInventory = [...(receiverData.inventory || [])];
+        let senderCash = senderData.cash || 0;
+        let receiverCash = receiverData.cash || 0;
+        
+        // Validate sender has enough cash
+        if (trade.senderOffer.cash > senderCash) {
+          throw new Error("Sender does not have enough cash");
+        }
+        
+        // Validate receiver has enough cash
+        if (trade.receiverRequest.cash > receiverCash) {
+          throw new Error("Receiver does not have enough cash");
+        }
+        
+        // Remove sender's offered items from their inventory
+        const senderOfferedInventoryIds = new Set(trade.senderOffer.items.map(item => item.inventoryId));
+        const senderNewInventory = senderInventory.filter(item => !senderOfferedInventoryIds.has(item.id));
+        
+        // Verify all sender items were found
+        if (senderNewInventory.length !== senderInventory.length - trade.senderOffer.items.length) {
+          throw new Error("Some sender items are no longer in inventory");
+        }
+        
+        // Remove receiver's requested items from their inventory
+        const receiverRequestedInventoryIds = new Set(trade.receiverRequest.items.map(item => item.inventoryId));
+        const receiverNewInventory = receiverInventory.filter(item => !receiverRequestedInventoryIds.has(item.id));
+        
+        // Verify all receiver items were found
+        if (receiverNewInventory.length !== receiverInventory.length - trade.receiverRequest.items.length) {
+          throw new Error("Some receiver items are no longer in inventory");
+        }
+        
+        // Add sender's items to receiver's inventory
+        for (const item of trade.senderOffer.items) {
+          const originalItem = senderInventory.find(inv => inv.id === item.inventoryId);
+          if (originalItem) {
+            receiverNewInventory.push({
+              ...originalItem,
+              rolledAt: Date.now(), // Update acquisition time
+            });
+          }
+        }
+        
+        // Add receiver's items to sender's inventory
+        for (const item of trade.receiverRequest.items) {
+          const originalItem = receiverInventory.find(inv => inv.id === item.inventoryId);
+          if (originalItem) {
+            senderNewInventory.push({
+              ...originalItem,
+              rolledAt: Date.now(), // Update acquisition time
+            });
+          }
+        }
+        
+        // Transfer cash
+        senderCash -= trade.senderOffer.cash;
+        receiverCash += trade.senderOffer.cash;
+        senderCash += trade.receiverRequest.cash;
+        receiverCash -= trade.receiverRequest.cash;
+        
+        // Update sender document
+        transaction.update(senderRef, {
+          inventory: senderNewInventory,
+          cash: senderCash,
+        });
+        
+        // Update receiver document
+        transaction.update(receiverRef, {
+          inventory: receiverNewInventory,
+          cash: receiverCash,
+        });
+        
+        // Update trade status
+        transaction.update(tradeRef, {
+          status: "completed",
+          updatedAt: Date.now(),
+          completedAt: Date.now(),
+        });
       });
 
       toast({
         title: "Trade Accepted",
-        description: "The trade has been completed successfully",
+        description: "The trade has been completed successfully. Items and cash have been exchanged.",
       });
 
       await loadTrades();
@@ -168,7 +261,7 @@ export default function Trading() {
       console.error("Error accepting trade:", error);
       toast({
         title: "Error",
-        description: "Failed to accept trade",
+        description: error instanceof Error ? error.message : "Failed to accept trade",
         variant: "destructive",
       });
     } finally {
