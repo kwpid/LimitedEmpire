@@ -1,21 +1,27 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import type { User, Item } from "@shared/schema";
 import { useState, useEffect } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { User as UserIcon, Ban, TrendingUp } from "lucide-react";
+import { User as UserIcon, Ban, TrendingUp, Shield } from "lucide-react";
 import { formatValue } from "@/lib/rarity";
+import { useAuth } from "@/contexts/AuthContext";
+import { AdminPanelDialog } from "@/components/AdminPanelDialog";
 
 interface PlayerCardProps {
   player: User;
   onClick?: () => void;
+  onAdminActionComplete?: () => void;
 }
 
-export function PlayerCard({ player, onClick }: PlayerCardProps) {
+export function PlayerCard({ player, onClick, onAdminActionComplete }: PlayerCardProps) {
+  const { user: currentUser } = useAuth();
   const [showcaseItems, setShowcaseItems] = useState<(Item & { serialNumber: number | null })[]>([]);
   const [inventoryValue, setInventoryValue] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [panelOpen, setPanelOpen] = useState(false);
 
   const isOnline = player.lastActive && (Date.now() - player.lastActive < 5 * 60 * 1000);
 
@@ -76,13 +82,21 @@ export function PlayerCard({ player, onClick }: PlayerCardProps) {
   }, [player]);
 
   const emptySlots = Math.max(0, 3 - showcaseItems.length);
+  const showAdminPanel = currentUser?.isAdmin && player.userId !== currentUser.userId;
 
   return (
-    <Card
-      className="cursor-pointer hover-elevate transition-all duration-300"
-      onClick={onClick}
-      data-testid={`card-player-${player.userId}`}
-    >
+    <>
+      <Card
+        className="cursor-pointer hover-elevate transition-all duration-300"
+        onClick={(e) => {
+          const target = e.target as HTMLElement;
+          if (target.closest('[data-admin-panel]')) {
+            return;
+          }
+          onClick?.();
+        }}
+        data-testid={`card-player-${player.userId}`}
+      >
       <CardContent className="p-3">
         <div className="flex items-center gap-3">
           <div className="relative flex-shrink-0">
@@ -115,6 +129,22 @@ export function PlayerCard({ player, onClick }: PlayerCardProps) {
               {player.customStatus || "No Status"}
             </p>
           </div>
+
+          {showAdminPanel && (
+            <div data-admin-panel onClick={(e) => e.stopPropagation()}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPanelOpen(true);
+                }}
+                data-testid={`button-admin-panel-${player.userId}`}
+              >
+                <Shield className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2 mt-3">
@@ -153,5 +183,13 @@ export function PlayerCard({ player, onClick }: PlayerCardProps) {
         </div>
       </CardContent>
     </Card>
+
+    <AdminPanelDialog
+      player={player}
+      open={panelOpen}
+      onOpenChange={setPanelOpen}
+      onActionComplete={onAdminActionComplete}
+    />
+  </>
   );
 }
