@@ -214,8 +214,14 @@ export default function Trading() {
 
   const renderTradeCard = (trade: Trade, isInbound: boolean, showActions: boolean) => {
     const otherUser = isInbound ? trade.senderUsername : trade.receiverUsername;
-    const offering = isInbound ? trade.senderOffer : trade.senderOffer;
-    const requesting = isInbound ? trade.receiverRequest : trade.receiverRequest;
+    const offering = trade.senderOffer;
+    const requesting = trade.receiverRequest;
+    
+    // Add null checks to prevent errors
+    if (!offering || !requesting || !offering.items || !requesting.items) {
+      console.error("Invalid trade data:", trade);
+      return null;
+    }
     
     const offerValue = offering.items.reduce((sum, item) => sum + item.itemValue, 0) + offering.cash;
     const requestValue = requesting.items.reduce((sum, item) => sum + item.itemValue, 0) + requesting.cash;
