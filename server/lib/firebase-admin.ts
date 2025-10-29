@@ -13,7 +13,7 @@ export function initializeFirebaseAdmin() {
   
   if (!projectId || !privateKeyEnv || !clientEmail) {
     console.warn('⚠️  Firebase credentials not configured - running in development mode without Firebase');
-    console.warn('⚠️  Trade and authentication features will not work in this environment');
+    console.warn('⚠️  Authentication features will not work in this environment');
     return null;
   }
 
@@ -46,7 +46,7 @@ export function initializeFirebaseAdmin() {
     console.log('✓ Firebase Admin SDK initialized successfully');
   } catch (error) {
     console.error('Failed to initialize Firebase Admin SDK:', error);
-    console.warn('⚠️  Running without Firebase - trade and authentication features will not work');
+    console.warn('⚠️  Running without Firebase - authentication features will not work');
     return null;
   }
 

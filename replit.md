@@ -6,16 +6,12 @@ Limited Empire is a web-based collection game where players acquire rare items t
 
 ## Recent Changes (October 29, 2025)
 
-**Trading System Implementation:**
-- Implemented comprehensive Roblox-style trading system with Firestore backend
-- Added trade schema with status tracking, item arrays (min 1, max 7 per side), and cash limits
-- Created backend API routes with Firestore transactions for atomic trade operations
-- Built TradeModal component with dual-sided inventory selection, search, and cash inputs
-- Created TradesPage with tabs for inbound, outbound, accepted, and inactive trades
-- Added trade button to player profile modals
-- Implemented validation for NFT-locked items, item limits, and cash constraints
-- All API calls use authenticated apiRequest helper for proper Firebase auth
-- Trades expire after 7 days of inactivity
+**Trading System Removal:**
+- Completely removed trading functionality from both frontend and backend
+- Deleted Trades page, TradeModal, and TradeCard components
+- Removed trade-related API routes and schemas
+- Removed "Send Trade" button from player profile modals
+- Updated navigation from 7 tabs to 6 tabs (removed Trades tab)
 
 **Development Environment:**
 - Firebase Admin SDK initialization made optional
@@ -96,7 +92,7 @@ Limited Empire is a web-based collection game where players acquire rare items t
 - Added empty state indicators (Ban icon) for showcase slots without items
 - Limited players "all" tab to show 10 players for optimization (unlimited when searching)
 - Added professional footer with Roblox fair use disclaimer, locked to bottom of page
-- Expanded navigation to 6 tabs (added Leaderboard between Players and Index)
+- Navigation has 6 tabs: Roll, Inventory, Players, Leaderboard, Index, and Settings
 
 **Admin Features:**
 - Fixed admin account appearing in item owners list - admin users are now filtered out from the owners display
@@ -120,7 +116,7 @@ The design adopts a dark, modern theme with a near-black background and slightly
     - **Firebase Hosting**: For deploying the web application.
 - **Rarity System**: Items are categorized into 8 tiers based on value, influencing their roll probability logarithmically.
 - **Stock System**: Items can be "limited" (with serial numbers and finite stock) or "infinite." Admins receive serial #0 for all new limited items.
-- **Transactional Integrity**: Firebase transactions are used to ensure atomicity and consistency for critical operations like rolling, selling, trading, item gifting, and inventory wiping.
+- **Transactional Integrity**: Firebase transactions are used to ensure atomicity and consistency for critical operations like rolling, selling, item gifting, and inventory wiping.
 - **Real-time Features**: Global roll notifications for high-value items and real-time updates from Firestore are implemented.
 - **Admin Features**:
     - **Item Management**: Creation (with auto-ownership for admin), editing, stock management, and off-sale toggling.
@@ -130,10 +126,9 @@ The design adopts a dark, modern theme with a near-black background and slightly
 - **Roll System Logic**: The core rolling mechanism uses item values to calculate probabilities. While currently client-side for rapid development, it's designed for future migration to Cloud Functions for enhanced security.
 
 **Core Data Models (Firestore Collections):**
-- `users`: Stores user profiles, authentication details, cash, roll counts, ban status, settings, and trade settings.
+- `users`: Stores user profiles, authentication details, cash, roll counts, ban status, and settings.
 - `items`: Defines item properties such as name, value, rarity, stock type, and image URL.
 - `inventory`: Links users to their owned items, including serial numbers for limited items and NFT lock status.
-- `trades`: Records all trade offers with status, items, cash amounts, and timestamps.
 - `globalRolls`: Records significant item rolls for public display.
 - `auditLogs`: Tracks all administrative actions.
 - `counters`: Manages sequential IDs (e.g., for users).
