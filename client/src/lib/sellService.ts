@@ -110,16 +110,21 @@ export async function sellItems(
     if (itemDoc && itemDoc.exists() && itemRef && ownershipMarkerRef) {
       const itemData = itemDoc.data();
       const currentOwners = itemData.totalOwners || 0;
+      const currentRemainingStock = itemData.remainingStock || 0;
       
       const stillOwnsItem = updatedInventory.some((invItem: any) => invItem.itemId === finalItemId);
       
       if (itemData.stockType === "limited") {
+        const updateData: any = {
+          remainingStock: currentRemainingStock + actualRemovedCount,
+        };
+        
         if (!stillOwnsItem) {
-          transaction.update(itemRef, {
-            totalOwners: Math.max(0, currentOwners - 1),
-          });
+          updateData.totalOwners = Math.max(0, currentOwners - 1);
           transaction.delete(ownershipMarkerRef);
         }
+        
+        transaction.update(itemRef, updateData);
       } else {
         transaction.update(itemRef, {
           totalOwners: Math.max(0, currentOwners - actualRemovedCount),
