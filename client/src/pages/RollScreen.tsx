@@ -225,7 +225,8 @@ export default function RollScreen() {
       setRolledItem(result.item);
       setIsAnimating(true);
       
-      await new Promise((resolve) => setTimeout(resolve, 2100));
+      // Wait for animation to complete (3500ms) plus small buffer
+      await new Promise((resolve) => setTimeout(resolve, 3600));
       
       setIsAnimating(false);
       
