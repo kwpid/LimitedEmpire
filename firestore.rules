@@ -154,6 +154,7 @@ service cloud.firestore {
                       request.resource.data.updatedAt is int;
       
       // Users can update trades to accept/decline/cancel
+      // SECURITY: Only status and updatedAt can be changed, all other fields must remain unchanged
       // Initiator can cancel, recipient can accept/decline
       allow update: if isAuthenticated() && (
                       // Recipient accepting or declining
@@ -164,7 +165,12 @@ service cloud.firestore {
                       (resource.data.initiatorId == request.auth.uid &&
                        resource.data.status == 'pending' &&
                        request.resource.data.status == 'cancelled')
-                    ) && request.resource.data.updatedAt is int;
+                    ) && 
+                    request.resource.data.updatedAt is int &&
+                    !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+                      'id', 'initiatorId', 'initiatorUsername', 'recipientId', 'recipientUsername',
+                      'createdAt', 'expiresAt', 'initiatorOffer', 'recipientOffer', 'message'
+                    ]);
       
       // Admins can read and delete any trade
       allow read, delete: if isAdmin();

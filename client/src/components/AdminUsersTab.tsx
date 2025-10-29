@@ -64,6 +64,14 @@ const BAN_PRESETS: BanPreset[] = [
   },
 ];
 
+const WARN_PRESETS = [
+  "Trolling",
+  "Harassment",
+  "Spam",
+  "Inappropriate Language",
+  "Minor Rule Violation",
+];
+
 export function AdminUsersTab() {
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
@@ -71,9 +79,11 @@ export function AdminUsersTab() {
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [searching, setSearching] = useState(false);
   const [actionDialog, setActionDialog] = useState<{
-    type: "ban" | "unban" | "wipe" | null;
+    type: "ban" | "unban" | "wipe" | "warn" | null;
     user: User | null;
   }>({ type: null, user: null });
+  const [warnReason, setWarnReason] = useState("");
+  const [warnMessage, setWarnMessage] = useState("");
   const [banReason, setBanReason] = useState("");
   const [isPermanentBan, setIsPermanentBan] = useState(false);
   const [banDays, setBanDays] = useState(7);
@@ -191,7 +201,7 @@ export function AdminUsersTab() {
         updateData.banExpiresAt = banExpiresAt;
       }
 
-      const shouldWipeInventory = isPermanentBan || wipeInventoryOnBan;
+      const shouldWipeInventory = wipeInventoryOnBan;
 
       // Create audit log
       if (currentUser) {
@@ -271,7 +281,9 @@ export function AdminUsersTab() {
 
         toast({
           title: "User banned",
-          description: `${actionDialog.user.username} has been banned for ${banDays} days`,
+          description: isPermanentBan 
+            ? `${actionDialog.user.username} has been permanently banned`
+            : `${actionDialog.user.username} has been banned for ${banDays} days`,
         });
       }
 
@@ -339,6 +351,67 @@ export function AdminUsersTab() {
       console.error("Error unbanning user:", error);
       toast({
         title: "Unban failed",
+        description: error.message || "An error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleWarn = async () => {
+    if (!actionDialog.user) return;
+
+    if (actionDialog.user.userId === 1) {
+      toast({
+        title: "Cannot warn Admin",
+        description: "Admin user cannot be warned",
+        variant: "destructive",
+      });
+      setActionDialog({ type: null, user: null });
+      return;
+    }
+
+    setProcessing(true);
+    try {
+      toast({
+        title: "Warning sent",
+        description: `${actionDialog.user.username} has been warned for: ${warnReason}`,
+      });
+
+      if (currentUser) {
+        await createAuditLog({
+          timestamp: Date.now(),
+          adminId: currentUser.id,
+          adminUsername: currentUser.username,
+          actionType: "user_warn",
+          targetUserId: actionDialog.user.id,
+          targetUsername: actionDialog.user.username,
+          details: {
+            action: "User warned",
+            reason: warnReason || "No reason provided",
+            message: warnMessage || "",
+          },
+        });
+      }
+
+      const webhookDetails: string[] = [
+        `**User:** ${actionDialog.user.username}`,
+        `**Reason:** ${warnReason || "No reason provided"}`,
+        `**Type:** Warning (No Ban)`,
+      ];
+      if (warnMessage) {
+        webhookDetails.push(`**Message:** ${warnMessage}`);
+      }
+      await sendWebhook("User Warned", actionDialog.user.username, webhookDetails, 0xFEE75C);
+
+      setActionDialog({ type: null, user: null });
+      setWarnReason("");
+      setWarnMessage("");
+    } catch (error: any) {
+      console.error("Error warning user:", error);
+      toast({
+        title: "Warning failed",
         description: error.message || "An error occurred",
         variant: "destructive",
       });
@@ -482,6 +555,14 @@ export function AdminUsersTab() {
                 )}
               </div>
               <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setActionDialog({ type: "warn", user })}
+                  data-testid={`button-warn-${user.userId}`}
+                >
+                  Warn
+                </Button>
                 {user.isBanned ? (
                   <Button
                     variant="outline"
@@ -528,11 +609,45 @@ export function AdminUsersTab() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
+              {actionDialog.type === "warn" && `Warn ${actionDialog.user?.username}?`}
               {actionDialog.type === "ban" && `Ban ${actionDialog.user?.username}?`}
               {actionDialog.type === "unban" && `Unban ${actionDialog.user?.username}?`}
               {actionDialog.type === "wipe" && `Wipe ${actionDialog.user?.username}'s Inventory?`}
             </AlertDialogTitle>
             <AlertDialogDescription>
+              {actionDialog.type === "warn" && (
+                <div className="space-y-4">
+                  <p>Send a warning to this user. This does NOT ban them.</p>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="warn-preset">Quick Select</Label>
+                    <Select value={warnReason} onValueChange={setWarnReason}>
+                      <SelectTrigger data-testid="select-warn-preset">
+                        <SelectValue placeholder="Choose a warning..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="custom">Custom Warning</SelectItem>
+                        {WARN_PRESETS.map((preset) => (
+                          <SelectItem key={preset} value={preset}>
+                            {preset}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="warn-message">Custom Message (Optional)</Label>
+                    <InputComponent
+                      id="warn-message"
+                      placeholder="Additional message for the user..."
+                      value={warnMessage}
+                      onChange={(e) => setWarnMessage(e.target.value)}
+                      data-testid="input-warn-message"
+                    />
+                  </div>
+                </div>
+              )}
               {actionDialog.type === "ban" && (
                 <div className="space-y-4">
                   <p>This will prevent the user from accessing the game.</p>
@@ -627,7 +742,38 @@ export function AdminUsersTab() {
                     />
                   </div>
 
-                  {(isPermanentBan || wipeInventoryOnBan) && (
+                  <div className="space-y-2">
+                    <Label htmlFor="ban-notes">Moderator Notes (visible to user)</Label>
+                    <InputComponent
+                      id="ban-notes"
+                      placeholder="Optional notes that the user can see..."
+                      value={banNotes}
+                      onChange={(e) => {
+                        setBanNotes(e.target.value);
+                        if (selectedPreset !== "custom") setSelectedPreset("custom");
+                      }}
+                      data-testid="input-ban-notes"
+                    />
+                  </div>
+
+                  {isPermanentBan && (
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="wipe-inventory-perm"
+                        checked={wipeInventoryOnBan}
+                        onCheckedChange={(checked) => {
+                          setWipeInventoryOnBan(!!checked);
+                          if (selectedPreset !== "custom") setSelectedPreset("custom");
+                        }}
+                        data-testid="checkbox-wipe-inventory-perm"
+                      />
+                      <Label htmlFor="wipe-inventory-perm" className="font-normal cursor-pointer">
+                        Wipe inventory (transfer all items to Admin)
+                      </Label>
+                    </div>
+                  )}
+
+                  {(wipeInventoryOnBan) && (
                     <p className="text-sm text-destructive font-semibold">
                       ⚠️ This ban will transfer all of this user's items to the Admin account.
                     </p>
@@ -646,6 +792,7 @@ export function AdminUsersTab() {
             <AlertDialogCancel disabled={processing}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
+                if (actionDialog.type === "warn") handleWarn();
                 if (actionDialog.type === "ban") handleBan();
                 if (actionDialog.type === "unban") handleUnban();
                 if (actionDialog.type === "wipe") handleWipeInventory();

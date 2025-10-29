@@ -186,6 +186,7 @@ export const auditLogSchema = z.object({
   actionType: z.enum([
     "user_ban",
     "user_unban",
+    "user_warn",
     "user_wipe_inventory",
     "user_give_items",
     "item_create",
