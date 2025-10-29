@@ -140,33 +140,43 @@ service cloud.firestore {
     
     // Trades collection
     match /trades/{tradeId} {
-      // Users can read trades where they are the initiator or recipient
+      // Users can read trades where they are sender or receiver
       allow read: if isAuthenticated() && (
-        resource.data.initiatorId == request.auth.uid ||
-        resource.data.recipientId == request.auth.uid
+        resource.data.senderId == request.auth.uid ||
+        resource.data.receiverId == request.auth.uid
       );
       
       // Admins can read all trades
       allow read: if isAdmin();
       
-      // Users can create trades if they are the initiator
+      // Users can create trades if they are the sender
       allow create: if isAuthenticated() && 
-                      request.resource.data.initiatorId == request.auth.uid &&
-                      request.resource.data.status == "pending";
+                      request.resource.data.senderId == request.auth.uid &&
+                      request.resource.data.status == "pending" &&
+                      request.resource.data.senderItems.size() >= 1 &&
+                      request.resource.data.senderItems.size() <= 7 &&
+                      request.resource.data.receiverItems.size() >= 1 &&
+                      request.resource.data.receiverItems.size() <= 7 &&
+                      request.resource.data.senderCash >= 0 &&
+                      request.resource.data.senderCash <= 50000 &&
+                      request.resource.data.receiverCash >= 0 &&
+                      request.resource.data.receiverCash <= 10000;
       
-      // Users can update trades (accept/decline/cancel)
-      // - Initiator can cancel their own pending trades
-      // - Recipient can accept or decline pending trades
-      // - Only status and updatedAt can be changed
+      // Users can update trades (accept/decline/counter)
+      // - Sender can decline/cancel their own pending or active trades
+      // - Receiver can accept, decline, or counter pending trades
+      // - Only status, updatedAt, and completedAt can be changed
       allow update: if isAuthenticated() && (
-        (resource.data.initiatorId == request.auth.uid && 
+        (resource.data.senderId == request.auth.uid && 
+         (resource.data.status == "pending" || resource.data.status == "active") &&
+         request.resource.data.status == "declined") ||
+        (resource.data.receiverId == request.auth.uid && 
          resource.data.status == "pending" &&
-         request.resource.data.status == "cancelled") ||
-        (resource.data.recipientId == request.auth.uid && 
-         resource.data.status == "pending" &&
-         (request.resource.data.status == "accepted" || request.resource.data.status == "declined"))
+         (request.resource.data.status == "completed" || 
+          request.resource.data.status == "declined" ||
+          request.resource.data.status == "countered"))
       ) && !request.resource.data.diff(resource.data).affectedKeys()
-            .hasAny(['initiatorId', 'recipientId', 'initiatorOffer', 'recipientOffer', 'createdAt', 'expiresAt']);
+            .hasAny(['senderId', 'receiverId', 'senderItems', 'receiverItems', 'senderCash', 'receiverCash', 'createdAt', 'expiresAt', 'originalTradeId']);
       
       // Admins can delete trades
       allow delete: if isAdmin();
