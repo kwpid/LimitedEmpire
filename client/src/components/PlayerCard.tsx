@@ -54,7 +54,7 @@ export function PlayerCard({ player, onClick, onAdminActionComplete }: PlayerCar
 
         if (player.showcaseItems && player.showcaseItems.length > 0) {
           const items = await Promise.all(
-            player.showcaseItems.slice(0, 3).map(async (inventoryItemId) => {
+            player.showcaseItems.map(async (inventoryItemId) => {
               const invItem = player.inventory?.find(item => item.id === inventoryItemId);
               if (!invItem) return null;
 
@@ -69,7 +69,8 @@ export function PlayerCard({ player, onClick, onAdminActionComplete }: PlayerCar
             })
           );
 
-          setShowcaseItems(items.filter((item): item is Item & { serialNumber: number | null } => item !== null));
+          const validItems = items.filter((item): item is Item & { serialNumber: number | null } => item !== null);
+          setShowcaseItems(validItems.slice(0, 3));
         }
       } catch (error) {
         console.error("Error loading player data:", error);

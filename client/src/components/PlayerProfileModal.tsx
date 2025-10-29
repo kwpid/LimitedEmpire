@@ -69,7 +69,7 @@ export function PlayerProfileModal({ player, open, onOpenChange }: PlayerProfile
             }
           });
 
-          const groupedInventory = new Map<string, { item: Item; serialNumbers: (number | null)[]; inventoryIds: string[] }>();
+          const groupedInventory = new Map<string, { item: Item; serialNumbers: (number | null)[]; inventoryIds: string[]; totalAmount: number }>();
 
           for (const invItem of player.inventory) {
             const item = itemsMap.get(invItem.itemId);
@@ -78,18 +78,19 @@ export function PlayerProfileModal({ player, open, onOpenChange }: PlayerProfile
             const key = invItem.serialNumber === null ? invItem.itemId : `${invItem.itemId}-${invItem.serialNumber}`;
 
             if (!groupedInventory.has(key)) {
-              groupedInventory.set(key, { item, serialNumbers: [], inventoryIds: [] });
+              groupedInventory.set(key, { item, serialNumbers: [], inventoryIds: [], totalAmount: 0 });
             }
 
             const group = groupedInventory.get(key)!;
             group.serialNumbers.push(invItem.serialNumber);
             group.inventoryIds.push(invItem.id);
+            group.totalAmount += (invItem.amount || 1);
           }
 
           const inventoryArray = Array.from(groupedInventory.values()).map(group => ({
             item: group.item,
             serialNumber: group.serialNumbers[0],
-            stackCount: group.serialNumbers.length,
+            stackCount: group.totalAmount,
             inventoryIds: group.inventoryIds,
           }));
 
