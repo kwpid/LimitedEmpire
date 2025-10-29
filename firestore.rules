@@ -140,52 +140,46 @@ service cloud.firestore {
     
     // Trades collection
     match /trades/{tradeId} {
-      // Users can read trades where they are either sender or receiver
+      // Users can read trades where they are sender or receiver
       allow read: if isAuthenticated() && (
-                    resource.data.senderId == request.auth.uid ||
-                    resource.data.receiverId == request.auth.uid
-                  );
+        resource.data.senderId == request.auth.uid ||
+        resource.data.receiverId == request.auth.uid
+      );
       
-      // Users can create trades where they are the sender
-      // VALIDATION: Enforce cash limits (offer <= 50000, request <= 10000) and item counts (1-7)
-      allow create: if isAuthenticated() &&
+      // Admins can read all trades
+      allow read: if isAdmin();
+      
+      // Users can create trades if they are the sender
+      allow create: if isAuthenticated() && 
                       request.resource.data.senderId == request.auth.uid &&
-                      request.resource.data.status == 'pending' &&
-                      request.resource.data.createdAt is int &&
-                      request.resource.data.updatedAt is int &&
-                      request.resource.data.senderOffer.cash >= 0 &&
-                      request.resource.data.senderOffer.cash <= 50000 &&
-                      request.resource.data.receiverRequest.cash >= 0 &&
-                      request.resource.data.receiverRequest.cash <= 10000 &&
-                      request.resource.data.senderOffer.items.size() >= 1 &&
-                      request.resource.data.senderOffer.items.size() <= 7 &&
-                      request.resource.data.receiverRequest.items.size() >= 1 &&
-                      request.resource.data.receiverRequest.items.size() <= 7;
+                      request.resource.data.status == "pending" &&
+                      request.resource.data.senderItems.size() >= 1 &&
+                      request.resource.data.senderItems.size() <= 7 &&
+                      request.resource.data.receiverItems.size() >= 1 &&
+                      request.resource.data.receiverItems.size() <= 7 &&
+                      request.resource.data.senderCash >= 0 &&
+                      request.resource.data.senderCash <= 50000 &&
+                      request.resource.data.receiverCash >= 0 &&
+                      request.resource.data.receiverCash <= 10000;
       
-      // Users can update trades to accept/decline/cancel
-      // SECURITY: Only status, updatedAt, and completedAt can be changed, all other fields must remain unchanged
-      // Sender can cancel, receiver can accept/decline
+      // Users can update trades (accept/decline/counter)
+      // - Sender can decline/cancel their own pending or active trades
+      // - Receiver can accept, decline, or counter pending trades
+      // - Only status, updatedAt, and completedAt can be changed
       allow update: if isAuthenticated() && (
-                      // Receiver accepting (completing) or declining
-                      (resource.data.receiverId == request.auth.uid &&
-                       resource.data.status == 'pending' &&
-                       request.resource.data.status in ['completed', 'declined']) ||
-                      // Sender cancelling
-                      (resource.data.senderId == request.auth.uid &&
-                       resource.data.status == 'pending' &&
-                       request.resource.data.status == 'cancelled')
-                    ) && 
-                    request.resource.data.updatedAt is int &&
-                    !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-                      'id', 'senderId', 'senderUsername', 'receiverId', 'receiverUsername',
-                      'createdAt', 'senderOffer', 'receiverRequest'
-                    ]);
+        (resource.data.senderId == request.auth.uid && 
+         (resource.data.status == "pending" || resource.data.status == "active") &&
+         request.resource.data.status == "declined") ||
+        (resource.data.receiverId == request.auth.uid && 
+         resource.data.status == "pending" &&
+         (request.resource.data.status == "completed" || 
+          request.resource.data.status == "declined" ||
+          request.resource.data.status == "countered"))
+      ) && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['senderId', 'receiverId', 'senderItems', 'receiverItems', 'senderCash', 'receiverCash', 'createdAt', 'expiresAt', 'originalTradeId']);
       
-      // Admins can read and delete any trade
-      allow read, delete: if isAdmin();
-      
-      // Admins can also update trade status for moderation
-      allow update: if isAdmin();
+      // Admins can delete trades
+      allow delete: if isAdmin();
     }
   }
 }
