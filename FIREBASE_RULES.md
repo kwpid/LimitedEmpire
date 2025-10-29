@@ -139,48 +139,44 @@ service cloud.firestore {
     }
     
     // Trades collection
-    match /trades/{tradeId} {
-      // Users can read trades where they are sender or receiver
-      allow read: if isAuthenticated() && (
-        resource.data.senderId == request.auth.uid ||
-        resource.data.receiverId == request.auth.uid
-      );
-      
-      // Admins can read all trades
-      allow read: if isAdmin();
-      
-      // Users can create trades if they are the sender
-      allow create: if isAuthenticated() && 
-                      request.resource.data.senderId == request.auth.uid &&
-                      request.resource.data.status == "pending" &&
-                      request.resource.data.senderItems.size() >= 1 &&
-                      request.resource.data.senderItems.size() <= 7 &&
-                      request.resource.data.receiverItems.size() >= 1 &&
-                      request.resource.data.receiverItems.size() <= 7 &&
-                      request.resource.data.senderCash >= 0 &&
-                      request.resource.data.senderCash <= 50000 &&
-                      request.resource.data.receiverCash >= 0 &&
-                      request.resource.data.receiverCash <= 10000;
-      
-      // Users can update trades (accept/decline/counter)
-      // - Sender can decline/cancel their own pending or active trades
-      // - Receiver can accept, decline, or counter pending trades
-      // - Only status, updatedAt, and completedAt can be changed
-      allow update: if isAuthenticated() && (
-        (resource.data.senderId == request.auth.uid && 
-         (resource.data.status == "pending" || resource.data.status == "active") &&
-         request.resource.data.status == "declined") ||
-        (resource.data.receiverId == request.auth.uid && 
-         resource.data.status == "pending" &&
-         (request.resource.data.status == "completed" || 
-          request.resource.data.status == "declined" ||
-          request.resource.data.status == "countered"))
-      ) && !request.resource.data.diff(resource.data).affectedKeys()
-            .hasAny(['senderId', 'receiverId', 'senderItems', 'receiverItems', 'senderCash', 'receiverCash', 'createdAt', 'expiresAt', 'originalTradeId']);
-      
-      // Admins can delete trades
-      allow delete: if isAdmin();
-    }
+match /trades/{tradeId} {
+  // Users can read trades where they are sender or receiver
+  allow read: if isAuthenticated() && (
+    resource.data.senderId == request.auth.uid ||
+    resource.data.receiverId == request.auth.uid
+  );
+  
+  // Admins can read all trades
+  allow read: if isAdmin();
+  
+  // Users can create trades if they are the sender
+  allow create: if isAuthenticated() && 
+                  request.resource.data.senderId == request.auth.uid &&
+                  request.resource.data.status == "pending" &&
+                  request.resource.data.senderOffer.items.size() >= 1 &&
+                  request.resource.data.senderOffer.items.size() <= 7 &&
+                  request.resource.data.receiverRequest.items.size() >= 1 &&
+                  request.resource.data.receiverRequest.items.size() <= 7 &&
+                  request.resource.data.senderOffer.cash >= 0 &&
+                  request.resource.data.senderOffer.cash <= 50000 &&
+                  request.resource.data.receiverRequest.cash >= 0 &&
+                  request.resource.data.receiverRequest.cash <= 10000;
+  
+  // Users can update trades (accept/decline/cancel)
+  allow update: if isAuthenticated() && (
+    (resource.data.senderId == request.auth.uid && 
+     (resource.data.status == "pending" || resource.data.status == "active") &&
+     (request.resource.data.status == "declined" || request.resource.data.status == "cancelled")) ||
+    (resource.data.receiverId == request.auth.uid && 
+     resource.data.status == "pending" &&
+     (request.resource.data.status == "completed" || 
+      request.resource.data.status == "declined"))
+  ) && !request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(['senderId', 'receiverId', 'senderOffer', 'receiverRequest', 'createdAt']);
+  
+  // Admins can delete trades
+  allow delete: if isAdmin();
+}
     
     // Audit Logs collection
     match /auditLogs/{logId} {
@@ -236,6 +232,27 @@ service firebase.storage {
 4. **Global Rolls Cleanup**: You may want to set up a Cloud Function to periodically delete old global rolls (older than 24 hours) to keep the collection size manageable.
 
 5. **Rate Limiting**: Consider implementing Cloud Functions to rate limit rolling actions if abuse becomes a concern.
+
+6. **CRITICAL - Rules Are Not Filters**: Firebase security rules are NOT filters for your queries. If a query COULD potentially return documents the user doesn't have permission to read, Firestore will reject the ENTIRE query with a "Missing or insufficient permissions" error.
+   
+   **Example Problem:**
+   ```javascript
+   // ❌ This will FAIL even if you filter results in code
+   query(collection(db, "trades"), where("status", "==", "completed"))
+   // Fails because it could return trades the user doesn't own
+   ```
+   
+   **Solution - Add user ID to query:**
+   ```javascript
+   // ✅ This works because it only returns trades the user owns
+   query(
+     collection(db, "trades"), 
+     where("senderId", "==", user.firebaseUid),
+     where("status", "==", "completed")
+   )
+   ```
+   
+   For trades where the user could be either sender OR receiver, you must run TWO separate queries and combine the results in your application code.
 
 ## Firebase Console Setup Checklist
 

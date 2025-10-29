@@ -50,23 +50,51 @@ export default function Trading() {
         orderBy("createdAt", "desc")
       );
       
-      const inactiveQuery = query(
+      // For inactive trades, we need separate queries for sender and receiver
+      // because Firebase rules are not filters
+      const inactiveSenderQuery = query(
         tradesRef,
+        where("senderId", "==", user.firebaseUid),
         where("status", "in", ["declined", "cancelled"]),
         orderBy("updatedAt", "desc")
       );
       
-      const completedQuery = query(
+      const inactiveReceiverQuery = query(
         tradesRef,
+        where("receiverId", "==", user.firebaseUid),
+        where("status", "in", ["declined", "cancelled"]),
+        orderBy("updatedAt", "desc")
+      );
+      
+      // For completed trades, we need separate queries for sender and receiver
+      const completedSenderQuery = query(
+        tradesRef,
+        where("senderId", "==", user.firebaseUid),
+        where("status", "==", "completed"),
+        orderBy("completedAt", "desc")
+      );
+      
+      const completedReceiverQuery = query(
+        tradesRef,
+        where("receiverId", "==", user.firebaseUid),
         where("status", "==", "completed"),
         orderBy("completedAt", "desc")
       );
 
-      const [inboundSnapshot, outboundSnapshot, inactiveSnapshot, completedSnapshot] = await Promise.all([
+      const [
+        inboundSnapshot, 
+        outboundSnapshot, 
+        inactiveSenderSnapshot, 
+        inactiveReceiverSnapshot,
+        completedSenderSnapshot,
+        completedReceiverSnapshot
+      ] = await Promise.all([
         getDocs(inboundQuery),
         getDocs(outboundQuery),
-        getDocs(inactiveQuery),
-        getDocs(completedQuery),
+        getDocs(inactiveSenderQuery),
+        getDocs(inactiveReceiverQuery),
+        getDocs(completedSenderQuery),
+        getDocs(completedReceiverQuery),
       ]);
 
       const inbound: Trade[] = [];
@@ -79,21 +107,27 @@ export default function Trading() {
         outbound.push({ id: doc.id, ...doc.data() } as Trade);
       });
 
+      // Combine inactive trades from sender and receiver queries
       const inactive: Trade[] = [];
-      inactiveSnapshot.forEach((doc) => {
-        const trade = { id: doc.id, ...doc.data() } as Trade;
-        if (trade.senderId === user.firebaseUid || trade.receiverId === user.firebaseUid) {
-          inactive.push(trade);
-        }
+      inactiveSenderSnapshot.forEach((doc) => {
+        inactive.push({ id: doc.id, ...doc.data() } as Trade);
       });
+      inactiveReceiverSnapshot.forEach((doc) => {
+        inactive.push({ id: doc.id, ...doc.data() } as Trade);
+      });
+      // Sort by updatedAt descending
+      inactive.sort((a, b) => b.updatedAt - a.updatedAt);
 
+      // Combine completed trades from sender and receiver queries
       const completed: Trade[] = [];
-      completedSnapshot.forEach((doc) => {
-        const trade = { id: doc.id, ...doc.data() } as Trade;
-        if (trade.senderId === user.firebaseUid || trade.receiverId === user.firebaseUid) {
-          completed.push(trade);
-        }
+      completedSenderSnapshot.forEach((doc) => {
+        completed.push({ id: doc.id, ...doc.data() } as Trade);
       });
+      completedReceiverSnapshot.forEach((doc) => {
+        completed.push({ id: doc.id, ...doc.data() } as Trade);
+      });
+      // Sort by completedAt descending
+      completed.sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
 
       setInboundTrades(inbound);
       setOutboundTrades(outbound);
