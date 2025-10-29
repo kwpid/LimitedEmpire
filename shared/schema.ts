@@ -91,6 +91,37 @@ export const userSchema = z.object({
     serialNumber: z.number().nullable().optional(),
     timestamp: z.number(),
   })).optional().default([]), // Last 10 high-value rolls (250K+)
+  tradeHistory: z.array(z.object({
+    id: z.string(),
+    status: z.enum(["accepted", "declined", "cancelled", "expired"]),
+    isInitiator: z.boolean(),
+    otherUsername: z.string(),
+    myOffer: z.object({
+      items: z.array(z.object({
+        inventoryItemId: z.string(),
+        itemId: z.string(),
+        itemName: z.string(),
+        itemImageUrl: z.string(),
+        serialNumber: z.number().nullable(),
+        valueAtOffer: z.number(),
+      })),
+      cash: z.number(),
+    }),
+    theirOffer: z.object({
+      items: z.array(z.object({
+        inventoryItemId: z.string(),
+        itemId: z.string(),
+        itemName: z.string(),
+        itemImageUrl: z.string(),
+        serialNumber: z.number().nullable(),
+        valueAtOffer: z.number(),
+      })),
+      cash: z.number(),
+    }),
+    createdAt: z.number(),
+    completedAt: z.number(),
+    message: z.string().default(""),
+  })).optional().default([]),
 });
 
 export const insertUserSchema = userSchema.omit({ id: true });
