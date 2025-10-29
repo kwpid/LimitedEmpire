@@ -214,12 +214,30 @@ export default function Trading() {
 
   const renderTradeCard = (trade: Trade, isInbound: boolean, showActions: boolean) => {
     const otherUser = isInbound ? trade.senderUsername : trade.receiverUsername;
-    const offering = trade.senderOffer;
-    const requesting = trade.receiverRequest;
     
-    // Add null checks to prevent errors
-    if (!offering || !requesting || !offering.items || !requesting.items) {
-      console.error("Invalid trade data:", trade);
+    // Handle both old and new trade structure for backwards compatibility
+    let offering: { items: any[], cash: number };
+    let requesting: { items: any[], cash: number };
+    
+    if (trade.senderOffer && trade.receiverRequest) {
+      // New structure
+      offering = trade.senderOffer;
+      requesting = trade.receiverRequest;
+    } else {
+      // Old structure - convert to new format
+      offering = {
+        items: (trade as any).senderItems || [],
+        cash: (trade as any).senderCash || 0,
+      };
+      requesting = {
+        items: (trade as any).receiverItems || [],
+        cash: (trade as any).receiverCash || 0,
+      };
+    }
+    
+    // Validate the data
+    if (!offering.items || !requesting.items) {
+      console.error("Invalid trade data - missing items arrays:", trade);
       return null;
     }
     

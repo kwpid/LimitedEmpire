@@ -257,10 +257,14 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
         senderUsername: user.username,
         receiverId: targetUser.firebaseUid,
         receiverUsername: targetUser.username,
-        senderItems: selectedOffer,
-        receiverItems: selectedRequest,
-        senderCash: offerCash,
-        receiverCash: requestCash,
+        senderOffer: {
+          items: selectedOffer,
+          cash: offerCash,
+        },
+        receiverRequest: {
+          items: selectedRequest,
+          cash: requestCash,
+        },
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });
