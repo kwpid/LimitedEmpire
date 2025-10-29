@@ -21,6 +21,12 @@ service cloud.firestore {
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
     
+    function isModerator() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isModerator == true;
+    }
+    
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
@@ -36,15 +42,19 @@ service cloud.firestore {
                       request.auth.uid == userId &&
                       request.resource.data.firebaseUid == request.auth.uid &&
                       request.resource.data.isAdmin == false && // MUST be false - admins set manually
+                      request.resource.data.isModerator == false && // MUST be false - moderators set manually
                       request.resource.data.isBanned == false; // MUST be false on creation
       
       // Users can only update their own document (but CANNOT change admin status, ban status, userId, or firebaseUid)
-      // Admins can update ban status and ban reason for any user
+      // Admins can update all fields except protected ones (isAdmin, userId, firebaseUid)
+      // Moderators can ONLY update ban-related fields: isBanned, isPermanentBan, banReason, banNotes, banExpiresAt
       allow update: if (isAuthenticated() &&
                        request.auth.uid == userId && 
-                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isBanned', 'banReason', 'userId', 'firebaseUid'])) ||
+                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isModerator', 'isBanned', 'isPermanentBan', 'banReason', 'banNotes', 'banExpiresAt', 'userId', 'firebaseUid'])) ||
                       (isAdmin() &&
-                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'userId', 'firebaseUid']));
+                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'userId', 'firebaseUid'])) ||
+                      (isModerator() &&
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isBanned', 'isPermanentBan', 'banReason', 'banNotes', 'banExpiresAt']));
       
       // Only admins can delete users
       allow delete: if isAdmin();
@@ -126,6 +136,52 @@ service cloud.firestore {
       // Only allow incrementing the userId counter during user creation
       allow write: if isAuthenticated() && 
                      counterId == 'userId';
+    }
+    
+    // Trades collection
+    match /trades/{tradeId} {
+      // Users can read trades where they are the initiator or recipient
+      allow read: if isAuthenticated() && (
+        resource.data.initiatorId == request.auth.uid ||
+        resource.data.recipientId == request.auth.uid
+      );
+      
+      // Admins can read all trades
+      allow read: if isAdmin();
+      
+      // Users can create trades if they are the initiator
+      allow create: if isAuthenticated() && 
+                      request.resource.data.initiatorId == request.auth.uid &&
+                      request.resource.data.status == "pending";
+      
+      // Users can update trades (accept/decline/cancel)
+      // - Initiator can cancel their own pending trades
+      // - Recipient can accept or decline pending trades
+      // - Only status and updatedAt can be changed
+      allow update: if isAuthenticated() && (
+        (resource.data.initiatorId == request.auth.uid && 
+         resource.data.status == "pending" &&
+         request.resource.data.status == "cancelled") ||
+        (resource.data.recipientId == request.auth.uid && 
+         resource.data.status == "pending" &&
+         (request.resource.data.status == "accepted" || request.resource.data.status == "declined"))
+      ) && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['initiatorId', 'recipientId', 'initiatorOffer', 'recipientOffer', 'createdAt', 'expiresAt']);
+      
+      // Admins can delete trades
+      allow delete: if isAdmin();
+    }
+    
+    // Audit Logs collection
+    match /auditLogs/{logId} {
+      // Only admins and moderators can read audit logs
+      allow read: if isAdmin() || isModerator();
+      
+      // Only admins and moderators can create audit logs
+      allow create: if isAdmin() || isModerator();
+      
+      // No updates or deletes allowed (audit logs are immutable)
+      allow update, delete: if false;
     }
   }
 }

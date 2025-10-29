@@ -1,7 +1,7 @@
 import { useEffect, useState, memo } from "react";
 import { Route, Switch, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
@@ -22,7 +22,7 @@ import { BanOverlay } from "@/components/BanOverlay";
 import { Dices, Package, Database, Shield, LogOut, Sparkles, Settings as SettingsIcon, Users, Trophy, ArrowLeftRight } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth } from "./lib/firebase";
-import type { Item } from "@shared/schema";
+import type { Item, Trade } from "@shared/schema";
 
 const MemoizedRollScreen = memo(RollScreen);
 
@@ -31,6 +31,31 @@ function AppContent() {
   const [location, setLocation] = useLocation();
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
+
+  const { data: inboundTrades } = useQuery<Trade[]>({
+    queryKey: ["/api/trades", user?.id, "inbound"],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const res = await fetch(`/api/trades?userId=${user.id}&box=inbound`, {
+        headers: {
+          Authorization: `Bearer ${await auth.currentUser?.getIdToken()}`,
+        },
+      });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!user?.id,
+    refetchInterval: 30000,
+  });
+
+  useEffect(() => {
+    const baseTitle = "Limited Empire";
+    if (inboundTrades && inboundTrades.length > 0) {
+      document.title = `(${inboundTrades.length}) ${baseTitle}`;
+    } else {
+      document.title = baseTitle;
+    }
+  }, [inboundTrades]);
 
   const handleLogout = async () => {
     try {

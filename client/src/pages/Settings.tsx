@@ -30,9 +30,6 @@ export default function Settings() {
   const [autoDeclineHugeLoss, setAutoDeclineHugeLoss] = useState(
     user?.settings?.tradeSettings?.autoDeclineHugeLoss || false
   );
-  const [tradeRequirement, setTradeRequirement] = useState<"none" | "low" | "mid" | "high">(
-    user?.settings?.tradeSettings?.tradeRequirement || "none"
-  );
 
   const toggleRarity = (rarity: RarityTier) => {
     setAutoSellRarities((prev) => {
@@ -77,8 +74,7 @@ export default function Settings() {
     customStatus !== (user?.customStatus || "") || 
     description !== (user?.description || "");
   const hasTradeSettingsChanges = 
-    autoDeclineHugeLoss !== (user?.settings?.tradeSettings?.autoDeclineHugeLoss || false) ||
-    tradeRequirement !== (user?.settings?.tradeSettings?.tradeRequirement || "none");
+    autoDeclineHugeLoss !== (user?.settings?.tradeSettings?.autoDeclineHugeLoss || false);
 
   const saveProfile = async () => {
     if (!user) return;
@@ -118,7 +114,6 @@ export default function Settings() {
       await updateDoc(userRef, {
         "settings.tradeSettings": {
           autoDeclineHugeLoss,
-          tradeRequirement,
         },
       });
 
@@ -347,47 +342,6 @@ export default function Settings() {
                         <p className="text-sm text-muted-foreground mt-1">
                           When enabled, trades where you're offering significantly more value than you're receiving will be automatically declined.
                         </p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <Label>Trade Requirements</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Set the minimum requirements for players who want to trade with you
-                      </p>
-                      <div className="space-y-2">
-                        {[
-                          { value: "none", label: "None", description: "Anyone can send you trade offers" },
-                          { value: "low", label: "Low", description: "Requires 10+ rolls and 1,000+ cash" },
-                          { value: "mid", label: "Mid", description: "Requires 100+ rolls and 10,000+ cash" },
-                          { value: "high", label: "High", description: "Requires 1,000+ rolls and 100,000+ cash" },
-                        ].map((req) => (
-                          <div
-                            key={req.value}
-                            className={`flex items-start space-x-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                              tradeRequirement === req.value ? "bg-muted/50 border-primary" : "hover:bg-muted/30"
-                            }`}
-                            onClick={() => setTradeRequirement(req.value as typeof tradeRequirement)}
-                          >
-                            <div className="flex items-center h-5">
-                              <div
-                                className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                                  tradeRequirement === req.value
-                                    ? "border-primary bg-primary"
-                                    : "border-muted-foreground"
-                                }`}
-                              >
-                                {tradeRequirement === req.value && (
-                                  <div className="w-2 h-2 rounded-full bg-primary-foreground" />
-                                )}
-                              </div>
-                            </div>
-                            <div className="flex-1">
-                              <Label className="cursor-pointer font-medium">{req.label}</Label>
-                              <p className="text-xs text-muted-foreground mt-1">{req.description}</p>
-                            </div>
-                          </div>
-                        ))}
                       </div>
                     </div>
                   </div>

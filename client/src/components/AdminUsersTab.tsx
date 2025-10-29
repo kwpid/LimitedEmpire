@@ -55,6 +55,13 @@ const BAN_PRESETS: BanPreset[] = [
     isPermanent: false,
     wipeInventory: false,
   },
+  {
+    name: "Inappropriate Content",
+    reason: "Inappropriate Content",
+    days: 0,
+    isPermanent: true,
+    wipeInventory: false,
+  },
 ];
 
 export function AdminUsersTab() {
@@ -72,6 +79,7 @@ export function AdminUsersTab() {
   const [banDays, setBanDays] = useState(7);
   const [wipeInventoryOnBan, setWipeInventoryOnBan] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState<string>("custom");
+  const [banNotes, setBanNotes] = useState("");
   const [giveItemsUser, setGiveItemsUser] = useState<User | null>(null);
   const [processing, setProcessing] = useState(false);
 
@@ -100,6 +108,7 @@ export function AdminUsersTab() {
     
     if (presetName === "custom") {
       setBanReason("");
+      setBanNotes("");
       setIsPermanentBan(false);
       setBanDays(7);
       setWipeInventoryOnBan(false);
@@ -173,6 +182,10 @@ export function AdminUsersTab() {
         isPermanentBan: isPermanentBan,
         banReason: banReason || "No reason provided",
       };
+
+      if (banNotes.trim()) {
+        updateData.banNotes = banNotes.trim();
+      }
 
       if (banExpiresAt) {
         updateData.banExpiresAt = banExpiresAt;
@@ -265,6 +278,7 @@ export function AdminUsersTab() {
       searchUsers();
       setActionDialog({ type: null, user: null });
       setBanReason("");
+      setBanNotes("");
       setIsPermanentBan(false);
       setBanDays(7);
     } catch (error: any) {

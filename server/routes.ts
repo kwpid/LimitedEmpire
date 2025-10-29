@@ -423,7 +423,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/users/:userId/trade-settings", requireAuth, async (req: any, res: any) => {
     try {
       const { userId } = req.params;
-      const { autoDeclineHugeLoss, tradeRequirement } = req.body;
+      const { autoDeclineHugeLoss } = req.body;
 
       const userDoc = await db.collection("users").where("firebaseUid", "==", req.user.uid).limit(1).get();
       if (userDoc.empty) {
@@ -443,17 +443,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const user = { id: userDocData.id, ...userDocData.data() } as User;
-      const settings = user.settings || { autoSellRarities: [], tradeSettings: { autoDeclineHugeLoss: false, tradeRequirement: "none" } };
+      const settings = user.settings || { autoSellRarities: [], tradeSettings: { autoDeclineHugeLoss: false } };
 
       if (!settings.tradeSettings) {
-        settings.tradeSettings = { autoDeclineHugeLoss: false, tradeRequirement: "none" };
+        settings.tradeSettings = { autoDeclineHugeLoss: false };
       }
 
       if (typeof autoDeclineHugeLoss === "boolean") {
         settings.tradeSettings.autoDeclineHugeLoss = autoDeclineHugeLoss;
-      }
-      if (["none", "low", "mid", "high"].includes(tradeRequirement)) {
-        settings.tradeSettings.tradeRequirement = tradeRequirement as "none" | "low" | "mid" | "high";
       }
 
       await userRef.update({ settings });

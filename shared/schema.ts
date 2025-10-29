@@ -53,10 +53,12 @@ export const userSchema = z.object({
   username: z.string(),
   userId: z.number(), // Sequential ID (1, 2, 3, etc.)
   isAdmin: z.boolean(),
+  isModerator: z.boolean().default(false),
   isBanned: z.boolean().default(false),
   isPermanentBan: z.boolean().default(false), // If true, user is permanently banned and auto-wiped
   banReason: z.string().optional(),
   banExpiresAt: z.number().optional(), // timestamp for temporary bans
+  banNotes: z.string().max(500).optional(), // Moderator notes visible to the banned user
   createdAt: z.number(), // timestamp
   dateJoined: z.number().default(1730079600000), // Oct 28 2025 USA (midnight EST) - for existing users
   rollCount: z.number().default(0), // Total number of rolls performed
@@ -70,9 +72,8 @@ export const userSchema = z.object({
     autoSellRarities: z.array(z.enum(["COMMON", "UNCOMMON", "RARE", "ULTRA_RARE", "EPIC", "ULTRA_EPIC", "MYTHIC", "INSANE"])).default([]),
     tradeSettings: z.object({
       autoDeclineHugeLoss: z.boolean().default(false),
-      tradeRequirement: z.enum(["none", "low", "mid", "high"]).default("none"),
-    }).default({ autoDeclineHugeLoss: false, tradeRequirement: "none" }),
-  }).default({ autoSellRarities: [], tradeSettings: { autoDeclineHugeLoss: false, tradeRequirement: "none" } }),
+    }).default({ autoDeclineHugeLoss: false }),
+  }).default({ autoSellRarities: [], tradeSettings: { autoDeclineHugeLoss: false } }),
   inventory: z.array(z.object({
     id: z.string(),
     itemId: z.string(),

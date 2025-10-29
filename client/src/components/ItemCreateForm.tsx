@@ -84,11 +84,13 @@ export function ItemCreateForm({ onSuccess }: { onSuccess?: () => void }) {
         const adminData = adminUserDoc.data();
         const adminInventory = adminData.inventory || [];
 
+        const initialOwners = adminData.userId === 1 ? 0 : 1;
+
         transaction.set(newItemRef, {
           ...values,
           rarity,
           remainingStock: values.stockType === "limited" ? values.totalStock : null,
-          totalOwners: 1,
+          totalOwners: initialOwners,
           createdAt: Date.now(),
           createdBy: user.id,
         });
