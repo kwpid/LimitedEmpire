@@ -72,9 +72,22 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
     setLoading(true);
 
     try {
+      // Fetch fresh user data from Firestore to ensure inventory is up-to-date
+      const [myUserDoc, targetUserDoc] = await Promise.all([
+        getDoc(doc(db, "users", user.firebaseUid)),
+        getDoc(doc(db, "users", targetUser.firebaseUid)),
+      ]);
+
+      if (!myUserDoc.exists() || !targetUserDoc.exists()) {
+        throw new Error("User data not found");
+      }
+
+      const myUserData = { id: myUserDoc.id, ...myUserDoc.data() } as User;
+      const targetUserData = { id: targetUserDoc.id, ...targetUserDoc.data() } as User;
+
       const [myItems, theirItems] = await Promise.all([
-        loadUserInventory(user),
-        loadUserInventory(targetUser),
+        loadUserInventory(myUserData),
+        loadUserInventory(targetUserData),
       ]);
 
       setMyInventory(myItems);
