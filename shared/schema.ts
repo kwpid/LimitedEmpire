@@ -68,13 +68,18 @@ export const userSchema = z.object({
   lastActive: z.number().default(Date.now), // Last activity timestamp for online/offline tracking
   settings: z.object({
     autoSellRarities: z.array(z.enum(["COMMON", "UNCOMMON", "RARE", "ULTRA_RARE", "EPIC", "ULTRA_EPIC", "MYTHIC", "INSANE"])).default([]),
-  }).default({ autoSellRarities: [] }),
+    tradeSettings: z.object({
+      autoDeclineHugeLoss: z.boolean().default(false),
+      tradeRequirement: z.enum(["none", "low", "mid", "high"]).default("none"),
+    }).default({ autoDeclineHugeLoss: false, tradeRequirement: "none" }),
+  }).default({ autoSellRarities: [], tradeSettings: { autoDeclineHugeLoss: false, tradeRequirement: "none" } }),
   inventory: z.array(z.object({
     id: z.string(),
     itemId: z.string(),
     serialNumber: z.number().nullable(), // null for infinite items, 0 for admin's special copy, 1+ for user copies
     rolledAt: z.number(),
     amount: z.number().default(1),
+    nftLocked: z.boolean().default(false), // NFT (Not For Trade) marking
   })).default([]),
   bestRolls: z.array(z.object({
     itemId: z.string(),
@@ -214,3 +219,54 @@ export const insertAuditLogSchema = auditLogSchema.omit({ id: true });
 
 export type AuditLog = z.infer<typeof auditLogSchema>;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+
+// Trade Schema
+export const tradeItemSchema = z.object({
+  inventoryItemId: z.string(),
+  itemId: z.string(),
+  itemName: z.string(),
+  itemImageUrl: z.string(),
+  serialNumber: z.number().nullable(),
+  valueAtOffer: z.number(),
+});
+
+export const tradeOfferSchema = z.object({
+  items: z.array(tradeItemSchema).max(7).default([]),
+  cash: z.number().min(0).max(50000).default(0),
+});
+
+export const tradeSchema = z.object({
+  id: z.string(),
+  status: z.enum(["pending", "accepted", "declined", "cancelled", "expired"]),
+  initiatorId: z.string(),
+  initiatorUsername: z.string(),
+  recipientId: z.string(),
+  recipientUsername: z.string(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+  expiresAt: z.number().optional(),
+  initiatorOffer: tradeOfferSchema,
+  recipientOffer: tradeOfferSchema,
+  message: z.string().max(200).default(""),
+});
+
+export const insertTradeSchema = z.object({
+  initiatorId: z.string(),
+  initiatorUsername: z.string(),
+  recipientId: z.string(),
+  recipientUsername: z.string(),
+  initiatorOffer: tradeOfferSchema.refine(
+    (offer) => offer.items.length > 0,
+    { message: "Must offer at least 1 item" }
+  ),
+  recipientOffer: tradeOfferSchema.refine(
+    (offer) => offer.items.length > 0,
+    { message: "Must request at least 1 item" }
+  ),
+  message: z.string().max(200).default(""),
+});
+
+export type Trade = z.infer<typeof tradeSchema>;
+export type InsertTrade = z.infer<typeof insertTradeSchema>;
+export type TradeItem = z.infer<typeof tradeItemSchema>;
+export type TradeOffer = z.infer<typeof tradeOfferSchema>;
