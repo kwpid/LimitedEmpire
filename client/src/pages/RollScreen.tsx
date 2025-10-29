@@ -212,6 +212,44 @@ export default function RollScreen() {
     }
   };
 
+  const handleAnimationComplete = useCallback(async () => {
+    if (!rolledItem || !user) return;
+    
+    // Immediately transition to result after animation completes
+    setIsAnimating(false);
+    
+    // Save to database and update UI
+    const serialNumber = rolledItem.stockType === "limited" ? 
+      user.inventory?.find(inv => inv.itemId === rolledItem.id)?.serialNumber : undefined;
+    
+    await saveRollToDatabase(rolledItem, serialNumber);
+    
+    // Show toast based on whether item was auto-sold
+    const wasAutoSold = user.settings?.autoSellRarities?.includes(rolledItem.rarity);
+    if (wasAutoSold) {
+      toast({
+        title: "Auto-Sold!",
+        description: `${rolledItem.name} - Earned ${formatValue(rolledItem.value)}`,
+      });
+    } else {
+      toast({
+        title: "You rolled!",
+        description: `${rolledItem.name} - ${formatValue(rolledItem.value)}${serialNumber ? ` #${serialNumber}` : ""}`,
+      });
+    }
+
+    await Promise.all([
+      loadItems(),
+      loadUserStats(),
+      refetchUser(),
+    ]);
+    
+    loadBestRolls();
+    
+    setRolling(false);
+    rollingRef.current = false;
+  }, [rolledItem, user, toast, refetchUser]);
+
   const performRoll = useCallback(async () => {
     if (!user || rolling || rollingRef.current) return;
 
@@ -225,43 +263,19 @@ export default function RollScreen() {
       setRolledItem(result.item);
       setIsAnimating(true);
       
-      // Wait for animation to complete (3500ms) plus small buffer
-      await new Promise((resolve) => setTimeout(resolve, 3600));
+      // Animation complete handler will be called by SlotMachineRoll component
+      // No need to wait here - the callback handles everything smoothly
       
-      setIsAnimating(false);
-      
-      await saveRollToDatabase(result.item, result.serialNumber ?? undefined);
-      
-      if (result.autoSold) {
-        toast({
-          title: "Auto-Sold!",
-          description: `${result.item.name} - Earned ${formatValue(result.playerEarned || 0)}`,
-        });
-      } else {
-        toast({
-          title: "You rolled!",
-          description: `${result.item.name} - ${formatValue(result.item.value)}${result.serialNumber ? ` #${result.serialNumber}` : ""}`,
-        });
-      }
-
-      await Promise.all([
-        loadItems(),
-        loadUserStats(),
-        refetchUser(),
-      ]);
-      
-      loadBestRolls();
     } catch (error: any) {
       console.error("Roll error:", error);
       setIsAnimating(false);
+      setRolling(false);
+      rollingRef.current = false;
       toast({
         title: "Roll failed",
         description: error.message || "An error occurred",
         variant: "destructive",
       });
-    } finally {
-      setRolling(false);
-      rollingRef.current = false;
     }
   }, [user, rolling, toast]);
 
@@ -370,7 +384,12 @@ export default function RollScreen() {
                   transition={{ duration: 0.3 }}
                   className="w-full flex justify-center"
                 >
-                  <SlotMachineRoll items={items} finalItem={rolledItem} isRolling={isAnimating} />
+                  <SlotMachineRoll 
+                    items={items} 
+                    finalItem={rolledItem} 
+                    isRolling={isAnimating}
+                    onAnimationComplete={handleAnimationComplete}
+                  />
                 </motion.div>
               ) : rolledItem ? (
                 <motion.div

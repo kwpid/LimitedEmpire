@@ -71,8 +71,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Webhook endpoint for item releases (admin only)
   app.post("/api/webhooks/item-release", requireAdmin, async (req, res) => {
     try {
-      const { name, rarity, value, stock } = req.body;
-      await sendItemReleaseWebhook({ name, rarity, value, stock });
+      const { name, rarity, value, stock, imageUrl } = req.body;
+      await sendItemReleaseWebhook({ name, rarity, value, stock, imageUrl });
       res.json({ success: true });
     } catch (error) {
       console.error("Error sending item release webhook:", error);
@@ -157,42 +157,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
           throw new Error("Receiver does not have enough cash");
         }
 
-        // Remove sender's offered items from their inventory
-        const senderOfferedInventoryIds = new Set(trade.senderOffer.items.map((item: any) => item.inventoryId));
-        const senderNewInventory = senderInventory.filter(item => !senderOfferedInventoryIds.has(item.id));
+        // Process sender's offered items (reduce/remove from sender, add to receiver)
+        const senderNewInventory = [...senderInventory];
+        const receiverNewInventory = [...receiverInventory];
 
-        // Verify all sender items were found
-        if (senderNewInventory.length !== senderInventory.length - trade.senderOffer.items.length) {
-          throw new Error("Some sender items are no longer in inventory");
-        }
+        // Transfer sender's offered items
+        for (const tradeItem of trade.senderOffer.items) {
+          const invIndex = senderNewInventory.findIndex(inv => inv.id === tradeItem.inventoryId);
+          
+          if (invIndex === -1) {
+            throw new Error(`Sender no longer has item: ${tradeItem.itemName}`);
+          }
 
-        // Remove receiver's requested items from their inventory
-        const receiverRequestedInventoryIds = new Set(trade.receiverRequest.items.map((item: any) => item.inventoryId));
-        const receiverNewInventory = receiverInventory.filter(item => !receiverRequestedInventoryIds.has(item.id));
+          const inventoryItem = senderNewInventory[invIndex];
+          const tradeAmount = tradeItem.amount || inventoryItem.amount;
 
-        // Verify all receiver items were found
-        if (receiverNewInventory.length !== receiverInventory.length - trade.receiverRequest.items.length) {
-          throw new Error("Some receiver items are no longer in inventory");
-        }
+          // Validate sender has enough quantity
+          if (inventoryItem.amount < tradeAmount) {
+            throw new Error(`Sender doesn't have enough of ${tradeItem.itemName}`);
+          }
 
-        // Add sender's items to receiver's inventory
-        for (const item of trade.senderOffer.items) {
-          const originalItem = senderInventory.find(inv => inv.id === item.inventoryId);
-          if (originalItem) {
+          // Reduce sender's amount or remove item entirely
+          if (inventoryItem.amount === tradeAmount) {
+            senderNewInventory.splice(invIndex, 1);
+          } else {
+            senderNewInventory[invIndex] = {
+              ...inventoryItem,
+              amount: inventoryItem.amount - tradeAmount,
+            };
+          }
+
+          // Add to receiver's inventory (merge with existing or create new)
+          const existingReceiverItem = receiverNewInventory.find(
+            inv => inv.itemId === tradeItem.itemId && inv.serialNumber === tradeItem.serialNumber
+          );
+
+          if (existingReceiverItem) {
+            // Merge with existing stack
+            const existingIndex = receiverNewInventory.indexOf(existingReceiverItem);
+            receiverNewInventory[existingIndex] = {
+              ...existingReceiverItem,
+              amount: existingReceiverItem.amount + tradeAmount,
+            };
+          } else {
+            // Create new inventory entry
             receiverNewInventory.push({
-              ...originalItem,
+              id: `${tradeItem.itemId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              itemId: tradeItem.itemId,
+              serialNumber: tradeItem.serialNumber,
               rolledAt: Date.now(),
+              amount: tradeAmount,
+              nftLocked: false,
             });
           }
         }
 
-        // Add receiver's items to sender's inventory
-        for (const item of trade.receiverRequest.items) {
-          const originalItem = receiverInventory.find(inv => inv.id === item.inventoryId);
-          if (originalItem) {
+        // Transfer receiver's requested items (same logic, reversed)
+        for (const tradeItem of trade.receiverRequest.items) {
+          const invIndex = receiverNewInventory.findIndex(inv => inv.id === tradeItem.inventoryId);
+          
+          if (invIndex === -1) {
+            throw new Error(`Receiver no longer has item: ${tradeItem.itemName}`);
+          }
+
+          const inventoryItem = receiverNewInventory[invIndex];
+          const tradeAmount = tradeItem.amount || inventoryItem.amount;
+
+          // Validate receiver has enough quantity
+          if (inventoryItem.amount < tradeAmount) {
+            throw new Error(`Receiver doesn't have enough of ${tradeItem.itemName}`);
+          }
+
+          // Reduce receiver's amount or remove item entirely
+          if (inventoryItem.amount === tradeAmount) {
+            receiverNewInventory.splice(invIndex, 1);
+          } else {
+            receiverNewInventory[invIndex] = {
+              ...inventoryItem,
+              amount: inventoryItem.amount - tradeAmount,
+            };
+          }
+
+          // Add to sender's inventory (merge with existing or create new)
+          const existingSenderItem = senderNewInventory.find(
+            inv => inv.itemId === tradeItem.itemId && inv.serialNumber === tradeItem.serialNumber
+          );
+
+          if (existingSenderItem) {
+            // Merge with existing stack
+            const existingIndex = senderNewInventory.indexOf(existingSenderItem);
+            senderNewInventory[existingIndex] = {
+              ...existingSenderItem,
+              amount: existingSenderItem.amount + tradeAmount,
+            };
+          } else {
+            // Create new inventory entry
             senderNewInventory.push({
-              ...originalItem,
+              id: `${tradeItem.itemId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              itemId: tradeItem.itemId,
+              serialNumber: tradeItem.serialNumber,
               rolledAt: Date.now(),
+              amount: tradeAmount,
+              nftLocked: false,
             });
           }
         }

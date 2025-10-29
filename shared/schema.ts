@@ -237,6 +237,7 @@ export const tradeSchema = z.object({
       itemRarity: z.enum(["COMMON", "UNCOMMON", "RARE", "ULTRA_RARE", "EPIC", "ULTRA_EPIC", "MYTHIC", "INSANE"]),
       serialNumber: z.number().nullable(),
       nftLocked: z.boolean().default(false),
+      amount: z.number().positive().default(1), // Quantity of this item being traded
     })).min(1).max(7),
     cash: z.number().min(0).max(50000).default(0),
   }),
@@ -250,6 +251,7 @@ export const tradeSchema = z.object({
       itemRarity: z.enum(["COMMON", "UNCOMMON", "RARE", "ULTRA_RARE", "EPIC", "ULTRA_EPIC", "MYTHIC", "INSANE"]),
       serialNumber: z.number().nullable(),
       nftLocked: z.boolean().default(false),
+      amount: z.number().positive().default(1), // Quantity of this item being traded
     })).min(1).max(7),
     cash: z.number().min(0).max(10000).default(0),
   }),

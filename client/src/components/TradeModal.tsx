@@ -202,14 +202,15 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
     setter(newQuantities);
   };
 
-  // Convert quantities to inventory entries for submission
-  const quantitiesToEntries = (quantities: Map<string, number>, inventory: InventoryItemWithDetails[]): InventoryItemWithDetails[] => {
-    const entries: InventoryItemWithDetails[] = [];
+  // Convert quantities to trade items with amount field
+  // Handles cases where items span multiple inventory entries
+  const quantitiesToEntries = (quantities: Map<string, number>, inventory: InventoryItemWithDetails[]): any[] => {
+    const tradeItems: any[] = [];
     const grouped = groupInventoryByItem(inventory);
     
     quantities.forEach((desiredQuantity, itemId) => {
       const items = grouped.get(itemId) || [];
-      let remainingQuantity = desiredQuantity;
+      if (items.length === 0) return;
       
       // Sort items by serial number for deterministic selection
       const sortedItems = [...items].sort((a, b) => {
@@ -221,15 +222,30 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
         return a.inventoryId.localeCompare(b.inventoryId);
       });
       
-      // Add entries until we reach the desired quantity
+      // Distribute desired quantity across multiple inventory entries if needed
+      let remainingQuantity = desiredQuantity;
       for (const item of sortedItems) {
         if (remainingQuantity <= 0) break;
-        entries.push(item);
-        remainingQuantity -= item.amount;
+        
+        const amountFromThisEntry = Math.min(remainingQuantity, item.amount);
+        
+        tradeItems.push({
+          inventoryId: item.inventoryId,
+          itemId: item.itemId,
+          itemName: item.itemName,
+          itemImageUrl: item.itemImageUrl,
+          itemValue: item.itemValue,
+          itemRarity: item.itemRarity,
+          serialNumber: item.serialNumber,
+          nftLocked: item.nftLocked || false,
+          amount: amountFromThisEntry,
+        });
+        
+        remainingQuantity -= amountFromThisEntry;
       }
     });
     
-    return entries;
+    return tradeItems;
   };
 
   const handleSubmitTrade = async () => {

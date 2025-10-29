@@ -6,16 +6,21 @@ interface SlotMachineRollProps {
   items: Item[];
   finalItem: Item | null;
   isRolling: boolean;
+  onAnimationComplete?: () => void;
 }
 
-export function SlotMachineRoll({ items, finalItem, isRolling }: SlotMachineRollProps) {
+export function SlotMachineRoll({ items, finalItem, isRolling, onAnimationComplete }: SlotMachineRollProps) {
   const [currentItem, setCurrentItem] = useState<Item | null>(null);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const itemsRef = useRef<Item[]>([]);
+  const hasCalledComplete = useRef<boolean>(false);
 
   useEffect(() => {
     if (isRolling && items.length > 0 && finalItem) {
+      // Reset completion flag for new animation
+      hasCalledComplete.current = false;
+      
       // Build array of items to cycle through
       const shuffledItems = [...items].sort(() => Math.random() - 0.5);
       const repeatedItems: Item[] = [];
@@ -36,6 +41,7 @@ export function SlotMachineRoll({ items, finalItem, isRolling }: SlotMachineRoll
     
     if (!isRolling) {
       setCurrentItem(null);
+      hasCalledComplete.current = false;
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
         animationRef.current = null;
@@ -51,8 +57,14 @@ export function SlotMachineRoll({ items, finalItem, isRolling }: SlotMachineRoll
     const progress = Math.min(elapsed / totalDuration, 1);
     
     if (progress >= 1) {
-      // Animation complete - immediately show final item
+      // Animation complete - show final item and notify parent
       setCurrentItem(itemsRef.current[itemsRef.current.length - 1]);
+      
+      // Call completion callback only once
+      if (!hasCalledComplete.current && onAnimationComplete) {
+        hasCalledComplete.current = true;
+        onAnimationComplete();
+      }
       return;
     }
     
