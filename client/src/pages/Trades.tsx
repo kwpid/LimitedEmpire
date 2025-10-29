@@ -10,22 +10,22 @@ export default function Trades() {
   const { user } = useAuth();
 
   const { data: inboundTrades, isLoading: inboundLoading } = useQuery<Trade[]>({
-    queryKey: ["/api/trades", "inbound"],
+    queryKey: ["/api/trades?type=inbound"],
     enabled: !!user,
   });
 
   const { data: outboundTrades, isLoading: outboundLoading } = useQuery<Trade[]>({
-    queryKey: ["/api/trades", "outbound"],
+    queryKey: ["/api/trades?type=outbound"],
     enabled: !!user,
   });
 
   const { data: completedTrades, isLoading: completedLoading } = useQuery<Trade[]>({
-    queryKey: ["/api/trades", "completed"],
+    queryKey: ["/api/trades?type=completed"],
     enabled: !!user,
   });
 
   const { data: inactiveTrades, isLoading: inactiveLoading } = useQuery<Trade[]>({
-    queryKey: ["/api/trades", "inactive"],
+    queryKey: ["/api/trades?type=inactive"],
     enabled: !!user,
   });
 
