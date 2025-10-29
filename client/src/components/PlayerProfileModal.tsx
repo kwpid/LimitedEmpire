@@ -5,14 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { User, Item } from "@shared/schema";
 import { formatValue } from "@/lib/rarity";
-import { ArrowRightLeft, Flag, Ban, User as UserIcon, Dices, DollarSign, Clock, Calendar, Package, Hash } from "lucide-react";
+import { Flag, Ban, User as UserIcon, Dices, DollarSign, Clock, Calendar, Package, Hash } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { doc, getDoc, collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ItemCard } from "@/components/ItemCard";
 import { calculateUserBadges, calculateLeaderboardPositions, type BadgeConfig } from "@/lib/badgeConfig";
 import { useAuth } from "@/contexts/AuthContext";
-import { TradeWindow } from "@/components/TradeWindow";
 
 interface PlayerProfileModalProps {
   player: User | null;
@@ -26,7 +25,6 @@ export function PlayerProfileModal({ player, open, onOpenChange }: PlayerProfile
   const [inventoryItems, setInventoryItems] = useState<{ item: Item; serialNumber: number | null; stackCount: number; inventoryIds: string[] }[]>([]);
   const [loading, setLoading] = useState(true);
   const [badges, setBadges] = useState<BadgeConfig[]>([]);
-  const [tradeWindowOpen, setTradeWindowOpen] = useState(false);
 
   useEffect(() => {
     if (!player || !open) {
@@ -216,16 +214,6 @@ export function PlayerProfileModal({ player, open, onOpenChange }: PlayerProfile
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {currentUser && currentUser.id !== player.id && !player.isBanned && !currentUser.isBanned && (
-                <Button 
-                  variant="default" 
-                  onClick={() => setTradeWindowOpen(true)}
-                  data-testid="button-trade"
-                >
-                  <ArrowRightLeft className="w-4 h-4 mr-2" />
-                  Trade
-                </Button>
-              )}
               <Button variant="outline" disabled data-testid="button-report">
                 <Flag className="w-4 h-4 mr-2" />
                 Report
@@ -338,17 +326,6 @@ export function PlayerProfileModal({ player, open, onOpenChange }: PlayerProfile
           </div>
         </ScrollArea>
       </DialogContent>
-      
-      {player && currentUser && (
-        <TradeWindow
-          open={tradeWindowOpen}
-          onOpenChange={setTradeWindowOpen}
-          targetUser={player}
-          onTradeSent={() => {
-            setTradeWindowOpen(false);
-          }}
-        />
-      )}
     </Dialog>
   );
 }
