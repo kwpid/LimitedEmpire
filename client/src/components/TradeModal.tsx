@@ -396,12 +396,23 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
     const selectedQuantity = selectedItems.length;
     const hasNftLocked = items.some(item => item.nftLocked);
 
-    const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const newQuantity = Math.min(quantity, Math.max(0, parseInt(e.target.value) || 0));
-      if (isOffer) {
-        handleOfferQuantityChange(itemId, items, newQuantity);
-      } else {
-        handleRequestQuantityChange(itemId, items, newQuantity);
+    const handleIncrement = () => {
+      if (selectedQuantity < quantity) {
+        if (isOffer) {
+          handleOfferQuantityChange(itemId, items, selectedQuantity + 1);
+        } else {
+          handleRequestQuantityChange(itemId, items, selectedQuantity + 1);
+        }
+      }
+    };
+
+    const handleDecrement = () => {
+      if (selectedQuantity > 0) {
+        if (isOffer) {
+          handleOfferQuantityChange(itemId, items, selectedQuantity - 1);
+        } else {
+          handleRequestQuantityChange(itemId, items, selectedQuantity - 1);
+        }
       }
     };
 
@@ -425,9 +436,9 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
                 <Lock className="w-2.5 h-2.5 text-destructive-foreground" />
               </div>
             )}
-            {quantity > 1 && (
-              <div className="absolute top-0.5 left-0.5 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded-full font-bold">
-                x{quantity}
+            {selectedQuantity > 0 && (
+              <div className="absolute top-0.5 right-0.5 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                {selectedQuantity}
               </div>
             )}
           </div>
@@ -438,42 +449,37 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
             <span className="text-[9px] font-mono text-muted-foreground">
               ${formatValue(representativeItem.itemValue)}
             </span>
+            {quantity > 1 && (
+              <span className="text-[9px] text-muted-foreground">
+                Own: {quantity}
+              </span>
+            )}
           </div>
-          {quantity > 1 && (
-            <div className="flex items-center gap-1">
-              <Label htmlFor={`qty-${itemId}`} className="text-[9px] text-muted-foreground">Qty:</Label>
-              <Input
-                id={`qty-${itemId}`}
-                type="number"
-                min={0}
-                max={quantity}
-                value={selectedQuantity}
-                onChange={handleQuantityChange}
-                className="h-6 text-[10px] px-1 text-center"
-                disabled={hasNftLocked}
-                data-testid={`input-quantity-${itemId}`}
-                onClick={(e) => e.stopPropagation()}
-              />
-            </div>
-          )}
-          {quantity === 1 && (
+          <div className="flex items-center justify-center gap-1">
             <Button
-              variant={selectedQuantity > 0 ? "default" : "outline"}
+              variant="outline"
               size="sm"
-              className="w-full h-6 text-[10px] mt-1"
-              onClick={() => {
-                if (isOffer) {
-                  handleOfferQuantityChange(itemId, items, selectedQuantity > 0 ? 0 : 1);
-                } else {
-                  handleRequestQuantityChange(itemId, items, selectedQuantity > 0 ? 0 : 1);
-                }
-              }}
-              disabled={hasNftLocked}
-              data-testid={`button-select-${itemId}`}
+              className="h-6 w-6 p-0"
+              onClick={handleDecrement}
+              disabled={hasNftLocked || selectedQuantity === 0}
+              data-testid={`button-decrease-${itemId}`}
             >
-              {selectedQuantity > 0 ? "Selected" : "Select"}
+              -
             </Button>
-          )}
+            <span className="text-xs font-semibold min-w-[20px] text-center" data-testid={`text-quantity-${itemId}`}>
+              {selectedQuantity}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={handleIncrement}
+              disabled={hasNftLocked || selectedQuantity >= quantity}
+              data-testid={`button-increase-${itemId}`}
+            >
+              +
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
