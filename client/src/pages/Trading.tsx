@@ -119,13 +119,14 @@ export default function Trading() {
     try {
       const tradeRef = doc(db, "trades", trade.id);
       await updateDoc(tradeRef, {
-        status: "accepted",
+        status: "completed",
         updatedAt: Date.now(),
+        completedAt: Date.now(),
       });
 
       toast({
         title: "Trade Accepted",
-        description: "The trade will be processed shortly",
+        description: "The trade has been completed successfully",
       });
 
       await loadTrades();

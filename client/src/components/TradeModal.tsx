@@ -222,6 +222,24 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
       return;
     }
 
+    if (offerCash > 50000) {
+      toast({
+        title: "Invalid Trade",
+        description: "Cash offer cannot exceed $50,000",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (requestCash > 10000) {
+      toast({
+        title: "Invalid Trade",
+        description: "Cash request cannot exceed $10,000",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (offerCash > (user.cash ?? 0)) {
       toast({
         title: "Insufficient Funds",
