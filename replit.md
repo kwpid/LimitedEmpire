@@ -4,6 +4,41 @@
 
 Limited Empire is a web-based collection game where players acquire rare items through a probability-based rolling system. The project aims to provide an engaging user experience with Google authentication, a sophisticated item rarity and stock system, and comprehensive administrative tools for item and user management. Key features include an animated rolling interface, inventory management, a real-time global roll notification system for high-value items, and advanced admin capabilities like item creation (with admin auto-ownership of serial #0), flexible item gifting, and a robust ban system with inventory wiping. The game's economy is centered around a probability-based item acquisition and selling mechanism, with plans for future expansion into reporting and analytics.
 
+## Recent Changes (October 29, 2025)
+
+**Trading System Implementation:**
+- **Complete Roblox-Style Trading System**: Fully implemented peer-to-peer trading functionality
+  - Trade up to 7 items and 50K cash per side
+  - Both sides require at least 1 item to prevent cash-only trades
+  - Serial number transfers for limited items
+  - NFT (Not For Trade) marking system for inventory items
+  - Trade status tracking: pending, accepted, declined, cancelled, expired
+  - Real-time trade validation with auto-decline for huge losses (optional setting)
+  - Trade requirements: none, friends, or no one (trade lock)
+- **TradeCenter Page**: New dedicated trading hub with 4 filtered tabs
+  - Inbound: Trades received from other players
+  - Outbound: Trades sent to other players
+  - Inactive: Declined and cancelled trades
+  - Completed: Successfully accepted and expired trades
+  - Each trade shows detailed offer/request breakdown with item cards and cash amounts
+- **TradeDialog Component**: Comprehensive trade creation interface
+  - Item selection from inventory with search/filter by rarity
+  - NFT-locked items are excluded from tradeable items
+  - Requested items selection from target player's inventory
+  - Cash offers for both sides (0-50K)
+  - Real-time value calculation and comparison
+  - Visual indicators for fair/unfair trades
+  - Integration with player profiles via "Send Trade" button
+- **Trade Settings**: Player-configurable trading preferences
+  - Auto-decline huge loss offers (>50% value difference)
+  - Trade requirements (none/friends/no one)
+  - Integrated into Settings page alongside auto-sell settings
+- **Security**: All trade endpoints protected with Firebase authentication
+  - Token verification on every trade operation
+  - User authorization checks prevent cross-user manipulation
+  - Transaction-based trade acceptance for data consistency
+- **Navigation**: Added Trades tab to main navigation for easy access
+
 ## Recent Changes (October 28, 2025)
 
 **Latest Updates (Evening Session - Final):**
@@ -102,7 +137,7 @@ The design adopts a dark, modern theme with a near-black background and slightly
     - **Firebase Hosting**: For deploying the web application.
 - **Rarity System**: Items are categorized into 8 tiers based on value, influencing their roll probability logarithmically.
 - **Stock System**: Items can be "limited" (with serial numbers and finite stock) or "infinite." Admins receive serial #0 for all new limited items.
-- **Transactional Integrity**: Firebase transactions are used to ensure atomicity and consistency for critical operations like rolling, selling, item gifting, and inventory wiping.
+- **Transactional Integrity**: Firebase transactions are used to ensure atomicity and consistency for critical operations like rolling, selling, trading, item gifting, and inventory wiping.
 - **Real-time Features**: Global roll notifications for high-value items and real-time updates from Firestore are implemented.
 - **Admin Features**:
     - **Item Management**: Creation (with auto-ownership for admin), editing, stock management, and off-sale toggling.
@@ -112,9 +147,10 @@ The design adopts a dark, modern theme with a near-black background and slightly
 - **Roll System Logic**: The core rolling mechanism uses item values to calculate probabilities. While currently client-side for rapid development, it's designed for future migration to Cloud Functions for enhanced security.
 
 **Core Data Models (Firestore Collections):**
-- `users`: Stores user profiles, authentication details, cash, roll counts, ban status, and settings.
+- `users`: Stores user profiles, authentication details, cash, roll counts, ban status, settings, and trade settings.
 - `items`: Defines item properties such as name, value, rarity, stock type, and image URL.
-- `inventory`: Links users to their owned items, including serial numbers for limited items.
+- `inventory`: Links users to their owned items, including serial numbers for limited items and NFT lock status.
+- `trades`: Records all trade offers with status, items, cash amounts, and timestamps.
 - `globalRolls`: Records significant item rolls for public display.
 - `auditLogs`: Tracks all administrative actions.
 - `counters`: Manages sequential IDs (e.g., for users).
