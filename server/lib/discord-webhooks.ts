@@ -97,9 +97,9 @@ export async function sendItemReleaseWebhook(itemData: {
     timestamp: new Date().toISOString(),
   };
 
-  // Add image if provided
+  // Add thumbnail if provided
   if (itemData.imageUrl) {
-    embed.image = {
+    embed.thumbnail = {
       url: itemData.imageUrl,
     };
   }
