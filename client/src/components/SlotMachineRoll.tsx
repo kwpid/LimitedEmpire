@@ -50,17 +50,22 @@ export function SlotMachineRoll({ items, finalItem, isRolling }: SlotMachineRoll
     // Calculate progress
     const progress = Math.min(elapsed / totalDuration, 1);
     
+    if (progress >= 1) {
+      // Animation complete - immediately show final item
+      setCurrentItem(itemsRef.current[itemsRef.current.length - 1]);
+      return;
+    }
+    
     // Use cubic ease out for smoother deceleration
     const easeProgress = 1 - Math.pow(1 - progress, 3);
     
-    // Map eased progress to item indices, allowing smooth landing on final item
-    const targetIndex = Math.floor(easeProgress * (itemsRef.current.length - 1));
+    // Map eased progress to item indices, capped at second-to-last during animation
+    const maxIndex = itemsRef.current.length - 2;
+    const targetIndex = Math.min(maxIndex, Math.floor(easeProgress * itemsRef.current.length));
     setCurrentItem(itemsRef.current[targetIndex]);
     
-    // Continue animation until progress reaches 1
-    if (progress < 1) {
-      animationRef.current = requestAnimationFrame(animate);
-    }
+    // Continue animation
+    animationRef.current = requestAnimationFrame(animate);
   };
 
   useEffect(() => {

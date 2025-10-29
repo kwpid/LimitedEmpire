@@ -41,8 +41,9 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
   const [mySearchTerm, setMySearchTerm] = useState("");
   const [theirSearchTerm, setTheirSearchTerm] = useState("");
   
-  const [selectedOffer, setSelectedOffer] = useState<InventoryItemWithDetails[]>([]);
-  const [selectedRequest, setSelectedRequest] = useState<InventoryItemWithDetails[]>([]);
+  // Track desired quantities per itemId (unit-based, not entry-based)
+  const [offerQuantities, setOfferQuantities] = useState<Map<string, number>>(new Map());
+  const [requestQuantities, setRequestQuantities] = useState<Map<string, number>>(new Map());
   const [offerCash, setOfferCash] = useState<number>(0);
   const [requestCash, setRequestCash] = useState<number>(0);
   
@@ -62,8 +63,8 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
     setTheirInventory([]);
     setMySearchTerm("");
     setTheirSearchTerm("");
-    setSelectedOffer([]);
-    setSelectedRequest([]);
+    setOfferQuantities(new Map());
+    setRequestQuantities(new Map());
     setOfferCash(0);
     setRequestCash(0);
   };
@@ -167,9 +168,10 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
   const groupedMyInventory = groupInventoryByItem(filteredMyInventory);
   const groupedTheirInventory = groupInventoryByItem(filteredTheirInventory);
 
-  const handleEntryChange = (itemId: string, items: InventoryItemWithDetails[], newEntryCount: number, isOffer: boolean) => {
-    // newEntryCount is the number of inventory entries to select
-    const clampedCount = Math.min(items.length, Math.max(0, newEntryCount));
+  // Handle quantity changes (unit-based, not entry-based)
+  const handleQuantityChange = (itemId: string, items: InventoryItemWithDetails[], newQuantity: number, isOffer: boolean) => {
+    const totalUnits = items.reduce((sum, item) => sum + item.amount, 0);
+    const clampedQuantity = Math.min(totalUnits, Math.max(0, newQuantity));
     
     // Check for NFT locked items
     if (items.some(item => item.nftLocked)) {
@@ -181,70 +183,53 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
       return;
     }
 
-    // Get currently selected items and determine the setter and limit message
-    const currentlySelected = isOffer 
-      ? selectedOffer.filter(i => i.itemId === itemId)
-      : selectedRequest.filter(i => i.itemId === itemId);
-    const otherSelected = isOffer
-      ? selectedOffer.filter(i => i.itemId !== itemId)
-      : selectedRequest.filter(i => i.itemId !== itemId);
-    const setter = isOffer ? setSelectedOffer : setSelectedRequest;
-    const limitMsg = isOffer ? "You can offer up to 7 items total" : "You can request up to 7 items total";
+    const quantities = isOffer ? offerQuantities : requestQuantities;
+    const setter = isOffer ? setOfferQuantities : setRequestQuantities;
     
-    if (currentlySelected.length === clampedCount) {
-      // No change needed
-      return;
-    }
-    
-    // Check if new total would exceed limit (7 inventory entries max)
-    if (otherSelected.length + clampedCount > 7) {
-      toast({
-        title: "Maximum Reached",
-        description: limitMsg,
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    let newSelected: InventoryItemWithDetails[];
-    
-    if (clampedCount > currentlySelected.length) {
-      // Need to add more entries
-      const currentIds = new Set(currentlySelected.map(i => i.inventoryId));
-      const availableItems = items
-        .filter(item => !currentIds.has(item.inventoryId))
-        .sort((a, b) => {
-          // Sort by serial number first (nulls last), then by inventoryId for stability
-          if (a.serialNumber !== null && b.serialNumber !== null) {
-            return a.serialNumber - b.serialNumber;
-          }
-          if (a.serialNumber !== null) return -1;
-          if (b.serialNumber !== null) return 1;
-          return a.inventoryId.localeCompare(b.inventoryId);
-        });
-      
-      const entriesToAdd = clampedCount - currentlySelected.length;
-      newSelected = [...currentlySelected, ...availableItems.slice(0, entriesToAdd)];
+    const newQuantities = new Map(quantities);
+    if (clampedQuantity === 0) {
+      newQuantities.delete(itemId);
     } else {
-      // Need to remove entries - keep first N entries
-      newSelected = currentlySelected.slice(0, clampedCount);
+      newQuantities.set(itemId, clampedQuantity);
     }
     
-    setter([...otherSelected, ...newSelected]);
+    setter(newQuantities);
   };
 
-  const removeOfferItem = (inventoryId: string) => {
-    setSelectedOffer(selectedOffer.filter(i => i.inventoryId !== inventoryId));
-  };
-
-  const removeRequestItem = (inventoryId: string) => {
-    setSelectedRequest(selectedRequest.filter(i => i.inventoryId !== inventoryId));
+  // Convert quantities to inventory entries for submission
+  const quantitiesToEntries = (quantities: Map<string, number>, inventory: InventoryItemWithDetails[]): InventoryItemWithDetails[] => {
+    const entries: InventoryItemWithDetails[] = [];
+    const grouped = groupInventoryByItem(inventory);
+    
+    quantities.forEach((desiredQuantity, itemId) => {
+      const items = grouped.get(itemId) || [];
+      let remainingQuantity = desiredQuantity;
+      
+      // Sort items by serial number for deterministic selection
+      const sortedItems = [...items].sort((a, b) => {
+        if (a.serialNumber !== null && b.serialNumber !== null) {
+          return a.serialNumber - b.serialNumber;
+        }
+        if (a.serialNumber !== null) return -1;
+        if (b.serialNumber !== null) return 1;
+        return a.inventoryId.localeCompare(b.inventoryId);
+      });
+      
+      // Add entries until we reach the desired quantity
+      for (const item of sortedItems) {
+        if (remainingQuantity <= 0) break;
+        entries.push(item);
+        remainingQuantity -= item.amount;
+      }
+    });
+    
+    return entries;
   };
 
   const handleSubmitTrade = async () => {
     if (!user || !targetUser) return;
 
-    if (selectedOffer.length === 0) {
+    if (offerQuantities.size === 0) {
       toast({
         title: "Invalid Trade",
         description: "You must offer at least 1 item",
@@ -253,7 +238,7 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
       return;
     }
 
-    if (selectedRequest.length === 0) {
+    if (requestQuantities.size === 0) {
       toast({
         title: "Invalid Trade",
         description: "You must request at least 1 item",
@@ -292,6 +277,10 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
     setSubmitting(true);
 
     try {
+      // Convert quantities to inventory entries
+      const offerEntries = quantitiesToEntries(offerQuantities, myInventory);
+      const requestEntries = quantitiesToEntries(requestQuantities, theirInventory);
+
       await addDoc(collection(db, "trades"), {
         status: "pending",
         senderId: user.firebaseUid,
@@ -299,11 +288,11 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
         receiverId: targetUser.firebaseUid,
         receiverUsername: targetUser.username,
         senderOffer: {
-          items: selectedOffer,
+          items: offerEntries,
           cash: offerCash,
         },
         receiverRequest: {
-          items: selectedRequest,
+          items: requestEntries,
           cash: requestCash,
         },
         createdAt: Date.now(),
@@ -328,39 +317,42 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
     }
   };
 
-  const totalOfferValue = selectedOffer.reduce((sum, item) => sum + item.itemValue, 0) + offerCash;
-  const totalRequestValue = selectedRequest.reduce((sum, item) => sum + item.itemValue, 0) + requestCash;
+  // Calculate total values based on quantities
+  const calculateTotalValue = (quantities: Map<string, number>, inventory: InventoryItemWithDetails[]): number => {
+    const grouped = groupInventoryByItem(inventory);
+    let total = 0;
+    quantities.forEach((quantity, itemId) => {
+      const items = grouped.get(itemId);
+      if (items && items.length > 0) {
+        total += items[0].itemValue * quantity;
+      }
+    });
+    return total;
+  };
+
+  const totalOfferValue = calculateTotalValue(offerQuantities, myInventory) + offerCash;
+  const totalRequestValue = calculateTotalValue(requestQuantities, theirInventory) + requestCash;
 
   const renderInventoryItem = (itemId: string, items: InventoryItemWithDetails[], isOffer: boolean) => {
     const representativeItem = items[0];
-    // Calculate total units (sum of amounts) for display
     const totalUnits = items.reduce((sum, item) => sum + item.amount, 0);
-    // Max selectable is the total number of units available
-    const maxSelectable = totalUnits;
-    const selectedItems = isOffer 
-      ? selectedOffer.filter(i => i.itemId === itemId)
-      : selectedRequest.filter(i => i.itemId === itemId);
-    // Calculate total selected units (sum of amounts in selected items)
-    const selectedQuantity = selectedItems.reduce((sum, item) => sum + item.amount, 0);
     const hasNftLocked = items.some(item => item.nftLocked);
+    
+    const quantities = isOffer ? offerQuantities : requestQuantities;
+    const selectedQuantity = quantities.get(itemId) || 0;
 
     const handleIncrement = () => {
-      // Add one more inventory entry (which may contain multiple units)
-      const selectedEntries = selectedItems.length;
-      if (selectedEntries < items.length) {
-        handleEntryChange(itemId, items, selectedEntries + 1, isOffer);
+      if (selectedQuantity < totalUnits) {
+        handleQuantityChange(itemId, items, selectedQuantity + 1, isOffer);
       }
     };
 
     const handleDecrement = () => {
-      // Remove one inventory entry (which may contain multiple units)
-      const selectedEntries = selectedItems.length;
-      if (selectedEntries > 0) {
-        handleEntryChange(itemId, items, selectedEntries - 1, isOffer);
+      if (selectedQuantity > 0) {
+        handleQuantityChange(itemId, items, selectedQuantity - 1, isOffer);
       }
     };
 
-    // For single units or single entries, clicking toggles selection
     const handleClick = () => {
       if (totalUnits === 1 && !hasNftLocked) {
         if (selectedQuantity === 0) {
@@ -437,7 +429,7 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
                   e.stopPropagation();
                   handleIncrement();
                 }}
-                disabled={hasNftLocked || selectedQuantity >= maxSelectable}
+                disabled={hasNftLocked || selectedQuantity >= totalUnits}
                 data-testid={`button-increase-${itemId}`}
               >
                 +
@@ -448,32 +440,6 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
       </Card>
     );
   };
-
-  const renderSelectedItem = (item: InventoryItemWithDetails, onRemove: (id: string) => void) => (
-    <div key={item.inventoryId} className="relative group">
-      <div className="w-16 h-16 rounded-md overflow-hidden border-2 bg-gradient-to-br from-card to-muted" style={{ borderColor: getRarityGlow(item.itemRarity) }}>
-        <img
-          src={item.itemImageUrl}
-          alt={item.itemName}
-          className="w-full h-full object-cover"
-        />
-        {item.serialNumber !== null && (
-          <div className="absolute bottom-0 left-0 right-0 bg-black/75 text-white text-[9px] px-1 text-center font-mono">
-            #{item.serialNumber}
-          </div>
-        )}
-      </div>
-      <Button
-        size="icon"
-        variant="destructive"
-        className="absolute -top-1 -right-1 w-4 h-4 rounded-full opacity-0 group-hover:opacity-100 transition-opacity p-0"
-        onClick={() => onRemove(item.inventoryId)}
-        data-testid={`button-remove-${item.inventoryId}`}
-      >
-        <X className="w-3 h-3" />
-      </Button>
-    </div>
-  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -550,11 +516,36 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
             <div className="space-y-3">
               <Label className="text-base font-semibold">Your Offer</Label>
               <div className="min-h-[100px] p-3 border rounded-lg bg-muted/30">
-                {selectedOffer.length === 0 && offerCash === 0 ? (
+                {offerQuantities.size === 0 && offerCash === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-6">Select items from your inventory</p>
                 ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {selectedOffer.map(item => renderSelectedItem(item, removeOfferItem))}
+                  <div className="space-y-1">
+                    {Array.from(offerQuantities.entries()).map(([itemId, quantity]) => {
+                      const items = groupedMyInventory.get(itemId);
+                      if (!items || items.length === 0) return null;
+                      const item = items[0];
+                      return (
+                        <div key={itemId} className="flex items-center justify-between p-2 rounded bg-background/50">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0">
+                              <img src={item.itemImageUrl} alt={item.itemName} className="w-full h-full object-cover" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold truncate">{item.itemName}</p>
+                              <p className="text-[10px] text-muted-foreground">Qty: {quantity}</p>
+                            </div>
+                          </div>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="w-6 h-6 flex-shrink-0"
+                            onClick={() => handleQuantityChange(itemId, items, 0, true)}
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -588,11 +579,36 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
             <div className="space-y-3">
               <Label className="text-base font-semibold">Your Request</Label>
               <div className="min-h-[100px] p-3 border rounded-lg bg-muted/30">
-                {selectedRequest.length === 0 && requestCash === 0 ? (
+                {requestQuantities.size === 0 && requestCash === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-6">Select items from their inventory</p>
                 ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {selectedRequest.map(item => renderSelectedItem(item, removeRequestItem))}
+                  <div className="space-y-1">
+                    {Array.from(requestQuantities.entries()).map(([itemId, quantity]) => {
+                      const items = groupedTheirInventory.get(itemId);
+                      if (!items || items.length === 0) return null;
+                      const item = items[0];
+                      return (
+                        <div key={itemId} className="flex items-center justify-between p-2 rounded bg-background/50">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0">
+                              <img src={item.itemImageUrl} alt={item.itemName} className="w-full h-full object-cover" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold truncate">{item.itemName}</p>
+                              <p className="text-[10px] text-muted-foreground">Qty: {quantity}</p>
+                            </div>
+                          </div>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="w-6 h-6 flex-shrink-0"
+                            onClick={() => handleQuantityChange(itemId, items, 0, false)}
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -623,7 +639,7 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
             <div className="mt-auto pt-4 border-t space-y-2">
               <Button
                 onClick={handleSubmitTrade}
-                disabled={submitting || selectedOffer.length === 0 || selectedRequest.length === 0}
+                disabled={submitting || offerQuantities.size === 0 || requestQuantities.size === 0}
                 className="w-full"
                 size="lg"
                 data-testid="button-send-trade"
