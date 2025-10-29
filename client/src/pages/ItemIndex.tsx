@@ -71,6 +71,9 @@ export default function ItemIndex({ onEditItem }: ItemIndexProps = {}) {
       filtered = filtered.filter((item) => !item.offSale);
     } else if (statusFilter === "off-sale") {
       filtered = filtered.filter((item) => item.offSale);
+    } else if (statusFilter === "all") {
+      // Hide off-sale items by default (only show when explicitly filtering for off-sale)
+      filtered = filtered.filter((item) => !item.offSale);
     }
 
     setFilteredItems(filtered);

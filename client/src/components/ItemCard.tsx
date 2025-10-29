@@ -57,6 +57,11 @@ export function ItemCard({ item, serialNumber, onClick, stackCount }: ItemCardPr
         >
           {RARITY_TIERS[item.rarity].name}
         </Badge>
+        {item.offSale && (
+          <Badge variant="destructive" className="absolute top-10 left-2 text-xs z-10 bg-destructive backdrop-blur-md">
+            Off-Sale
+          </Badge>
+        )}
         {serialNumber !== undefined ? (
           <Badge variant="secondary" className="absolute top-2 right-2 text-xs z-10 bg-secondary backdrop-blur-md" data-testid={`badge-serial-${serialNumber}`}>
             #{serialNumber}
@@ -67,11 +72,6 @@ export function ItemCard({ item, serialNumber, onClick, stackCount }: ItemCardPr
               {item.remainingStock}/{item.totalStock}
             </Badge>
           )
-        )}
-        {item.offSale && (
-          <Badge variant="destructive" className="absolute bottom-2 right-2 z-10 bg-destructive backdrop-blur-md">
-            Off-Sale
-          </Badge>
         )}
       </div>
       <div className="p-3 space-y-1 flex-1 flex flex-col justify-between">
