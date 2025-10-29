@@ -137,5 +137,40 @@ service cloud.firestore {
       allow write: if isAuthenticated() && 
                      counterId == 'userId';
     }
+    
+    // Trades collection
+    match /trades/{tradeId} {
+      // Users can read trades where they are either initiator or recipient
+      allow read: if isAuthenticated() && (
+                    resource.data.initiatorId == request.auth.uid ||
+                    resource.data.recipientId == request.auth.uid
+                  );
+      
+      // Users can create trades where they are the initiator
+      allow create: if isAuthenticated() &&
+                      request.resource.data.initiatorId == request.auth.uid &&
+                      request.resource.data.status == 'pending' &&
+                      request.resource.data.createdAt is int &&
+                      request.resource.data.updatedAt is int;
+      
+      // Users can update trades to accept/decline/cancel
+      // Initiator can cancel, recipient can accept/decline
+      allow update: if isAuthenticated() && (
+                      // Recipient accepting or declining
+                      (resource.data.recipientId == request.auth.uid &&
+                       resource.data.status == 'pending' &&
+                       request.resource.data.status in ['accepted', 'declined']) ||
+                      // Initiator cancelling
+                      (resource.data.initiatorId == request.auth.uid &&
+                       resource.data.status == 'pending' &&
+                       request.resource.data.status == 'cancelled')
+                    ) && request.resource.data.updatedAt is int;
+      
+      // Admins can read and delete any trade
+      allow read, delete: if isAdmin();
+      
+      // Admins can also update trade status for moderation
+      allow update: if isAdmin();
+    }
   }
 }
