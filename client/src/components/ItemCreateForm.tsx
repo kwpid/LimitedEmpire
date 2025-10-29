@@ -156,6 +156,7 @@ export function ItemCreateForm({ onSuccess }: { onSuccess?: () => void }) {
         rarity,
         value: values.value,
         stock: values.stockType === "limited" ? values.totalStock : null,
+        imageUrl: values.imageUrl,
       });
       console.log("Item release webhook request completed");
 

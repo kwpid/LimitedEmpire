@@ -13,6 +13,12 @@ interface DiscordEmbed {
   footer?: {
     text: string;
   };
+  image?: {
+    url: string;
+  };
+  thumbnail?: {
+    url: string;
+  };
 }
 
 interface DiscordWebhookPayload {
@@ -58,6 +64,7 @@ export async function sendItemReleaseWebhook(itemData: {
   rarity: RarityTier;
   value: number;
   stock: number | null;
+  imageUrl?: string;
 }): Promise<void> {
   const webhookUrl = process.env.DISCORD_WEBHOOK_ITEM_RELEASE;
   if (!webhookUrl) {
@@ -72,23 +79,30 @@ export async function sendItemReleaseWebhook(itemData: {
     color: getRarityColor(itemData.rarity),
     fields: [
       {
-        name: "**Rarity**",
+        name: "Rarity",
         value: RARITY_TIERS[itemData.rarity].name,
-        inline: true,
+        inline: false,
       },
       {
-        name: "**Value**",
-        value: itemData.value.toLocaleString(),
-        inline: true,
+        name: "Value",
+        value: `$${itemData.value.toLocaleString()}`,
+        inline: false,
       },
       {
-        name: "**Stock**",
+        name: "Stock",
         value: stockDisplay,
-        inline: true,
+        inline: false,
       },
     ],
     timestamp: new Date().toISOString(),
   };
+
+  // Add image if provided
+  if (itemData.imageUrl) {
+    embed.image = {
+      url: itemData.imageUrl,
+    };
+  }
 
   await sendDiscordWebhook(webhookUrl, { embeds: [embed] });
 }

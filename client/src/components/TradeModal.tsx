@@ -23,6 +23,7 @@ interface InventoryItemWithDetails {
   itemRarity: "COMMON" | "UNCOMMON" | "RARE" | "ULTRA_RARE" | "EPIC" | "ULTRA_EPIC" | "MYTHIC" | "INSANE";
   serialNumber: number | null;
   nftLocked: boolean;
+  amount: number;
 }
 
 interface TradeModalProps {
@@ -131,6 +132,7 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
         itemRarity: item.rarity,
         serialNumber: invItem.serialNumber,
         nftLocked: invItem.nftLocked || false,
+        amount: invItem.amount || 1,
       };
     }).filter((item): item is InventoryItemWithDetails => item !== null);
 
@@ -166,7 +168,8 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
   const groupedTheirInventory = groupInventoryByItem(filteredTheirInventory);
 
   const handleOfferQuantityChange = (itemId: string, items: InventoryItemWithDetails[], newQuantity: number) => {
-    // Clamp quantity to valid range
+    // For trade purposes, we select inventory entries, not individual units
+    // Each inventory entry may contain multiple units (amount field)
     const clampedQuantity = Math.min(items.length, Math.max(0, newQuantity));
     
     // Check for NFT locked items
@@ -228,7 +231,8 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
   };
 
   const handleRequestQuantityChange = (itemId: string, items: InventoryItemWithDetails[], newQuantity: number) => {
-    // Clamp quantity to valid range
+    // For trade purposes, we select inventory entries, not individual units
+    // Each inventory entry may contain multiple units (amount field)
     const clampedQuantity = Math.min(items.length, Math.max(0, newQuantity));
     
     // Check for NFT locked items
@@ -389,7 +393,10 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
 
   const renderInventoryItem = (itemId: string, items: InventoryItemWithDetails[], isOffer: boolean) => {
     const representativeItem = items[0];
-    const quantity = items.length;
+    // Calculate total units (sum of amounts) for display
+    const totalUnits = items.reduce((sum, item) => sum + item.amount, 0);
+    // Number of inventory entries (each entry may have amount > 1)
+    const maxSelectable = items.length;
     const selectedItems = isOffer 
       ? selectedOffer.filter(i => i.itemId === itemId)
       : selectedRequest.filter(i => i.itemId === itemId);
@@ -397,7 +404,7 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
     const hasNftLocked = items.some(item => item.nftLocked);
 
     const handleIncrement = () => {
-      if (selectedQuantity < quantity) {
+      if (selectedQuantity < maxSelectable) {
         if (isOffer) {
           handleOfferQuantityChange(itemId, items, selectedQuantity + 1);
         } else {
@@ -416,12 +423,24 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
       }
     };
 
+    // For single units or single entries, clicking toggles selection
+    const handleClick = () => {
+      if (totalUnits === 1 && !hasNftLocked) {
+        if (selectedQuantity === 0) {
+          handleIncrement();
+        } else {
+          handleDecrement();
+        }
+      }
+    };
+
     return (
       <Card
         key={itemId}
         className={`transition-all hover:shadow-lg ${
           selectedQuantity > 0 ? "ring-2 ring-primary shadow-lg" : ""
-        } ${hasNftLocked ? "opacity-50" : ""}`}
+        } ${hasNftLocked ? "opacity-50" : ""} ${totalUnits === 1 && !hasNftLocked ? "cursor-pointer" : ""}`}
+        onClick={handleClick}
         data-testid={`trade-item-group-${itemId}`}
       >
         <CardContent className="p-2">
@@ -449,37 +468,45 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
             <span className="text-[9px] font-mono text-muted-foreground">
               ${formatValue(representativeItem.itemValue)}
             </span>
-            {quantity > 1 && (
+            {totalUnits > 1 && (
               <span className="text-[9px] text-muted-foreground">
-                Own: {quantity}
+                Own: {totalUnits}
               </span>
             )}
           </div>
-          <div className="flex items-center justify-center gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-6 w-6 p-0"
-              onClick={handleDecrement}
-              disabled={hasNftLocked || selectedQuantity === 0}
-              data-testid={`button-decrease-${itemId}`}
-            >
-              -
-            </Button>
-            <span className="text-xs font-semibold min-w-[20px] text-center" data-testid={`text-quantity-${itemId}`}>
-              {selectedQuantity}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-6 w-6 p-0"
-              onClick={handleIncrement}
-              disabled={hasNftLocked || selectedQuantity >= quantity}
-              data-testid={`button-increase-${itemId}`}
-            >
-              +
-            </Button>
-          </div>
+          {totalUnits > 1 && (
+            <div className="flex items-center justify-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDecrement();
+                }}
+                disabled={hasNftLocked || selectedQuantity === 0}
+                data-testid={`button-decrease-${itemId}`}
+              >
+                -
+              </Button>
+              <span className="text-xs font-semibold min-w-[20px] text-center" data-testid={`text-quantity-${itemId}`}>
+                {selectedQuantity}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleIncrement();
+                }}
+                disabled={hasNftLocked || selectedQuantity >= maxSelectable}
+                data-testid={`button-increase-${itemId}`}
+              >
+                +
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     );
