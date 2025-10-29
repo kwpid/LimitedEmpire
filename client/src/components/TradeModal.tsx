@@ -137,6 +137,17 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
     return itemsWithDetails.sort((a, b) => b.itemValue - a.itemValue);
   };
 
+  // Group inventory items by itemId to handle duplicates
+  const groupInventoryByItem = (inventory: InventoryItemWithDetails[]) => {
+    const grouped = new Map<string, InventoryItemWithDetails[]>();
+    inventory.forEach(item => {
+      const existing = grouped.get(item.itemId) || [];
+      existing.push(item);
+      grouped.set(item.itemId, existing);
+    });
+    return grouped;
+  };
+
   const filteredMyInventory = myInventory.filter(item => {
     if (!mySearchTerm) return true;
     const searchLower = mySearchTerm.toLowerCase();
@@ -151,8 +162,15 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
            (item.serialNumber !== null && item.serialNumber.toString().includes(searchLower));
   });
 
-  const toggleOfferItem = (item: InventoryItemWithDetails) => {
-    if (item.nftLocked) {
+  const groupedMyInventory = groupInventoryByItem(filteredMyInventory);
+  const groupedTheirInventory = groupInventoryByItem(filteredTheirInventory);
+
+  const handleOfferQuantityChange = (itemId: string, items: InventoryItemWithDetails[], newQuantity: number) => {
+    // Clamp quantity to valid range
+    const clampedQuantity = Math.min(items.length, Math.max(0, newQuantity));
+    
+    // Check for NFT locked items
+    if (items.some(item => item.nftLocked)) {
       toast({
         title: "Item Locked",
         description: "This item is marked as NFT (Not For Trade)",
@@ -161,25 +179,60 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
       return;
     }
 
-    const isSelected = selectedOffer.some(i => i.inventoryId === item.inventoryId);
+    // Get currently selected items of this type and other items
+    const currentlySelected = selectedOffer.filter(i => i.itemId === itemId);
+    const otherSelected = selectedOffer.filter(i => i.itemId !== itemId);
     
-    if (isSelected) {
-      setSelectedOffer(selectedOffer.filter(i => i.inventoryId !== item.inventoryId));
-    } else {
-      if (selectedOffer.length >= 7) {
-        toast({
-          title: "Maximum Reached",
-          description: "You can offer up to 7 items",
-          variant: "destructive",
-        });
-        return;
-      }
-      setSelectedOffer([...selectedOffer, item]);
+    // Check if new total would exceed limit
+    if (otherSelected.length + clampedQuantity > 7) {
+      toast({
+        title: "Maximum Reached",
+        description: "You can offer up to 7 items total",
+        variant: "destructive",
+      });
+      return;
     }
+
+    // Calculate delta
+    const delta = clampedQuantity - currentlySelected.length;
+    
+    if (delta === 0) {
+      // No change needed
+      return;
+    }
+    
+    let newSelected: InventoryItemWithDetails[];
+    
+    if (delta > 0) {
+      // Need to add more items - stable sort to pick unselected items deterministically
+      const currentIds = new Set(currentlySelected.map(i => i.inventoryId));
+      const availableItems = items
+        .filter(item => !currentIds.has(item.inventoryId))
+        .sort((a, b) => {
+          // Sort by serial number first (nulls last), then by inventoryId for stability
+          if (a.serialNumber !== null && b.serialNumber !== null) {
+            return a.serialNumber - b.serialNumber;
+          }
+          if (a.serialNumber !== null) return -1;
+          if (b.serialNumber !== null) return 1;
+          return a.inventoryId.localeCompare(b.inventoryId);
+        });
+      
+      newSelected = [...currentlySelected, ...availableItems.slice(0, delta)];
+    } else {
+      // Need to remove items - remove from end (LIFO)
+      newSelected = currentlySelected.slice(0, clampedQuantity);
+    }
+    
+    setSelectedOffer([...otherSelected, ...newSelected]);
   };
 
-  const toggleRequestItem = (item: InventoryItemWithDetails) => {
-    if (item.nftLocked) {
+  const handleRequestQuantityChange = (itemId: string, items: InventoryItemWithDetails[], newQuantity: number) => {
+    // Clamp quantity to valid range
+    const clampedQuantity = Math.min(items.length, Math.max(0, newQuantity));
+    
+    // Check for NFT locked items
+    if (items.some(item => item.nftLocked)) {
       toast({
         title: "Item Locked",
         description: "This item is marked as NFT (Not For Trade)",
@@ -188,21 +241,52 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
       return;
     }
 
-    const isSelected = selectedRequest.some(i => i.inventoryId === item.inventoryId);
+    // Get currently selected items of this type and other items
+    const currentlySelected = selectedRequest.filter(i => i.itemId === itemId);
+    const otherSelected = selectedRequest.filter(i => i.itemId !== itemId);
     
-    if (isSelected) {
-      setSelectedRequest(selectedRequest.filter(i => i.inventoryId !== item.inventoryId));
-    } else {
-      if (selectedRequest.length >= 7) {
-        toast({
-          title: "Maximum Reached",
-          description: "You can request up to 7 items",
-          variant: "destructive",
-        });
-        return;
-      }
-      setSelectedRequest([...selectedRequest, item]);
+    // Check if new total would exceed limit
+    if (otherSelected.length + clampedQuantity > 7) {
+      toast({
+        title: "Maximum Reached",
+        description: "You can request up to 7 items total",
+        variant: "destructive",
+      });
+      return;
     }
+
+    // Calculate delta
+    const delta = clampedQuantity - currentlySelected.length;
+    
+    if (delta === 0) {
+      // No change needed
+      return;
+    }
+    
+    let newSelected: InventoryItemWithDetails[];
+    
+    if (delta > 0) {
+      // Need to add more items - stable sort to pick unselected items deterministically
+      const currentIds = new Set(currentlySelected.map(i => i.inventoryId));
+      const availableItems = items
+        .filter(item => !currentIds.has(item.inventoryId))
+        .sort((a, b) => {
+          // Sort by serial number first (nulls last), then by inventoryId for stability
+          if (a.serialNumber !== null && b.serialNumber !== null) {
+            return a.serialNumber - b.serialNumber;
+          }
+          if (a.serialNumber !== null) return -1;
+          if (b.serialNumber !== null) return 1;
+          return a.inventoryId.localeCompare(b.inventoryId);
+        });
+      
+      newSelected = [...currentlySelected, ...availableItems.slice(0, delta)];
+    } else {
+      // Need to remove items - remove from end (LIFO)
+      newSelected = currentlySelected.slice(0, clampedQuantity);
+    }
+    
+    setSelectedRequest([...otherSelected, ...newSelected]);
   };
 
   const removeOfferItem = (inventoryId: string) => {
@@ -303,44 +387,93 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
   const totalOfferValue = selectedOffer.reduce((sum, item) => sum + item.itemValue, 0) + offerCash;
   const totalRequestValue = selectedRequest.reduce((sum, item) => sum + item.itemValue, 0) + requestCash;
 
-  const renderInventoryItem = (item: InventoryItemWithDetails, isOffer: boolean, isSelected: boolean) => {
-    const onClick = isOffer ? () => toggleOfferItem(item) : () => toggleRequestItem(item);
+  const renderInventoryItem = (itemId: string, items: InventoryItemWithDetails[], isOffer: boolean) => {
+    const representativeItem = items[0];
+    const quantity = items.length;
+    const selectedItems = isOffer 
+      ? selectedOffer.filter(i => i.itemId === itemId)
+      : selectedRequest.filter(i => i.itemId === itemId);
+    const selectedQuantity = selectedItems.length;
+    const hasNftLocked = items.some(item => item.nftLocked);
+
+    const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newQuantity = Math.min(quantity, Math.max(0, parseInt(e.target.value) || 0));
+      if (isOffer) {
+        handleOfferQuantityChange(itemId, items, newQuantity);
+      } else {
+        handleRequestQuantityChange(itemId, items, newQuantity);
+      }
+    };
 
     return (
       <Card
-        key={item.inventoryId}
-        className={`cursor-pointer transition-all hover:shadow-lg hover:scale-105 ${
-          isSelected ? "ring-2 ring-primary shadow-lg" : ""
-        } ${item.nftLocked ? "opacity-50" : ""}`}
-        onClick={onClick}
-        data-testid={`trade-item-${item.inventoryId}`}
+        key={itemId}
+        className={`transition-all hover:shadow-lg ${
+          selectedQuantity > 0 ? "ring-2 ring-primary shadow-lg" : ""
+        } ${hasNftLocked ? "opacity-50" : ""}`}
+        data-testid={`trade-item-group-${itemId}`}
       >
         <CardContent className="p-2">
           <div className="relative aspect-square mb-1 rounded-md overflow-hidden bg-gradient-to-br from-card to-muted">
             <img
-              src={item.itemImageUrl}
-              alt={item.itemName}
+              src={representativeItem.itemImageUrl}
+              alt={representativeItem.itemName}
               className="w-full h-full object-cover"
             />
-            {item.nftLocked && (
+            {hasNftLocked && (
               <div className="absolute top-0.5 right-0.5 bg-destructive/90 rounded-full p-0.5">
                 <Lock className="w-2.5 h-2.5 text-destructive-foreground" />
               </div>
             )}
-            {item.serialNumber !== null && (
-              <div className="absolute bottom-0 left-0 right-0 bg-black/75 text-white text-[9px] px-1 py-0.5 text-center font-mono">
-                #{item.serialNumber}
+            {quantity > 1 && (
+              <div className="absolute top-0.5 left-0.5 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                x{quantity}
               </div>
             )}
           </div>
-          <p className="text-[10px] font-semibold truncate mb-0.5" title={item.itemName}>
-            {item.itemName}
+          <p className="text-[10px] font-semibold truncate mb-0.5" title={representativeItem.itemName}>
+            {representativeItem.itemName}
           </p>
-          <div className="flex items-center justify-between gap-0.5">
+          <div className="flex items-center justify-between gap-0.5 mb-1">
             <span className="text-[9px] font-mono text-muted-foreground">
-              ${formatValue(item.itemValue)}
+              ${formatValue(representativeItem.itemValue)}
             </span>
           </div>
+          {quantity > 1 && (
+            <div className="flex items-center gap-1">
+              <Label htmlFor={`qty-${itemId}`} className="text-[9px] text-muted-foreground">Qty:</Label>
+              <Input
+                id={`qty-${itemId}`}
+                type="number"
+                min={0}
+                max={quantity}
+                value={selectedQuantity}
+                onChange={handleQuantityChange}
+                className="h-6 text-[10px] px-1 text-center"
+                disabled={hasNftLocked}
+                data-testid={`input-quantity-${itemId}`}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          )}
+          {quantity === 1 && (
+            <Button
+              variant={selectedQuantity > 0 ? "default" : "outline"}
+              size="sm"
+              className="w-full h-6 text-[10px] mt-1"
+              onClick={() => {
+                if (isOffer) {
+                  handleOfferQuantityChange(itemId, items, selectedQuantity > 0 ? 0 : 1);
+                } else {
+                  handleRequestQuantityChange(itemId, items, selectedQuantity > 0 ? 0 : 1);
+                }
+              }}
+              disabled={hasNftLocked}
+              data-testid={`button-select-${itemId}`}
+            >
+              {selectedQuantity > 0 ? "Selected" : "Select"}
+            </Button>
+          )}
         </CardContent>
       </Card>
     );
@@ -402,15 +535,11 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-3 lg:grid-cols-4 gap-2">
                   {loading ? (
                     <p className="col-span-full text-center text-muted-foreground py-8 text-sm">Loading...</p>
-                  ) : filteredMyInventory.length === 0 ? (
+                  ) : groupedMyInventory.size === 0 ? (
                     <p className="col-span-full text-center text-muted-foreground py-8 text-sm">No items found</p>
                   ) : (
-                    filteredMyInventory.map(item =>
-                      renderInventoryItem(
-                        item,
-                        true,
-                        selectedOffer.some(i => i.inventoryId === item.inventoryId)
-                      )
+                    Array.from(groupedMyInventory.entries()).map(([itemId, items]) =>
+                      renderInventoryItem(itemId, items, true)
                     )
                   )}
                 </div>
@@ -435,15 +564,11 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-3 lg:grid-cols-4 gap-2">
                   {loading ? (
                     <p className="col-span-full text-center text-muted-foreground py-8 text-sm">Loading...</p>
-                  ) : filteredTheirInventory.length === 0 ? (
+                  ) : groupedTheirInventory.size === 0 ? (
                     <p className="col-span-full text-center text-muted-foreground py-8 text-sm">No items found</p>
                   ) : (
-                    filteredTheirInventory.map(item =>
-                      renderInventoryItem(
-                        item,
-                        false,
-                        selectedRequest.some(i => i.inventoryId === item.inventoryId)
-                      )
+                    Array.from(groupedTheirInventory.entries()).map(([itemId, items]) =>
+                      renderInventoryItem(itemId, items, false)
                     )
                   )}
                 </div>
