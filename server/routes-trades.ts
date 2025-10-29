@@ -12,6 +12,7 @@ export function addTradeHistoryToUser(
     id: trade.id,
     status,
     isInitiator,
+    otherUserId: isInitiator ? trade.recipientId : trade.initiatorId,
     otherUsername: isInitiator ? trade.recipientUsername : trade.initiatorUsername,
     myOffer: isInitiator ? trade.initiatorOffer : trade.recipientOffer,
     theirOffer: isInitiator ? trade.recipientOffer : trade.initiatorOffer,

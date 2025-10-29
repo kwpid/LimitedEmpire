@@ -95,6 +95,7 @@ export const userSchema = z.object({
     id: z.string(),
     status: z.enum(["accepted", "declined", "cancelled", "expired"]),
     isInitiator: z.boolean(),
+    otherUserId: z.string(),
     otherUsername: z.string(),
     myOffer: z.object({
       items: z.array(z.object({

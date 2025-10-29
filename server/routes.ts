@@ -187,14 +187,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           } else {
             return trade.status === "declined" || trade.status === "cancelled" || trade.status === "expired";
           }
-        }).sort((a, b) => b.completedAt - a.createdAt);
+        }).sort((a, b) => b.completedAt - a.completedAt);
         
         const trades: Trade[] = filtered.map(h => ({
           id: h.id,
           status: h.status,
-          initiatorId: h.isInitiator ? userId : "",
+          initiatorId: h.isInitiator ? userId : h.otherUserId,
           initiatorUsername: h.isInitiator ? userData.username : h.otherUsername,
-          recipientId: h.isInitiator ? "" : userId,
+          recipientId: h.isInitiator ? h.otherUserId : userId,
           recipientUsername: h.isInitiator ? h.otherUsername : userData.username,
           createdAt: h.createdAt,
           updatedAt: h.completedAt,
