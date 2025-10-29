@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
@@ -297,144 +296,101 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
     return (
       <Card
         key={item.inventoryId}
-        className={`cursor-pointer transition-all hover:shadow-lg ${
-          isSelected ? "ring-2 ring-primary" : ""
+        className={`cursor-pointer transition-all hover:shadow-lg hover:scale-105 ${
+          isSelected ? "ring-2 ring-primary shadow-lg" : ""
         } ${item.nftLocked ? "opacity-50" : ""}`}
         onClick={onClick}
         data-testid={`trade-item-${item.inventoryId}`}
       >
-        <CardContent className="p-3">
-          <div className="relative aspect-square mb-2 rounded-lg overflow-hidden bg-gradient-to-br from-card to-muted">
+        <CardContent className="p-2">
+          <div className="relative aspect-square mb-1 rounded-md overflow-hidden bg-gradient-to-br from-card to-muted">
             <img
               src={item.itemImageUrl}
               alt={item.itemName}
               className="w-full h-full object-cover"
             />
             {item.nftLocked && (
-              <div className="absolute top-1 right-1 bg-destructive/90 rounded-full p-1">
-                <Lock className="w-3 h-3 text-destructive-foreground" />
+              <div className="absolute top-0.5 right-0.5 bg-destructive/90 rounded-full p-0.5">
+                <Lock className="w-2.5 h-2.5 text-destructive-foreground" />
+              </div>
+            )}
+            {item.serialNumber !== null && (
+              <div className="absolute bottom-0 left-0 right-0 bg-black/75 text-white text-[9px] px-1 py-0.5 text-center font-mono">
+                #{item.serialNumber}
               </div>
             )}
           </div>
-          <div className="space-y-1">
-            <p className="text-xs font-semibold truncate" title={item.itemName}>
-              {item.itemName}
-            </p>
-            <div className="flex items-center justify-between gap-1">
-              <Badge variant="outline" className={`text-[10px] px-1 py-0 ${getRarityClass(item.itemRarity)}`}>
-                {item.itemRarity}
-              </Badge>
-              <span className="text-[10px] font-mono text-muted-foreground">
-                ${formatValue(item.itemValue)}
-              </span>
-            </div>
-            {item.serialNumber !== null && (
-              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                <Hash className="w-3 h-3" />
-                <span>#{item.serialNumber}</span>
-              </div>
-            )}
+          <p className="text-[10px] font-semibold truncate mb-0.5" title={item.itemName}>
+            {item.itemName}
+          </p>
+          <div className="flex items-center justify-between gap-0.5">
+            <span className="text-[9px] font-mono text-muted-foreground">
+              ${formatValue(item.itemValue)}
+            </span>
           </div>
         </CardContent>
       </Card>
     );
   };
 
+  const renderSelectedItem = (item: InventoryItemWithDetails, onRemove: (id: string) => void) => (
+    <div key={item.inventoryId} className="relative group">
+      <div className="w-16 h-16 rounded-md overflow-hidden border-2 bg-gradient-to-br from-card to-muted" style={{ borderColor: getRarityGlow(item.itemRarity) }}>
+        <img
+          src={item.itemImageUrl}
+          alt={item.itemName}
+          className="w-full h-full object-cover"
+        />
+        {item.serialNumber !== null && (
+          <div className="absolute bottom-0 left-0 right-0 bg-black/75 text-white text-[9px] px-1 text-center font-mono">
+            #{item.serialNumber}
+          </div>
+        )}
+      </div>
+      <Button
+        size="icon"
+        variant="destructive"
+        className="absolute -top-1 -right-1 w-4 h-4 rounded-full opacity-0 group-hover:opacity-100 transition-opacity p-0"
+        onClick={() => onRemove(item.inventoryId)}
+        data-testid={`button-remove-${item.inventoryId}`}
+      >
+        <X className="w-3 h-3" />
+      </Button>
+    </div>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col" data-testid="modal-trade">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      <DialogContent className="max-w-[95vw] w-full lg:max-w-7xl h-[90vh] overflow-hidden flex flex-col p-4 lg:p-6" data-testid="modal-trade">
+        <DialogHeader className="pb-2 border-b">
+          <DialogTitle className="flex items-center gap-2 text-lg lg:text-xl">
             <ArrowLeftRight className="w-5 h-5" />
             Trade with {targetUser?.username}
           </DialogTitle>
-          <DialogDescription>
-            Offer items and cash in exchange for their items. Both parties must agree to complete the trade.
-          </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="offer" className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="offer" data-testid="tab-your-offer">
-              Your Offer ({selectedOffer.length}/7)
-            </TabsTrigger>
-            <TabsTrigger value="request" data-testid="tab-your-request">
-              Your Request ({selectedRequest.length}/7)
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="offer" className="flex-1 flex flex-col overflow-hidden space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label>Your Items ({selectedOffer.length}/7)</Label>
-              <div className="flex gap-2 flex-wrap min-h-[80px] p-2 border rounded-lg bg-muted/50">
-                {selectedOffer.length === 0 ? (
-                  <p className="text-sm text-muted-foreground m-auto">Select items from your inventory below</p>
-                ) : (
-                  selectedOffer.map(item => (
-                    <div key={item.inventoryId} className="relative group">
-                      <img
-                        src={item.itemImageUrl}
-                        alt={item.itemName}
-                        className="w-16 h-16 object-cover rounded-lg border-2"
-                        style={{ borderColor: getRarityGlow(item.itemRarity) }}
-                      />
-                      {item.serialNumber !== null && (
-                        <div className="absolute bottom-0 right-0 bg-black/75 text-white text-[10px] px-1 rounded-tl">
-                          #{item.serialNumber}
-                        </div>
-                      )}
-                      <Button
-                        size="icon"
-                        variant="destructive"
-                        className="absolute -top-2 -right-2 w-5 h-5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => removeOfferItem(item.inventoryId)}
-                        data-testid={`button-remove-offer-${item.inventoryId}`}
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  ))
-                )}
+        <div className="flex-1 flex flex-col lg:flex-row gap-4 overflow-hidden mt-4">
+          <div className="flex-1 flex flex-col lg:flex-row gap-4 overflow-hidden">
+            <div className="flex-1 flex flex-col overflow-hidden border rounded-lg bg-card/50">
+              <div className="p-3 border-b bg-muted/30">
+                <Label className="text-sm font-semibold mb-2 block">Your Inventory</Label>
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search your items..."
+                    value={mySearchTerm}
+                    onChange={(e) => setMySearchTerm(e.target.value)}
+                    className="pl-8 h-8 text-sm"
+                    data-testid="input-search-my-items"
+                  />
+                </div>
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Cash Offer (Optional, Max: $50,000)</Label>
-              <div className="flex items-center gap-2">
-                <DollarSign className="w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="number"
-                  min={0}
-                  max={50000}
-                  value={offerCash}
-                  onChange={(e) => setOfferCash(Math.min(50000, Math.max(0, parseInt(e.target.value) || 0)))}
-                  placeholder="0"
-                  data-testid="input-offer-cash"
-                />
-                <span className="text-sm text-muted-foreground whitespace-nowrap">
-                  / ${(user?.cash ?? 0).toLocaleString()}
-                </span>
-              </div>
-            </div>
-
-            <div className="space-y-2 flex-1 flex flex-col overflow-hidden">
-              <Label>Your Inventory</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search your items..."
-                  value={mySearchTerm}
-                  onChange={(e) => setMySearchTerm(e.target.value)}
-                  className="pl-9"
-                  data-testid="input-search-my-items"
-                />
-              </div>
-              <ScrollArea className="h-[400px]">
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 pr-4">
+              <ScrollArea className="flex-1 p-3">
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-3 lg:grid-cols-4 gap-2">
                   {loading ? (
-                    <p className="col-span-full text-center text-muted-foreground py-8">Loading...</p>
+                    <p className="col-span-full text-center text-muted-foreground py-8 text-sm">Loading...</p>
                   ) : filteredMyInventory.length === 0 ? (
-                    <p className="col-span-full text-center text-muted-foreground py-8">No items found</p>
+                    <p className="col-span-full text-center text-muted-foreground py-8 text-sm">No items found</p>
                   ) : (
                     filteredMyInventory.map(item =>
                       renderInventoryItem(
@@ -447,77 +403,27 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
                 </div>
               </ScrollArea>
             </div>
-          </TabsContent>
 
-          <TabsContent value="request" className="flex-1 flex flex-col overflow-hidden space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label>Items You Want ({selectedRequest.length}/7)</Label>
-              <div className="flex gap-2 flex-wrap min-h-[80px] p-2 border rounded-lg bg-muted/50">
-                {selectedRequest.length === 0 ? (
-                  <p className="text-sm text-muted-foreground m-auto">Select items from their inventory below</p>
-                ) : (
-                  selectedRequest.map(item => (
-                    <div key={item.inventoryId} className="relative group">
-                      <img
-                        src={item.itemImageUrl}
-                        alt={item.itemName}
-                        className="w-16 h-16 object-cover rounded-lg border-2"
-                        style={{ borderColor: getRarityGlow(item.itemRarity) }}
-                      />
-                      {item.serialNumber !== null && (
-                        <div className="absolute bottom-0 right-0 bg-black/75 text-white text-[10px] px-1 rounded-tl">
-                          #{item.serialNumber}
-                        </div>
-                      )}
-                      <Button
-                        size="icon"
-                        variant="destructive"
-                        className="absolute -top-2 -right-2 w-5 h-5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => removeRequestItem(item.inventoryId)}
-                        data-testid={`button-remove-request-${item.inventoryId}`}
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  ))
-                )}
+            <div className="flex-1 flex flex-col overflow-hidden border rounded-lg bg-card/50">
+              <div className="p-3 border-b bg-muted/30">
+                <Label className="text-sm font-semibold mb-2 block">{targetUser?.username}'s Inventory</Label>
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search their items..."
+                    value={theirSearchTerm}
+                    onChange={(e) => setTheirSearchTerm(e.target.value)}
+                    className="pl-8 h-8 text-sm"
+                    data-testid="input-search-their-items"
+                  />
+                </div>
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Cash Request (Optional, Max: $10,000)</Label>
-              <div className="flex items-center gap-2">
-                <DollarSign className="w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="number"
-                  min={0}
-                  max={10000}
-                  value={requestCash}
-                  onChange={(e) => setRequestCash(Math.min(10000, Math.max(0, parseInt(e.target.value) || 0)))}
-                  placeholder="0"
-                  data-testid="input-request-cash"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2 flex-1 flex flex-col overflow-hidden">
-              <Label>{targetUser?.username}'s Inventory</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search their items..."
-                  value={theirSearchTerm}
-                  onChange={(e) => setTheirSearchTerm(e.target.value)}
-                  className="pl-9"
-                  data-testid="input-search-their-items"
-                />
-              </div>
-              <ScrollArea className="h-[400px]">
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 pr-4">
+              <ScrollArea className="flex-1 p-3">
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-3 lg:grid-cols-4 gap-2">
                   {loading ? (
-                    <p className="col-span-full text-center text-muted-foreground py-8">Loading...</p>
+                    <p className="col-span-full text-center text-muted-foreground py-8 text-sm">Loading...</p>
                   ) : filteredTheirInventory.length === 0 ? (
-                    <p className="col-span-full text-center text-muted-foreground py-8">No items found</p>
+                    <p className="col-span-full text-center text-muted-foreground py-8 text-sm">No items found</p>
                   ) : (
                     filteredTheirInventory.map(item =>
                       renderInventoryItem(
@@ -530,29 +436,101 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
                 </div>
               </ScrollArea>
             </div>
-          </TabsContent>
-        </Tabs>
-
-        <div className="flex items-center justify-between border-t pt-4 mt-4">
-          <div className="space-y-1">
-            <p className="text-sm text-muted-foreground">
-              Total Offer: <span className="font-semibold text-foreground">${formatValue(totalOfferValue)}</span>
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Total Request: <span className="font-semibold text-foreground">${formatValue(totalRequestValue)}</span>
-            </p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)} data-testid="button-cancel-trade">
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmitTrade}
-              disabled={submitting || selectedOffer.length === 0 || selectedRequest.length === 0}
-              data-testid="button-send-trade"
-            >
-              {submitting ? "Sending..." : "Send Trade Offer"}
-            </Button>
+
+          <div className="w-full lg:w-80 xl:w-96 flex flex-col gap-4 border rounded-lg bg-card/50 p-4 overflow-y-auto">
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Your Offer</Label>
+              <div className="min-h-[100px] p-3 border rounded-lg bg-muted/30">
+                {selectedOffer.length === 0 && offerCash === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-6">Select items from your inventory</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedOffer.map(item => renderSelectedItem(item, removeOfferItem))}
+                  </div>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Cash (Max: $50,000)</Label>
+                <div className="flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <Input
+                    type="number"
+                    min={0}
+                    max={50000}
+                    value={offerCash}
+                    onChange={(e) => setOfferCash(Math.min(50000, Math.max(0, parseInt(e.target.value) || 0)))}
+                    placeholder="0"
+                    className="h-8 text-sm"
+                    data-testid="input-offer-cash"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Available: ${(user?.cash ?? 0).toLocaleString()}
+                </p>
+              </div>
+              <div className="pt-2 border-t">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Total Value:</span>
+                  <span className="text-lg font-bold text-foreground">${formatValue(totalOfferValue)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Your Request</Label>
+              <div className="min-h-[100px] p-3 border rounded-lg bg-muted/30">
+                {selectedRequest.length === 0 && requestCash === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-6">Select items from their inventory</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedRequest.map(item => renderSelectedItem(item, removeRequestItem))}
+                  </div>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Cash (Max: $10,000)</Label>
+                <div className="flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <Input
+                    type="number"
+                    min={0}
+                    max={10000}
+                    value={requestCash}
+                    onChange={(e) => setRequestCash(Math.min(10000, Math.max(0, parseInt(e.target.value) || 0)))}
+                    placeholder="0"
+                    className="h-8 text-sm"
+                    data-testid="input-request-cash"
+                  />
+                </div>
+              </div>
+              <div className="pt-2 border-t">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Total Value:</span>
+                  <span className="text-lg font-bold text-foreground">${formatValue(totalRequestValue)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-auto pt-4 border-t space-y-2">
+              <Button
+                onClick={handleSubmitTrade}
+                disabled={submitting || selectedOffer.length === 0 || selectedRequest.length === 0}
+                className="w-full"
+                size="lg"
+                data-testid="button-send-trade"
+              >
+                {submitting ? "Sending..." : "Make Offer"}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => onOpenChange(false)} 
+                className="w-full"
+                data-testid="button-cancel-trade"
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>
