@@ -26,6 +26,13 @@ export default function Settings() {
   const [description, setDescription] = useState(user?.description || "");
   const [saving, setSaving] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+  const [savingTradeSettings, setSavingTradeSettings] = useState(false);
+  const [autoDeclineHugeLoss, setAutoDeclineHugeLoss] = useState(
+    user?.settings?.tradeSettings?.autoDeclineHugeLoss || false
+  );
+  const [tradeRequirement, setTradeRequirement] = useState<"none" | "low" | "mid" | "high">(
+    user?.settings?.tradeSettings?.tradeRequirement || "none"
+  );
 
   const toggleRarity = (rarity: RarityTier) => {
     setAutoSellRarities((prev) => {
@@ -69,6 +76,9 @@ export default function Settings() {
   const hasProfileChanges = 
     customStatus !== (user?.customStatus || "") || 
     description !== (user?.description || "");
+  const hasTradeSettingsChanges = 
+    autoDeclineHugeLoss !== (user?.settings?.tradeSettings?.autoDeclineHugeLoss || false) ||
+    tradeRequirement !== (user?.settings?.tradeSettings?.tradeRequirement || "none");
 
   const saveProfile = async () => {
     if (!user) return;
@@ -96,6 +106,37 @@ export default function Settings() {
       });
     } finally {
       setSavingProfile(false);
+    }
+  };
+
+  const saveTradeSettings = async () => {
+    if (!user) return;
+
+    setSavingTradeSettings(true);
+    try {
+      const userRef = doc(db, "users", user.id);
+      await updateDoc(userRef, {
+        "settings.tradeSettings": {
+          autoDeclineHugeLoss,
+          tradeRequirement,
+        },
+      });
+
+      await refetchUser();
+
+      toast({
+        title: "Trade settings saved",
+        description: "Your trade preferences have been updated",
+      });
+    } catch (error: any) {
+      console.error("Save trade settings error:", error);
+      toast({
+        title: "Save failed",
+        description: error.message || "An error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingTradeSettings(false);
     }
   };
 
@@ -131,14 +172,13 @@ export default function Settings() {
               Sell Settings
             </Button>
             <Button 
-              variant="ghost"
-              className="w-full justify-start opacity-50"
-              disabled
+              variant={activeTab === "trade" ? "secondary" : "ghost"}
+              className="w-full justify-start"
+              onClick={() => setActiveTab("trade")}
               data-testid="tab-trade-settings"
             >
               <ArrowRightLeft className="w-4 h-4 mr-2" />
               Trade Settings
-              <Badge variant="secondary" className="ml-auto text-xs">Coming Soon</Badge>
             </Button>
           </div>
         </div>
@@ -280,18 +320,98 @@ export default function Settings() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="trade">
+            <TabsContent value="trade" className="mt-0">
               <Card>
                 <CardHeader>
                   <CardTitle>Trade Settings</CardTitle>
                   <CardDescription>
-                    Trading features are coming soon!
+                    Configure how you want to handle incoming trade offers
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">
-                    Stay tuned for updates on trading functionality.
-                  </p>
+                <CardContent className="space-y-6">
+                  <div className="space-y-4">
+                    <div className="flex items-start space-x-3 p-4 rounded-lg border">
+                      <Checkbox
+                        id="auto-decline-huge-loss"
+                        checked={autoDeclineHugeLoss}
+                        onCheckedChange={(checked) => setAutoDeclineHugeLoss(checked as boolean)}
+                        data-testid="checkbox-auto-decline"
+                      />
+                      <div className="flex-1">
+                        <Label
+                          htmlFor="auto-decline-huge-loss"
+                          className="cursor-pointer font-medium"
+                        >
+                          Automatically decline huge losses
+                        </Label>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          When enabled, trades where you're offering significantly more value than you're receiving will be automatically declined.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label>Trade Requirements</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Set the minimum requirements for players who want to trade with you
+                      </p>
+                      <div className="space-y-2">
+                        {[
+                          { value: "none", label: "None", description: "Anyone can send you trade offers" },
+                          { value: "low", label: "Low", description: "Requires 10+ rolls and 1,000+ cash" },
+                          { value: "mid", label: "Mid", description: "Requires 100+ rolls and 10,000+ cash" },
+                          { value: "high", label: "High", description: "Requires 1,000+ rolls and 100,000+ cash" },
+                        ].map((req) => (
+                          <div
+                            key={req.value}
+                            className={`flex items-start space-x-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                              tradeRequirement === req.value ? "bg-muted/50 border-primary" : "hover:bg-muted/30"
+                            }`}
+                            onClick={() => setTradeRequirement(req.value as typeof tradeRequirement)}
+                          >
+                            <div className="flex items-center h-5">
+                              <div
+                                className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                  tradeRequirement === req.value
+                                    ? "border-primary bg-primary"
+                                    : "border-muted-foreground"
+                                }`}
+                              >
+                                {tradeRequirement === req.value && (
+                                  <div className="w-2 h-2 rounded-full bg-primary-foreground" />
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex-1">
+                              <Label className="cursor-pointer font-medium">{req.label}</Label>
+                              <p className="text-xs text-muted-foreground mt-1">{req.description}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-4 border-t">
+                    <Button
+                      onClick={saveTradeSettings}
+                      disabled={!hasTradeSettingsChanges || savingTradeSettings}
+                      className="flex-1"
+                      data-testid="button-save-trade-settings"
+                    >
+                      <Save className="w-4 h-4 mr-2" />
+                      {savingTradeSettings ? "Saving..." : "Save Trade Settings"}
+                    </Button>
+                  </div>
+
+                  <Card className="bg-muted/50">
+                    <CardContent className="p-4">
+                      <p className="text-sm text-muted-foreground">
+                        <strong>Note:</strong> These settings help protect you from unfair trades and spam. 
+                        You can always manually accept or decline any trade offer you receive.
+                      </p>
+                    </CardContent>
+                  </Card>
                 </CardContent>
               </Card>
             </TabsContent>

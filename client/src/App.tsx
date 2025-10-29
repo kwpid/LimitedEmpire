@@ -13,12 +13,13 @@ import ItemIndex from "./pages/ItemIndex";
 import Settings from "./pages/Settings";
 import Players from "./pages/Players";
 import Leaderboard from "./pages/Leaderboard";
+import TradeCenter from "./pages/TradeCenter";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { AdminPanel } from "@/components/AdminPanel";
 import { GlobalRollToast } from "@/components/GlobalRollToast";
 import { BanOverlay } from "@/components/BanOverlay";
-import { Dices, Package, Database, Shield, LogOut, Sparkles, Settings as SettingsIcon, Users, Trophy } from "lucide-react";
+import { Dices, Package, Database, Shield, LogOut, Sparkles, Settings as SettingsIcon, Users, Trophy, ArrowLeftRight } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth } from "./lib/firebase";
 import type { Item } from "@shared/schema";
@@ -114,7 +115,7 @@ function AppContent() {
 
       <div className="flex-1 container mx-auto px-4 py-4 pb-8">
         <Tabs value={currentTab} onValueChange={(value) => setLocation(value === "roll" ? "/" : `/${value}`)}>
-          <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-6 mb-6">
+          <TabsList className="grid w-full max-w-4xl mx-auto grid-cols-7 mb-6">
             <TabsTrigger value="roll" data-testid="tab-roll" className="flex items-center gap-1 md:gap-2">
               <Dices className="w-4 h-4" />
               <span className="hidden sm:inline">Roll</span>
@@ -122,6 +123,10 @@ function AppContent() {
             <TabsTrigger value="inventory" data-testid="tab-inventory" className="flex items-center gap-1 md:gap-2">
               <Package className="w-4 h-4" />
               <span className="hidden sm:inline">Inventory</span>
+            </TabsTrigger>
+            <TabsTrigger value="trades" data-testid="tab-trades" className="flex items-center gap-1 md:gap-2">
+              <ArrowLeftRight className="w-4 h-4" />
+              <span className="hidden sm:inline">Trades</span>
             </TabsTrigger>
             <TabsTrigger value="players" data-testid="tab-players" className="flex items-center gap-1 md:gap-2">
               <Users className="w-4 h-4" />
@@ -149,6 +154,7 @@ function AppContent() {
         <div style={{ display: currentTab !== "roll" ? "block" : "none" }}>
           <Switch>
             <Route path="/inventory" component={Inventory} />
+            <Route path="/trades" component={TradeCenter} />
             <Route path="/players" component={Players} />
             <Route path="/leaderboard" component={Leaderboard} />
             <Route path="/index">
