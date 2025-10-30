@@ -132,10 +132,13 @@ export const itemSchema = z.object({
   value: z.number().positive(),
   rarity: z.enum(["COMMON", "UNCOMMON", "RARE", "ULTRA_RARE", "EPIC", "ULTRA_EPIC", "MYTHIC", "INSANE"]),
   offSale: z.boolean(),
-  stockType: z.enum(["limited", "infinite"]),
-  totalStock: z.number().nullable(), // null for infinite stock; for limited, does NOT include admin's #0
-  remainingStock: z.number().nullable(), // null for infinite stock; for limited, does NOT include admin's #0
+  stockType: z.enum(["limited", "infinite", "timer"]),
+  totalStock: z.number().nullable(), // null for infinite/timer stock; for limited, does NOT include admin's #0
+  remainingStock: z.number().nullable(), // null for infinite/timer stock; for limited, does NOT include admin's #0
   totalOwners: z.number().nonnegative().default(0), // Track unique users who own this item
+  timerExpiresAt: z.number().nullable(), // timestamp when timer items expire and become unavailable
+  timerDuration: z.number().nullable(), // duration in milliseconds for timer items
+  nextSerialNumber: z.number().default(1), // Next serial number to assign for timer items (no max stock)
   createdAt: z.number(),
   createdBy: z.string(), // userId who created it
 });
@@ -146,8 +149,9 @@ export const insertItemSchema = z.object({
   imageUrl: z.string().url("Must be a valid image URL"),
   value: z.number().positive("Value must be positive"),
   offSale: z.boolean().default(false),
-  stockType: z.enum(["limited", "infinite"]),
+  stockType: z.enum(["limited", "infinite", "timer"]),
   totalStock: z.number().positive().nullable(),
+  timerDuration: z.number().positive().nullable(), // duration in milliseconds for timer items
   createdBy: z.string(),
 });
 

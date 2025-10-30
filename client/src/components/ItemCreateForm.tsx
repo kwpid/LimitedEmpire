@@ -19,11 +19,23 @@ import { createAuditLog } from "@/lib/audit-log";
 import { sendWebhookRequest } from "@/lib/webhook-client";
 import { z } from "zod";
 
+function formatTimerDuration(ms: number): string {
+  const minutes = Math.floor(ms / 60000);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  
+  if (days > 0) return `${days} day${days > 1 ? 's' : ''}`;
+  if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''}`;
+  return `${minutes} minute${minutes > 1 ? 's' : ''}`;
+}
+
 export function ItemCreateForm({ onSuccess }: { onSuccess?: () => void }) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState("");
+  const [timerValue, setTimerValue] = useState(1);
+  const [timerUnit, setTimerUnit] = useState<"minutes" | "hours" | "days">("hours");
 
   const form = useForm<z.infer<typeof insertItemSchema>>({
     resolver: zodResolver(insertItemSchema),
@@ -35,6 +47,7 @@ export function ItemCreateForm({ onSuccess }: { onSuccess?: () => void }) {
       offSale: false,
       stockType: "infinite",
       totalStock: null,
+      timerDuration: null,
       createdBy: user?.id || "",
     },
   });
@@ -86,17 +99,24 @@ export function ItemCreateForm({ onSuccess }: { onSuccess?: () => void }) {
 
         const initialOwners = adminData.userId === 1 ? 0 : 1;
 
+        const timerExpiresAt = values.stockType === "timer" && values.timerDuration 
+          ? Date.now() + values.timerDuration 
+          : null;
+
         transaction.set(newItemRef, {
           ...values,
           rarity,
           remainingStock: values.stockType === "limited" ? values.totalStock : null,
           totalOwners: initialOwners,
+          timerExpiresAt,
+          timerDuration: values.timerDuration,
+          nextSerialNumber: values.stockType === "timer" ? 1 : undefined,
           createdAt: Date.now(),
           createdBy: user.id,
         });
 
         const inventoryItemId = `${itemId}_${Date.now()}_admin_0`;
-        const serialNumber = values.stockType === "limited" ? 0 : null;
+        const serialNumber = values.stockType === "limited" || values.stockType === "timer" ? 0 : null;
         
         const newInventoryItem = {
           id: inventoryItemId,
@@ -110,7 +130,7 @@ export function ItemCreateForm({ onSuccess }: { onSuccess?: () => void }) {
           inventory: [...adminInventory, newInventoryItem],
         });
 
-        if (values.stockType === "limited") {
+        if (values.stockType === "limited" || values.stockType === "timer") {
           const ownershipMarkerRef = doc(db, "items", itemId, "owners", adminDoc.firebaseUid);
           transaction.set(ownershipMarkerRef, {
             userId: adminDoc.firebaseUid,
@@ -151,17 +171,29 @@ export function ItemCreateForm({ onSuccess }: { onSuccess?: () => void }) {
 
       // Send item release webhook
       console.log("About to send item release webhook...");
+      const stockDisplay = values.stockType === "limited" 
+        ? values.totalStock 
+        : values.stockType === "timer" 
+        ? "Timer" 
+        : null;
+
       await sendWebhookRequest('/api/webhooks/item-release', {
         name: values.name,
         rarity,
         value: values.value,
-        stock: values.stockType === "limited" ? values.totalStock : null,
+        stock: stockDisplay,
         imageUrl: values.imageUrl,
       });
       console.log("Item release webhook request completed");
 
       // Send admin log webhook
       console.log("About to send admin log webhook...");
+      const stockLogDisplay = values.stockType === "limited" 
+        ? values.totalStock?.toLocaleString() 
+        : values.stockType === "timer" 
+        ? `Timer (${formatTimerDuration(values.timerDuration || 0)})` 
+        : "Infinite";
+
       await sendWebhookRequest('/api/webhooks/admin-log', {
         action: "Item Released",
         adminUsername: user.username,
@@ -169,7 +201,7 @@ export function ItemCreateForm({ onSuccess }: { onSuccess?: () => void }) {
           `**Item:** ${values.name}`,
           `**Rarity:** ${RARITY_TIERS[rarity].name}`,
           `**Value:** ${values.value.toLocaleString()}`,
-          `**Stock:** ${values.stockType === "limited" ? values.totalStock?.toLocaleString() : "Infinite"}`,
+          `**Stock:** ${stockLogDisplay}`,
         ],
         color: 0x5865F2,
       });
@@ -183,9 +215,11 @@ export function ItemCreateForm({ onSuccess }: { onSuccess?: () => void }) {
         rollableItemsCache.refresh()
       ]);
 
+      const serialDisplay = values.stockType === "limited" || values.stockType === "timer" ? "0" : "∞";
+      
       toast({
         title: "Item created!",
-        description: `${values.name} has been added to the database and Admin received copy #${values.stockType === "limited" ? "0" : "∞"}.`,
+        description: `${values.name} has been added to the database and Admin received copy #${serialDisplay}.`,
       });
 
       form.reset();
@@ -318,12 +352,58 @@ export function ItemCreateForm({ onSuccess }: { onSuccess?: () => void }) {
                   <SelectContent>
                     <SelectItem value="infinite">Infinite</SelectItem>
                     <SelectItem value="limited">Limited</SelectItem>
+                    <SelectItem value="timer">Timer</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />
               </FormItem>
             )}
           />
+
+          {watchedStockType === "timer" && (
+            <div className="space-y-4 p-4 bg-muted rounded-lg">
+              <p className="text-sm text-muted-foreground">
+                Timer items are available for a limited time only. Once the timer expires, the item cannot be rolled again, but owners keep their items. Serial numbers are assigned with no max stock.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Duration</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={timerValue}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value) || 1;
+                      setTimerValue(value);
+                      const multiplier = timerUnit === "minutes" ? 60000 : timerUnit === "hours" ? 3600000 : 86400000;
+                      form.setValue("timerDuration", value * multiplier);
+                    }}
+                    data-testid="input-timer-value"
+                  />
+                </div>
+                <div>
+                  <Label>Unit</Label>
+                  <Select
+                    value={timerUnit}
+                    onValueChange={(value: "minutes" | "hours" | "days") => {
+                      setTimerUnit(value);
+                      const multiplier = value === "minutes" ? 60000 : value === "hours" ? 3600000 : 86400000;
+                      form.setValue("timerDuration", timerValue * multiplier);
+                    }}
+                  >
+                    <SelectTrigger data-testid="select-timer-unit">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="minutes">Minutes</SelectItem>
+                      <SelectItem value="hours">Hours</SelectItem>
+                      <SelectItem value="days">Days</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          )}
 
           {watchedStockType === "limited" && (
             <FormField

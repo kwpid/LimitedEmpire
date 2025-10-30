@@ -88,10 +88,16 @@ class RollableItemsCache {
       const snapshot = await getDocs(q);
 
       const fetchedItems: Item[] = [];
+      const now = Date.now();
       snapshot.forEach((doc) => {
         const item = { id: doc.id, ...doc.data() } as Item;
         // Only include items that are actually rollable
-        if (item.stockType === "infinite" || (item.remainingStock && item.remainingStock > 0)) {
+        const isRollable = 
+          item.stockType === "infinite" || 
+          (item.stockType === "limited" && item.remainingStock && item.remainingStock > 0) ||
+          (item.stockType === "timer" && item.timerExpiresAt && item.timerExpiresAt > now);
+        
+        if (isRollable) {
           fetchedItems.push(item);
         }
       });
@@ -129,7 +135,13 @@ class RollableItemsCache {
     const index = this.items.findIndex(item => item.id === updatedItem.id);
     if (index !== -1) {
       // Check if item is still rollable
-      if (updatedItem.stockType === "infinite" || (updatedItem.remainingStock && updatedItem.remainingStock > 0)) {
+      const now = Date.now();
+      const isRollable = 
+        updatedItem.stockType === "infinite" || 
+        (updatedItem.stockType === "limited" && updatedItem.remainingStock && updatedItem.remainingStock > 0) ||
+        (updatedItem.stockType === "timer" && updatedItem.timerExpiresAt && updatedItem.timerExpiresAt > now);
+      
+      if (isRollable) {
         this.items[index] = updatedItem;
       } else {
         // Item no longer rollable, remove it

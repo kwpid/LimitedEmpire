@@ -22,6 +22,7 @@ interface DiscordEmbed {
 }
 
 interface DiscordWebhookPayload {
+  content?: string;
   embeds: DiscordEmbed[];
 }
 
@@ -39,7 +40,6 @@ function getRarityColor(rarity: RarityTier): number {
   return hexToDecimal(color);
 }
 
-// Send webhook to Discord
 async function sendDiscordWebhook(webhookUrl: string, payload: DiscordWebhookPayload): Promise<void> {
   try {
     const response = await fetch(webhookUrl, {
@@ -104,7 +104,13 @@ export async function sendItemReleaseWebhook(itemData: {
     };
   }
 
-  await sendDiscordWebhook(webhookUrl, { embeds: [embed] });
+  const payload: DiscordWebhookPayload = { embeds: [embed] };
+  
+  if (itemData.value >= 500000) {
+    payload.content = '<@&1381033979502661722>';
+  }
+
+  await sendDiscordWebhook(webhookUrl, payload);
 }
 
 // Admin log webhook

@@ -37,28 +37,39 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
   let shouldRemoveFromCache = false;
   let itemIdToRemove: string | null = null;
 
-  const result = await runTransaction(db, async (transaction) => {
-    const itemRef = doc(db, "items", selectedItemId);
-    const userRef = doc(db, "users", user.id);
-    const adminRef = adminDocId ? doc(db, "users", adminDocId) : null;
+  let result: { item: Item; serialNumber: number | null; autoSold?: boolean; playerEarned?: number };
 
-    // Read item first to determine if we need ownership marker
-    const itemDoc = await transaction.get(itemRef);
-    
-    if (!itemDoc.exists()) {
-      throw new Error("Item not found");
-    }
-    
-    const selectedItem = { id: itemDoc.id, ...itemDoc.data() } as Item;
-    
-    if (selectedItem.offSale) {
-      throw new Error("Item is off-sale and cannot be rolled");
-    }
+  try {
+    result = await runTransaction(db, async (transaction) => {
+      const itemRef = doc(db, "items", selectedItemId);
+      const userRef = doc(db, "users", user.id);
+      const adminRef = adminDocId ? doc(db, "users", adminDocId) : null;
 
-    // Only read ownership marker for limited items
+      // Read item first to determine if we need ownership marker
+      const itemDoc = await transaction.get(itemRef);
+      
+      if (!itemDoc.exists()) {
+        throw new Error("Item not found");
+      }
+      
+      const selectedItem = { id: itemDoc.id, ...itemDoc.data() } as Item;
+      
+      if (selectedItem.offSale) {
+        throw new Error("Item is off-sale and cannot be rolled");
+      }
+
+      if (selectedItem.stockType === "timer" && selectedItem.timerExpiresAt) {
+        if (selectedItem.timerExpiresAt <= Date.now()) {
+          shouldRemoveFromCache = true;
+          itemIdToRemove = selectedItem.id;
+          throw new Error("Timer item has expired and can no longer be rolled");
+        }
+      }
+
+    // Only read ownership marker for limited and timer items
     let isFirstTimeOwning = false;
     let ownershipMarkerRef = null;
-    if (selectedItem.stockType === "limited") {
+    if (selectedItem.stockType === "limited" || selectedItem.stockType === "timer") {
       ownershipMarkerRef = doc(db, "items", selectedItemId, "owners", user.firebaseUid);
       const ownershipDoc = await transaction.get(ownershipMarkerRef);
       isFirstTimeOwning = !ownershipDoc.exists();
@@ -83,6 +94,14 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
 
       itemUpdates.remainingStock = selectedItem.remainingStock - 1;
       serialNumber = (selectedItem.totalStock || 0) - selectedItem.remainingStock + 1;
+      
+      if (isFirstTimeOwning) {
+        itemUpdates.totalOwners = (selectedItem.totalOwners || 0) + 1;
+        shouldSetOwnership = true;
+      }
+    } else if (selectedItem.stockType === "timer") {
+      serialNumber = selectedItem.nextSerialNumber || 1;
+      itemUpdates.nextSerialNumber = serialNumber + 1;
       
       if (isFirstTimeOwning) {
         itemUpdates.totalOwners = (selectedItem.totalOwners || 0) + 1;
@@ -195,8 +214,26 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
       playerEarned: shouldAutoSell ? playerEarned : undefined,
     };
   });
+  } catch (error) {
+    // If transaction failed due to expired timer item, remove from cache
+    if (shouldRemoveFromCache && itemIdToRemove) {
+      rollableItemsCache.removeItem(itemIdToRemove);
+      
+      // Mark item as offSale outside the transaction
+      const itemRef = doc(db, "items", itemIdToRemove);
+      try {
+        const { updateDoc } = await import("./firebase");
+        await updateDoc(itemRef, { offSale: true });
+      } catch (updateError) {
+        console.error("Failed to mark expired timer item as offSale:", updateError);
+      }
+    }
+    
+    // Re-throw the original error
+    throw error;
+  }
 
-  // Only remove from cache after transaction successfully commits
+  // Also remove from cache after successful transaction if needed (for out-of-stock limited items)
   if (shouldRemoveFromCache && itemIdToRemove) {
     rollableItemsCache.removeItem(itemIdToRemove);
   }
