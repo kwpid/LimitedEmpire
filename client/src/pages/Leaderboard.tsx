@@ -2,18 +2,12 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Trophy, TrendingUp, Package, DollarSign, Dices } from "lucide-react";
-import type { User, Item } from "@shared/schema";
-import { collection } from "firebase/firestore";
-import { db, getDocs } from "@/lib/firebase";
+import { Button } from "@/components/ui/button";
+import { Trophy, TrendingUp, Package, DollarSign, Dices, RefreshCw, Clock } from "lucide-react";
+import type { User } from "@shared/schema";
 import { PlayerProfileModal } from "@/components/PlayerProfileModal";
 import { formatValue } from "@/lib/rarity";
-
-interface LeaderboardPlayer {
-  user: User;
-  value: number;
-  rank: number;
-}
+import { leaderboardCache, type LeaderboardPlayer } from "@/lib/leaderboardCache";
 
 export default function Leaderboard() {
   const [topValue, setTopValue] = useState<LeaderboardPlayer[]>([]);
@@ -21,72 +15,22 @@ export default function Leaderboard() {
   const [topCash, setTopCash] = useState<LeaderboardPlayer[]>([]);
   const [topRolls, setTopRolls] = useState<LeaderboardPlayer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<User | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [hasRendered, setHasRendered] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
   const loadLeaderboards = async () => {
     setLoading(true);
     try {
-      const usersSnapshot = await getDocs(collection(db, "users"));
-      const users: User[] = [];
-      usersSnapshot.forEach((doc) => {
-        const userData = { id: doc.id, ...doc.data() } as User;
-        if (userData.userId !== 1) {
-          users.push(userData);
-        }
-      });
-
-      // Use itemsCache instead of fetching all items again
-      const { itemsCache } = await import("@/lib/itemsCache");
-      const itemsMap = await itemsCache.getItems();
-
-      const playersWithValues = await Promise.all(
-        users.map(async (user) => {
-          let totalValue = 0;
-          if (user.inventory && user.inventory.length > 0) {
-            user.inventory.forEach((invItem) => {
-              const item = itemsMap.get(invItem.itemId);
-              if (item) {
-                totalValue += item.value * (invItem.amount || 1);
-              }
-            });
-          }
-
-          return {
-            user,
-            totalValue,
-            itemCount: user.inventory?.reduce((sum, inv) => sum + (inv.amount || 1), 0) || 0,
-            cash: user.cash ?? 0,
-            rolls: user.rollCount ?? 0,
-          };
-        })
-      );
-
-      const topValueSorted = playersWithValues
-        .sort((a, b) => b.totalValue - a.totalValue)
-        .slice(0, 30)
-        .map((p, idx) => ({ user: p.user, value: p.totalValue, rank: idx + 1 }));
-
-      const topItemsSorted = playersWithValues
-        .sort((a, b) => b.itemCount - a.itemCount)
-        .slice(0, 30)
-        .map((p, idx) => ({ user: p.user, value: p.itemCount, rank: idx + 1 }));
-
-      const topCashSorted = playersWithValues
-        .sort((a, b) => b.cash - a.cash)
-        .slice(0, 30)
-        .map((p, idx) => ({ user: p.user, value: p.cash, rank: idx + 1 }));
-
-      const topRollsSorted = playersWithValues
-        .sort((a, b) => b.rolls - a.rolls)
-        .slice(0, 30)
-        .map((p, idx) => ({ user: p.user, value: p.rolls, rank: idx + 1 }));
-
-      setTopValue(topValueSorted);
-      setTopItems(topItemsSorted);
-      setTopCash(topCashSorted);
-      setTopRolls(topRollsSorted);
+      // Load from cache - this will use Firestore cached data
+      const data = await leaderboardCache.getLeaderboard();
+      
+      setTopValue(data.topValue);
+      setTopItems(data.topItems);
+      setTopCash(data.topCash);
+      setTopRolls(data.topRolls);
+      setLastUpdated(data.lastUpdated);
     } catch (error) {
       console.error("Error loading leaderboards:", error);
     } finally {
@@ -94,39 +38,25 @@ export default function Leaderboard() {
     }
   };
 
-  useEffect(() => {
-    if (!hasRendered) {
-      loadLeaderboards();
-      setHasRendered(true);
+  const handleManualRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const data = await leaderboardCache.forceRefresh();
+      setTopValue(data.topValue);
+      setTopItems(data.topItems);
+      setTopCash(data.topCash);
+      setTopRolls(data.topRolls);
+      setLastUpdated(data.lastUpdated);
+    } catch (error) {
+      console.error("Error refreshing leaderboards:", error);
+    } finally {
+      setRefreshing(false);
     }
-    
-    let intervalId: NodeJS.Timeout | null = null;
-    
-    // Calculate time until next 5-minute mark (XX:00, XX:05, XX:10, etc.)
-    const now = new Date();
-    const currentMinutes = now.getMinutes();
-    const currentSeconds = now.getSeconds();
-    const currentMs = now.getMilliseconds();
-    
-    // Calculate ms until next 5-minute mark
-    const minutesToNext5 = 5 - (currentMinutes % 5);
-    const msUntilNext5Minutes = (minutesToNext5 * 60 * 1000) - (currentSeconds * 1000) - currentMs;
-    
-    const timeoutId = setTimeout(() => {
-      loadLeaderboards();
-      // After first sync, set up regular 5-minute interval
-      intervalId = setInterval(() => {
-        loadLeaderboards();
-      }, 5 * 60 * 1000);
-    }, msUntilNext5Minutes);
-    
-    return () => {
-      clearTimeout(timeoutId);
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [hasRendered]);
+  };
+
+  useEffect(() => {
+    loadLeaderboards();
+  }, []);
 
   const handlePlayerClick = (player: User) => {
     setSelectedPlayer(player);
@@ -143,6 +73,17 @@ export default function Leaderboard() {
   const getRankTextColor = (rank: number) => {
     if (rank <= 3) return "text-white";
     return "";
+  };
+
+  const getTimeAgo = (timestamp: number) => {
+    const seconds = Math.floor((Date.now() - timestamp) / 1000);
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
   };
 
   const LeaderboardFrame = ({ 
@@ -202,12 +143,31 @@ export default function Leaderboard() {
 
   return (
     <div className="container mx-auto p-4 md:p-6 max-w-[1600px]">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight mb-2 flex items-center gap-2">
-          <Trophy className="w-8 h-8" />
-          Leaderboards
-        </h1>
-        <p className="text-muted-foreground">Top players across all categories</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight mb-2 flex items-center gap-2">
+            <Trophy className="w-8 h-8" />
+            Leaderboards
+          </h1>
+          <p className="text-muted-foreground flex items-center gap-2">
+            <Clock className="w-4 h-4" />
+            {lastUpdated ? (
+              <>Last updated {getTimeAgo(lastUpdated)} • Updates every 5 minutes</>
+            ) : (
+              "Loading..."
+            )}
+          </p>
+        </div>
+        <Button 
+          onClick={handleManualRefresh} 
+          disabled={refreshing}
+          variant="outline"
+          size="sm"
+          data-testid="button-refresh-leaderboard"
+        >
+          <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
