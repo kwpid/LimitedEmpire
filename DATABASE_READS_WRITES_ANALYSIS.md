@@ -16,11 +16,12 @@ The logging system is **properly implemented** with:
 
 ## Scenario Breakdown
 
-### 1. **Rolling for Items**
+### 1. **Rolling for Items** ✅ OPTIMIZED
 
 #### Standard Roll (Non-Auto-Sell)
 **Reads:**
-- 1 read: `getDocs` on items collection (fetches all non-offSale items) - **N reads** where N = number of items
+- 0 reads: Items loaded from **rollableItemsCache** (5-minute cache) - **0 reads** (cached)
+- **First roll after cache expiry**: `getDocs` on items collection - **N reads** where N = number of items
 - 1 read: `getDocs` on users collection (to find admin user) - **1-2 reads** (depends on admin count)
 - 3-4 reads inside transaction:
   - `transaction.get` on selected item - **1 read**
@@ -28,7 +29,9 @@ The logging system is **properly implemented** with:
   - `transaction.get` on user document - **1 read**
   - `transaction.get` on admin document (if needed) - **1 read**
 
-**Total Reads: N + 5 to 6 reads** (where N = number of items in catalog)
+**Total Reads: 5 to 6 reads** (cached) or **N + 5 to 6 reads** (first roll in 5 minutes)
+
+**Improvement:** **~97% reduction** (from 206 reads to 6 reads for 200-item catalog)
 
 **Writes:**
 - 2-4 writes inside transaction:
@@ -40,7 +43,7 @@ The logging system is **properly implemented** with:
 **Total Writes: 2 to 4 writes**
 
 #### Auto-Sell Roll
-**Reads:** Same as standard roll - **N + 5 to 6 reads**
+**Reads:** Same as standard roll - **5 to 6 reads** (cached) or **N + 5 to 6 reads** (first roll in 5 minutes)
 
 **Writes:**
 - 3-5 writes inside transaction:
@@ -81,21 +84,27 @@ The logging system is **properly implemented** with:
 
 ---
 
-### 4. **Loading Leaderboard**
+### 4. **Loading Leaderboard** ✅ OPTIMIZED
 
-#### Initial Load
+#### Viewing Leaderboard (User Action)
 **Reads:**
-- `getDocs` on entire users collection - **N reads** where N = total number of users (excluding admin)
-- Items are cached, so **0 reads** from items collection (uses itemsCache)
+- `getDoc` on leaderboardCache document - **1 read**
+- If cache is stale (>5 minutes), triggers background update
 
-**Total: N reads** (where N = number of users in database)
+**Total: 1 read** (viewing cached data)
 
 **Writes:** None
 
-#### Auto-Refresh (Every 5 Minutes)
-Same as initial load: **N reads, 0 writes**
+**Improvement:** **~99.9% reduction** (from 1000 reads to 1 read for 1000-user database)
 
-**Note:** Leaderboard is expensive due to reading ALL users. With 1000 users, that's **1000 reads every 5 minutes** during active viewing.
+#### Background Update (Automatic, Every ~5 Minutes)
+This happens automatically when the cache expires and someone requests the leaderboard:
+- `getDocs` on entire users collection - **N reads** where N = total number of users
+- `setDoc` to update leaderboardCache - **1 write**
+
+**Total: N reads + 1 write** (happens once per 5 minutes, not per view)
+
+**Note:** The expensive operation now happens once every 5 minutes in the background, instead of every time someone views the leaderboard. Users see cached data instantly.
 
 ---
 
@@ -177,25 +186,29 @@ Same as initial load: **N reads, 0 writes**
 
 ## Optimization Notes
 
-### ✅ Already Optimized:
+### ✅ Optimizations Implemented:
 1. **Inventory stored in user document** - Avoids N+1 query problem
 2. **Items cached for 24 hours** - Reduces item catalog reads dramatically
-3. **Leaderboard limited to top 30** - Calculation done client-side after one read
-4. **Players page limited to 50** - Capped query size
+3. **Rollable items cached for 5 minutes** ⭐ NEW - Eliminates N reads per roll
+4. **Leaderboard cached in Firestore** ⭐ NEW - Background updates instead of per-view calculation
+5. **Players page limited to 50** - Capped query size
 
-### 🔴 Expensive Operations:
-1. **Rolling** - Requires reading ALL items catalog (N reads) + transaction reads
-   - If you have 100 items, that's ~106 reads per roll
-   - If you have 500 items, that's ~506 reads per roll
+### 🎯 Performance Improvements:
+1. **Rolling Optimization:**
+   - **Before:** 206 reads per roll (200 items catalog)
+   - **After:** 6 reads per roll (cached)
+   - **Improvement:** 97% reduction in reads
    
-2. **Leaderboard** - Reads ALL users every 5 minutes
-   - With 1000 users, that's 1000 reads every load
-   - Auto-refreshes every 5 minutes
+2. **Leaderboard Optimization:**
+   - **Before:** 1000 reads per view (1000 users)
+   - **After:** 1 read per view (cached data)
+   - **Background:** 1000 reads + 1 write every 5 minutes
+   - **Improvement:** 99.9% reduction in reads per view
 
-### 💡 Potential Optimizations:
-1. **Cache rollable items** - Cache the list of eligible items instead of querying every roll
-2. **Leaderboard pagination** - Only load top 100 instead of all users
-3. **Background leaderboard updates** - Use Cloud Functions to calculate leaderboards periodically
+### 💡 Additional Optimization Ideas:
+1. **Server-side caching** - Use Replit's Redis or memory cache for even faster access
+2. **Incremental leaderboard updates** - Track changes instead of recalculating everything
+3. **Item stock monitoring** - Only refresh rollable items cache when stock changes
 
 ---
 
@@ -210,29 +223,42 @@ Same as initial load: **N reads, 0 writes**
 - $0.18 per 100,000 writes
 
 ### Example Usage (100 active users, 200 items in catalog):
+
+#### Before Optimization:
 - Each user rolls 10 times/day: 100 × 10 × 206 = **206,000 reads**
 - Each user checks leaderboard 3 times: 100 × 3 × 100 = **30,000 reads**
 - Total daily reads: **~236,000 reads** = $0.14/day = **$4.20/month**
+- Daily writes: **~4,000 writes** (within free tier)
 
-- Each user rolls 10 times/day: 100 × 10 × 3 = **3,000 writes**
-- Other operations: **~1,000 writes**
-- Total daily writes: **~4,000 writes** (within free tier)
+#### After Optimization ⭐:
+- **Rolling:** 100 users × 10 rolls × 6 reads = **6,000 reads** (97% reduction!)
+  - Plus: ~288 cache refresh reads/day (200 items × 12 5-minute periods / 8 hours active)
+- **Leaderboard:** 100 users × 3 views × 1 read = **300 reads** (99% reduction!)
+  - Plus: ~12,000 background update reads/day (100 users × 12 5-minute periods / 8 hours)
+- **Total daily reads:** **~18,600 reads** = $0.01/day = **$0.30/month**
+- **Total daily writes:** **~4,300 writes** (within free tier)
+
+**Cost Savings:** **93% reduction** in daily costs! ($4.20 → $0.30 per month)
 
 ---
 
 ## Summary Table
 
-| Scenario | Reads | Writes | Notes |
-|----------|-------|--------|-------|
-| **Roll (Standard)** | N + 5-6 | 2-4 | N = items in catalog |
-| **Roll (Auto-Sell)** | N + 5-6 | 3-5 | N = items in catalog |
-| **Check Players** | 0-50 | 0 | Limited to active users |
-| **View Profile** | 0-7 | 0 | Depends on showcase items |
-| **Leaderboard** | N | 0 | N = total users |
-| **Inventory** | 0 | 0 | Uses cache |
-| **Sell Item** | 3 | 2 | Transaction-based |
-| **Send Trade** | 0 | 1 | Simple write |
-| **Accept Trade** | 3 | 3 | Transaction-based |
-| **Item Index** | 0 (cached) | 0 | 24hr cache |
+| Scenario | Reads (Before) | Reads (After) | Writes | Improvement | Notes |
+|----------|----------------|---------------|--------|-------------|-------|
+| **Roll (Standard)** | N + 5-6 | **5-6** ⭐ | 2-4 | 97% | Uses 5-min rollable cache |
+| **Roll (Auto-Sell)** | N + 5-6 | **5-6** ⭐ | 3-5 | 97% | Uses 5-min rollable cache |
+| **Check Players** | 0-50 | 0-50 | 0 | - | Limited to active users |
+| **View Profile** | 0-7 | 0-7 | 0 | - | Depends on showcase items |
+| **Leaderboard** | N | **1** ⭐ | 0 | 99.9% | Server-cached, bg updates |
+| **Inventory** | 0 | 0 | 0 | - | Uses 24hr cache |
+| **Sell Item** | 3 | 3 | 2 | - | Transaction-based |
+| **Send Trade** | 0 | 0 | 1 | - | Simple write |
+| **Accept Trade** | 3 | 3 | 3 | - | Transaction-based |
+| **Item Index** | 0 (cached) | 0 | 0 | - | 24hr cache |
+| **Leaderboard Update** | - | N (bg) | 1 | - | Every ~5 min, background |
 
-**Key Insight:** Rolling is the most expensive operation due to reading the entire items catalog every time.
+**Key Insights:** 
+- ⭐ Rolling optimized from ~206 reads to 6 reads (97% reduction)
+- ⭐ Leaderboard optimized from 1000 reads to 1 read per view (99.9% reduction)
+- **Total cost reduction: 93%** for typical usage patterns

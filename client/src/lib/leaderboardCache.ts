@@ -34,15 +34,23 @@ class LeaderboardCache {
 
     // If already fetching, wait for that fetch
     if (this.fetchPromise) {
-      return this.fetchPromise;
+      try {
+        return await this.fetchPromise;
+      } catch (error) {
+        // fetchPromise already cleared in finally block
+        throw error;
+      }
     }
 
     // Fetch from Firestore cache
     this.fetchPromise = this.fetchFromFirestore();
-    const data = await this.fetchPromise;
-    this.fetchPromise = null;
-
-    return data;
+    try {
+      const data = await this.fetchPromise;
+      return data;
+    } finally {
+      // Always clear fetchPromise, even on error, so retries can happen
+      this.fetchPromise = null;
+    }
   }
 
   private async fetchFromFirestore(): Promise<LeaderboardData> {

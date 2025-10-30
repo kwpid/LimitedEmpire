@@ -58,14 +58,23 @@ class RollableItemsCache {
 
     // If already fetching, wait for that fetch
     if (this.fetchPromise) {
-      await this.fetchPromise;
+      try {
+        await this.fetchPromise;
+      } catch (error) {
+        // fetchPromise already cleared in finally block
+        throw error;
+      }
       return this.items;
     }
 
     // Fetch new data
     this.fetchPromise = this.fetchItems();
-    await this.fetchPromise;
-    this.fetchPromise = null;
+    try {
+      await this.fetchPromise;
+    } finally {
+      // Always clear fetchPromise, even on error, so retries can happen
+      this.fetchPromise = null;
+    }
 
     return this.items;
   }
@@ -103,6 +112,32 @@ class RollableItemsCache {
   async refresh(): Promise<Item[]> {
     this.lastFetch = 0;
     return this.getItems();
+  }
+
+  // Remove a specific item from cache (called when it goes out of stock)
+  removeItem(itemId: string) {
+    const index = this.items.findIndex(item => item.id === itemId);
+    if (index !== -1) {
+      this.items.splice(index, 1);
+      this.saveToStorage();
+      console.log(`%c[CACHE] Removed item ${itemId} from rollable cache (out of stock)`, 'color: #f59e0b; font-weight: bold');
+    }
+  }
+
+  // Update a specific item in cache (called when stock changes)
+  updateItem(updatedItem: Item) {
+    const index = this.items.findIndex(item => item.id === updatedItem.id);
+    if (index !== -1) {
+      // Check if item is still rollable
+      if (updatedItem.stockType === "infinite" || (updatedItem.remainingStock && updatedItem.remainingStock > 0)) {
+        this.items[index] = updatedItem;
+      } else {
+        // Item no longer rollable, remove it
+        this.items.splice(index, 1);
+      }
+      this.saveToStorage();
+      console.log(`%c[CACHE] Updated item ${updatedItem.id} in rollable cache`, 'color: #10b981; font-weight: bold');
+    }
   }
 
   // Clear the cache

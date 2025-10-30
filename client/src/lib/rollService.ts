@@ -36,6 +36,9 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
   
   const adminDocId = !adminSnapshot.empty ? adminSnapshot.docs[0].id : null;
 
+  let shouldRemoveFromCache = false;
+  let itemIdToRemove: string | null = null;
+
   const result = await runTransaction(db, async (transaction) => {
     const itemRef = doc(db, "items", selectedItemId);
     const ownershipMarkerRef = doc(db, "items", selectedItemId, "owners", user.firebaseUid);
@@ -153,6 +156,12 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
 
     if (Object.keys(itemUpdates).length > 0) {
       transaction.update(itemRef, itemUpdates);
+      
+      // If limited item stock reached zero, mark for cache removal after commit
+      if (selectedItem.stockType === "limited" && itemUpdates.remainingStock === 0) {
+        shouldRemoveFromCache = true;
+        itemIdToRemove = selectedItem.id;
+      }
     }
 
     if (shouldSetOwnership) {
@@ -179,6 +188,11 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
       playerEarned: shouldAutoSell ? playerEarned : undefined,
     };
   });
+
+  // Only remove from cache after transaction successfully commits
+  if (shouldRemoveFromCache && itemIdToRemove) {
+    rollableItemsCache.removeItem(itemIdToRemove);
+  }
 
   return result;
 }
