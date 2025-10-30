@@ -1,10 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { User, Item } from "@shared/schema";
-import { useState, useEffect } from "react";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import type { User } from "@shared/schema";
+import { useState } from "react";
 import { User as UserIcon, Ban, TrendingUp, Shield } from "lucide-react";
 import { formatValue } from "@/lib/rarity";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,71 +16,14 @@ interface PlayerCardProps {
 
 export function PlayerCard({ player, onClick, onAdminActionComplete }: PlayerCardProps) {
   const { user: currentUser } = useAuth();
-  const [showcaseItems, setShowcaseItems] = useState<(Item & { serialNumber: number | null })[]>([]);
-  const [inventoryValue, setInventoryValue] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [panelOpen, setPanelOpen] = useState(false);
 
   const isOnline = player.lastActive && (Date.now() - player.lastActive < 5 * 60 * 1000);
 
-  useEffect(() => {
-    const loadPlayerData = async () => {
-      try {
-        let totalValue = 0;
-        
-        if (player.inventory && player.inventory.length > 0) {
-          const itemIds = Array.from(new Set(player.inventory.map(inv => inv.itemId)));
-          const itemValues = new Map<string, number>();
-          
-          await Promise.all(
-            itemIds.map(async (itemId) => {
-              const itemDoc = await getDoc(doc(db, "items", itemId));
-              if (itemDoc.exists()) {
-                const itemData = itemDoc.data() as Item;
-                itemValues.set(itemId, itemData.value);
-              }
-            })
-          );
-
-          player.inventory.forEach((invItem) => {
-            const value = itemValues.get(invItem.itemId) || 0;
-            totalValue += value * (invItem.amount || 1);
-          });
-        }
-
-        setInventoryValue(totalValue);
-
-        if (player.showcaseItems && player.showcaseItems.length > 0) {
-          const items = await Promise.all(
-            player.showcaseItems.map(async (inventoryItemId) => {
-              const invItem = player.inventory?.find(item => item.id === inventoryItemId);
-              if (!invItem) return null;
-
-              const itemDoc = await getDoc(doc(db, "items", invItem.itemId));
-              if (!itemDoc.exists()) return null;
-
-              return {
-                id: itemDoc.id,
-                ...itemDoc.data(),
-                serialNumber: invItem.serialNumber
-              } as Item & { serialNumber: number | null };
-            })
-          );
-
-          const validItems = items.filter((item): item is Item & { serialNumber: number | null } => item !== null);
-          setShowcaseItems(validItems.slice(0, 3));
-        }
-      } catch (error) {
-        console.error("Error loading player data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadPlayerData();
-  }, [player]);
-
-  const emptySlots = Math.max(0, 3 - showcaseItems.length);
+  const showcaseMetadata = player.showcaseMetadata || [];
+  const inventoryValue = player.inventoryValue || 0;
+  const showcaseDisplay = showcaseMetadata.slice(0, 3);
+  const emptySlots = Math.max(0, 3 - showcaseDisplay.length);
   const showAdminPanel = currentUser?.isAdmin && player.userId !== currentUser.userId;
 
   return (
@@ -149,38 +90,28 @@ export function PlayerCard({ player, onClick, onAdminActionComplete }: PlayerCar
         </div>
 
         <div className="flex gap-2 mt-3">
-          {loading ? (
-            <>
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="w-16 h-16 bg-muted animate-pulse rounded border border-muted-foreground/20" />
-              ))}
-            </>
-          ) : (
-            <>
-              {showcaseItems.map((item, idx) => (
-                <div key={idx} className="relative w-16 h-16 rounded border border-primary/30 overflow-hidden bg-muted">
-                  <img
-                    src={item.imageUrl}
-                    alt={item.name}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23333'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23fff' font-size='24' font-weight='bold'%3E%3F%3C/text%3E%3C/svg%3E";
-                    }}
-                  />
-                  {item.serialNumber !== null && (
-                    <Badge variant="secondary" className="absolute bottom-0 right-0 text-[8px] px-1 py-0">
-                      #{item.serialNumber}
-                    </Badge>
-                  )}
-                </div>
-              ))}
-              {Array.from({ length: emptySlots }).map((_, idx) => (
-                <div key={`empty-${idx}`} className="w-16 h-16 rounded border border-muted-foreground/20 bg-muted/30 flex items-center justify-center">
-                  <Ban className="w-6 h-6 text-muted-foreground/40" />
-                </div>
-              ))}
-            </>
-          )}
+          {showcaseDisplay.map((item, idx) => (
+            <div key={idx} className="relative w-16 h-16 rounded border border-primary/30 overflow-hidden bg-muted">
+              <img
+                src={item.itemImageUrl}
+                alt={item.itemName}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23333'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23fff' font-size='24' font-weight='bold'%3E%3F%3C/text%3E%3C/svg%3E";
+                }}
+              />
+              {item.serialNumber !== null && (
+                <Badge variant="secondary" className="absolute bottom-0 right-0 text-[8px] px-1 py-0">
+                  #{item.serialNumber}
+                </Badge>
+              )}
+            </div>
+          ))}
+          {Array.from({ length: emptySlots }).map((_, idx) => (
+            <div key={`empty-${idx}`} className="w-16 h-16 rounded border border-muted-foreground/20 bg-muted/30 flex items-center justify-center">
+              <Ban className="w-6 h-6 text-muted-foreground/40" />
+            </div>
+          ))}
         </div>
       </CardContent>
     </Card>

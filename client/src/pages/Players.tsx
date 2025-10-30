@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { collection, query, orderBy, limit, where } from "firebase/firestore";
 import { db, getDocs } from "@/lib/firebase";
 import type { User } from "@shared/schema";
@@ -7,60 +7,44 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlayerCard } from "@/components/PlayerCard";
 import { PlayerProfileModal } from "@/components/PlayerProfileModal";
 import { Users, Search } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function Players() {
-  const [players, setPlayers] = useState<User[]>([]);
+  const [onlinePlayers, setOnlinePlayers] = useState<User[]>([]);
+  const [searchResults, setSearchResults] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPlayer, setSelectedPlayer] = useState<User | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("online");
 
   useEffect(() => {
-    loadPlayers();
+    loadOnlinePlayers();
   }, []);
 
   useEffect(() => {
-    if (searchQuery) {
+    if (searchQuery && activeTab === "all") {
       const timeoutId = setTimeout(() => {
         searchPlayers(searchQuery);
       }, 300);
       return () => clearTimeout(timeoutId);
+    } else if (!searchQuery && activeTab === "all") {
+      setSearchResults([]);
     }
-  }, [searchQuery]);
+  }, [searchQuery, activeTab]);
 
-  const searchPlayers = async (search: string) => {
-    if (!search) {
-      loadPlayers();
-      return;
-    }
-    
+  const loadOnlinePlayers = async () => {
     setLoading(true);
     try {
       const usersRef = collection(db, "users");
-      const q = query(usersRef, orderBy("lastActive", "desc"), limit(100));
-      const snapshot = await getDocs(q);
-      
-      const searchLower = search.toLowerCase();
-      const loadedPlayers: User[] = [];
-      snapshot.forEach((doc) => {
-        const userData = { id: doc.id, ...doc.data() } as User;
-        if (userData.username?.toLowerCase().includes(searchLower)) {
-          loadedPlayers.push(userData);
-        }
-      });
-      
-      setPlayers(loadedPlayers);
-    } catch (error) {
-      console.error("Error searching players:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadPlayers = async () => {
-    try {
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, orderBy("lastActive", "desc"), limit(50));
+      const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+      const q = query(
+        usersRef,
+        where("lastActive", ">=", fiveMinutesAgo),
+        orderBy("lastActive", "desc"),
+        limit(50)
+      );
       const snapshot = await getDocs(q);
       
       const loadedPlayers: User[] = [];
@@ -68,11 +52,44 @@ export default function Players() {
         loadedPlayers.push({ id: doc.id, ...doc.data() } as User);
       });
       
-      setPlayers(loadedPlayers);
+      setOnlinePlayers(loadedPlayers);
     } catch (error) {
-      console.error("Error loading players:", error);
+      console.error("Error loading online players:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const searchPlayers = async (search: string) => {
+    if (!search) {
+      setSearchResults([]);
+      return;
+    }
+    
+    setSearchLoading(true);
+    try {
+      const usersRef = collection(db, "users");
+      const searchLower = search.toLowerCase();
+      const q = query(
+        usersRef, 
+        where("usernameLower", ">=", searchLower),
+        where("usernameLower", "<=", searchLower + "\uf8ff"),
+        orderBy("usernameLower"),
+        limit(20)
+      );
+      const snapshot = await getDocs(q);
+      
+      const loadedPlayers: User[] = [];
+      snapshot.forEach((doc) => {
+        loadedPlayers.push({ id: doc.id, ...doc.data() } as User);
+      });
+      
+      setSearchResults(loadedPlayers);
+    } catch (error) {
+      console.error("Error searching players:", error);
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
     }
   };
 
@@ -81,15 +98,13 @@ export default function Players() {
     setProfileOpen(true);
   };
 
-  const onlinePlayers = players.filter(p => p.lastActive && (Date.now() - p.lastActive < 5 * 60 * 1000));
-  
-  const filteredOnline = onlinePlayers.filter(p => 
-    p.username.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  
-  const filteredAll = players.filter(p => 
-    p.username.toLowerCase().includes(searchQuery.toLowerCase())
-  ).slice(0, searchQuery ? undefined : 10);
+  const filteredOnline = useMemo(() => {
+    if (!searchQuery) return onlinePlayers;
+    const searchLower = searchQuery.toLowerCase();
+    return onlinePlayers.filter(p => 
+      p.username?.toLowerCase().includes(searchLower)
+    );
+  }, [onlinePlayers, searchQuery]);
 
   return (
     <div className="container mx-auto p-4 md:p-6 max-w-7xl">
@@ -114,13 +129,13 @@ export default function Players() {
         </div>
       </div>
 
-      <Tabs defaultValue="online" className="space-y-4">
+      <Tabs defaultValue="online" className="space-y-4" onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="online" data-testid="tab-online-players">
             Online ({onlinePlayers.length})
           </TabsTrigger>
           <TabsTrigger value="all" data-testid="tab-all-players">
-            All Players ({players.length})
+            All Players
           </TabsTrigger>
         </TabsList>
 
@@ -152,20 +167,32 @@ export default function Players() {
         </TabsContent>
 
         <TabsContent value="all" className="space-y-4">
-          {loading ? (
+          {!searchQuery ? (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <Search className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                <p className="text-lg font-medium mb-2">Search for Players</p>
+                <p className="text-muted-foreground">
+                  Use the search box above to find specific players by username
+                </p>
+              </CardContent>
+            </Card>
+          ) : searchLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="h-32 bg-muted animate-pulse rounded-lg" />
               ))}
             </div>
-          ) : filteredAll.length === 0 ? (
-            <div className="text-center py-12">
-              <Users className="w-16 h-16 mx-auto mb-4 opacity-20" />
-              <p className="text-muted-foreground">No players found</p>
-            </div>
+          ) : searchResults.length === 0 ? (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <Users className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                <p className="text-muted-foreground">No players found matching "{searchQuery}"</p>
+              </CardContent>
+            </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredAll.map((player) => (
+              {searchResults.map((player) => (
                 <PlayerCard
                   key={player.id}
                   player={player}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { formatValue, getRarityClass } from "@/lib/rarity";
 export default function Trading() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const loadedRef = useRef(false);
   
   const [inboundTrades, setInboundTrades] = useState<Trade[]>([]);
   const [outboundTrades, setOutboundTrades] = useState<Trade[]>([]);
@@ -24,13 +25,15 @@ export default function Trading() {
   const [processingTradeId, setProcessingTradeId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) {
+    if (user && !loadedRef.current) {
       loadTrades();
     }
   }, [user]);
 
-  const loadTrades = async () => {
+  const loadTrades = async (forceReload = false) => {
     if (!user) return;
+    if (loadedRef.current && !forceReload) return;
+    
     setLoading(true);
 
     try {
@@ -50,8 +53,6 @@ export default function Trading() {
         orderBy("createdAt", "desc")
       );
       
-      // For inactive trades, we need separate queries for sender and receiver
-      // because Firebase rules are not filters
       const inactiveSenderQuery = query(
         tradesRef,
         where("senderId", "==", user.firebaseUid),
@@ -66,7 +67,6 @@ export default function Trading() {
         orderBy("updatedAt", "desc")
       );
       
-      // For completed trades, we need separate queries for sender and receiver
       const completedSenderQuery = query(
         tradesRef,
         where("senderId", "==", user.firebaseUid),
@@ -107,7 +107,6 @@ export default function Trading() {
         outbound.push({ id: doc.id, ...doc.data() } as Trade);
       });
 
-      // Combine inactive trades from sender and receiver queries
       const inactive: Trade[] = [];
       inactiveSenderSnapshot.forEach((doc) => {
         inactive.push({ id: doc.id, ...doc.data() } as Trade);
@@ -115,10 +114,8 @@ export default function Trading() {
       inactiveReceiverSnapshot.forEach((doc) => {
         inactive.push({ id: doc.id, ...doc.data() } as Trade);
       });
-      // Sort by updatedAt descending
       inactive.sort((a, b) => b.updatedAt - a.updatedAt);
 
-      // Combine completed trades from sender and receiver queries
       const completed: Trade[] = [];
       completedSenderSnapshot.forEach((doc) => {
         completed.push({ id: doc.id, ...doc.data() } as Trade);
@@ -126,13 +123,13 @@ export default function Trading() {
       completedReceiverSnapshot.forEach((doc) => {
         completed.push({ id: doc.id, ...doc.data() } as Trade);
       });
-      // Sort by completedAt descending
       completed.sort((a, b) => (b.completedAt || 0) - (a.completedAt || 0));
 
       setInboundTrades(inbound);
       setOutboundTrades(outbound);
       setInactiveTrades(inactive);
       setCompletedTrades(completed);
+      loadedRef.current = true;
     } catch (error) {
       console.error("Error loading trades:", error);
       toast({
@@ -178,7 +175,7 @@ export default function Trading() {
         description: "The trade has been completed successfully. Items and cash have been exchanged.",
       });
 
-      await loadTrades();
+      await loadTrades(true);
     } catch (error) {
       console.error("Error accepting trade:", error);
       toast({
@@ -208,7 +205,7 @@ export default function Trading() {
         description: "The trade offer has been declined",
       });
 
-      await loadTrades();
+      await loadTrades(true);
     } catch (error) {
       console.error("Error declining trade:", error);
       toast({
@@ -238,7 +235,7 @@ export default function Trading() {
         description: "Your trade offer has been cancelled",
       });
 
-      await loadTrades();
+      await loadTrades(true);
     } catch (error) {
       console.error("Error cancelling trade:", error);
       toast({

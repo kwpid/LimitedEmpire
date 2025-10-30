@@ -51,6 +51,7 @@ export const userSchema = z.object({
   id: z.string(), // Firestore document ID
   firebaseUid: z.string(),
   username: z.string(),
+  usernameLower: z.string().optional(), // Lowercase username for efficient searching
   userId: z.number(), // Sequential ID (1, 2, 3, etc.)
   isAdmin: z.boolean(),
   isModerator: z.boolean().default(false),
@@ -66,6 +67,15 @@ export const userSchema = z.object({
   customStatus: z.string().max(120).default(""), // User's custom status message
   description: z.string().max(1000).default(""), // User's profile description
   showcaseItems: z.array(z.string()).max(5).default([]), // Array of inventory item IDs (max 5)
+  showcaseMetadata: z.array(z.object({
+    inventoryId: z.string(),
+    itemId: z.string(),
+    itemName: z.string(),
+    itemImageUrl: z.string(),
+    itemValue: z.number(),
+    serialNumber: z.number().nullable(),
+  })).max(5).default([]), // Denormalized showcase data to avoid item fetches
+  inventoryValue: z.number().default(0), // Cached total inventory value
   timeSpentOnSite: z.number().default(0), // Total time spent on site in milliseconds
   lastActive: z.number().default(Date.now), // Last activity timestamp for online/offline tracking
   settings: z.object({
