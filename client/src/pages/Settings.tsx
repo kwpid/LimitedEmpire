@@ -100,58 +100,48 @@ export default function Settings() {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-5xl">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight mb-2 flex items-center gap-2">
-          <SettingsIcon className="w-8 h-8" />
+    <div className="container mx-auto p-3 md:p-6 max-w-5xl">
+      <div className="mb-4 md:mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-2 flex items-center gap-2">
+          <SettingsIcon className="w-6 h-6 md:w-8 md:h-8" />
           Settings
         </h1>
-        <p className="text-muted-foreground">Customize your gameplay experience</p>
+        <p className="text-sm md:text-base text-muted-foreground">Customize your gameplay experience</p>
       </div>
 
-      <div className="flex gap-6">
-        <div className="w-64 space-y-2">
-          <div className="flex flex-col h-auto w-full bg-transparent space-y-1">
-            <Button 
-              variant={activeTab === "profile" ? "secondary" : "ghost"}
-              className="w-full justify-start"
-              onClick={() => setActiveTab("profile")}
-              data-testid="tab-profile-settings"
-            >
-              <User className="w-4 h-4 mr-2" />
-              Profile
-            </Button>
-            <Button 
-              variant={activeTab === "sell" ? "secondary" : "ghost"}
-              className="w-full justify-start"
-              onClick={() => setActiveTab("sell")}
-              data-testid="tab-sell-settings"
-            >
-              <DollarSign className="w-4 h-4 mr-2" />
-              Sell Settings
-            </Button>
-          </div>
-        </div>
+      <div className="space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="profile" data-testid="tab-profile-settings" className="text-xs md:text-sm">
+              <User className="w-4 h-4 mr-1 md:mr-2" />
+              <span className="hidden sm:inline">Profile</span>
+              <span className="sm:hidden">Profile</span>
+            </TabsTrigger>
+            <TabsTrigger value="sell" data-testid="tab-sell-settings" className="text-xs md:text-sm">
+              <DollarSign className="w-4 h-4 mr-1 md:mr-2" />
+              <span className="hidden sm:inline">Sell Settings</span>
+              <span className="sm:hidden">Sell</span>
+            </TabsTrigger>
+          </TabsList>
 
-        <div className="flex-1">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsContent value="profile" className="mt-0">
+          <TabsContent value="profile" className="mt-0">
               <Card>
-                <CardHeader>
-                  <CardTitle>Profile Settings</CardTitle>
-                  <CardDescription>
+                <CardHeader className="px-4 md:px-6 py-4 md:py-6">
+                  <CardTitle className="text-base md:text-lg">Profile Settings</CardTitle>
+                  <CardDescription className="text-xs md:text-sm">
                     Customize your public profile that other players can view
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 px-4 md:px-6 pb-4 md:pb-6">
                   <div className="space-y-2">
-                    <Label htmlFor="custom-status">Custom Status</Label>
+                    <Label htmlFor="custom-status" className="text-sm md:text-base">Custom Status</Label>
                     <Input
                       id="custom-status"
                       placeholder="What's on your mind?"
                       value={customStatus}
                       onChange={(e) => setCustomStatus(e.target.value.slice(0, 120))}
                       maxLength={120}
+                      className="text-sm md:text-base"
                       data-testid="input-custom-status"
                     />
                     <p className="text-xs text-muted-foreground">
@@ -160,7 +150,7 @@ export default function Settings() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="description">Profile Description</Label>
+                    <Label htmlFor="description" className="text-sm md:text-base">Profile Description</Label>
                     <Textarea
                       id="description"
                       placeholder="Tell others about yourself..."
@@ -168,7 +158,7 @@ export default function Settings() {
                       onChange={(e) => setDescription(e.target.value.slice(0, 1000))}
                       maxLength={1000}
                       rows={6}
-                      className="resize-none"
+                      className="resize-none text-sm md:text-base"
                       data-testid="textarea-description"
                     />
                     <p className="text-xs text-muted-foreground">
@@ -180,7 +170,7 @@ export default function Settings() {
                     <Button
                       onClick={saveProfile}
                       disabled={!hasProfileChanges || savingProfile}
-                      className="flex-1"
+                      className="flex-1 text-sm md:text-base"
                       data-testid="button-save-profile"
                     >
                       <Save className="w-4 h-4 mr-2" />
@@ -193,14 +183,14 @@ export default function Settings() {
 
             <TabsContent value="sell" className="mt-0">
               <Card>
-                <CardHeader>
-                  <CardTitle>Auto-Sell Settings</CardTitle>
-                  <CardDescription>
+                <CardHeader className="px-4 md:px-6 py-4 md:py-6">
+                  <CardTitle className="text-base md:text-lg">Auto-Sell Settings</CardTitle>
+                  <CardDescription className="text-xs md:text-sm">
                     Automatically sell items when you roll them based on their rarity.
                     You'll receive 80% of the item value.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 px-4 md:px-6 pb-4 md:pb-6">
                   <div className="space-y-3">
                     {Object.entries(RARITY_TIERS).map(([key, tier]) => {
                       const rarity = key as RarityTier;
@@ -210,7 +200,7 @@ export default function Settings() {
                       return (
                         <div
                           key={rarity}
-                          className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                          className="flex items-center space-x-2 md:space-x-3 p-2 md:p-3 rounded-lg border hover:bg-muted/50 transition-colors"
                         >
                           <Checkbox
                             id={`auto-sell-${rarity}`}
@@ -220,10 +210,11 @@ export default function Settings() {
                           />
                           <Label
                             htmlFor={`auto-sell-${rarity}`}
-                            className="flex-1 cursor-pointer flex items-center gap-3"
+                            className="flex-1 cursor-pointer flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3"
                           >
                             <Badge
                               variant="outline"
+                              className="text-xs md:text-sm w-fit"
                               style={{
                                 backgroundColor: rarity !== "INSANE" ? `${rarityColor}20` : undefined,
                                 borderColor: rarityColor,
@@ -235,7 +226,7 @@ export default function Settings() {
                             >
                               {tier.name}
                             </Badge>
-                            <span className="text-sm text-muted-foreground">
+                            <span className="text-xs md:text-sm text-muted-foreground">
                               {tier.min.toLocaleString()} - {tier.max === Infinity ? "∞" : tier.max.toLocaleString()}
                             </span>
                           </Label>
@@ -248,7 +239,7 @@ export default function Settings() {
                     <Button
                       onClick={saveSettings}
                       disabled={!hasChanges || saving}
-                      className="flex-1"
+                      className="flex-1 text-sm md:text-base"
                       data-testid="button-save-settings"
                     >
                       <Save className="w-4 h-4 mr-2" />
@@ -258,8 +249,8 @@ export default function Settings() {
 
                   {autoSellRarities.length > 0 && (
                     <Card className="bg-muted/50">
-                      <CardContent className="p-4">
-                        <p className="text-sm text-muted-foreground">
+                      <CardContent className="p-3 md:p-4">
+                        <p className="text-xs md:text-sm text-muted-foreground">
                           <strong>Note:</strong> When you roll an item with any of the selected rarities, 
                           it will be automatically sold for 80% of its value. The remaining 20% goes to the admin account.
                         </p>
@@ -268,10 +259,8 @@ export default function Settings() {
                   )}
                 </CardContent>
               </Card>
-            </TabsContent>
-
-          </Tabs>
-        </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

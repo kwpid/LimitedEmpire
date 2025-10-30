@@ -322,10 +322,10 @@ export default function Trading() {
 
     return (
       <Card key={trade.id} className="hover:shadow-lg transition-all" data-testid={`card-trade-${trade.id}`}>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <ArrowLeftRight className="w-5 h-5" />
+        <CardHeader className="pb-2 md:pb-3 px-3 md:px-6 pt-3 md:pt-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <CardTitle className="text-base md:text-lg flex items-center gap-2">
+              <ArrowLeftRight className="w-4 h-4 md:w-5 md:h-5" />
               Trade with {otherUser}
             </CardTitle>
             <Badge
@@ -336,32 +336,33 @@ export default function Trading() {
                 "outline"
               }
               data-testid={`badge-status-${trade.status}`}
+              className="text-xs w-fit"
             >
               {trade.status}
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground">{formatDate(trade.createdAt)}</p>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <CardContent className="space-y-4 px-3 md:px-6 pb-3 md:pb-6">
+          <div className="grid grid-cols-1 gap-4">
             <div className="space-y-2">
-              <h4 className="text-sm font-semibold flex items-center gap-2">
-                {isInbound ? "They Offer" : "You Offer"}
+              <h4 className="text-xs md:text-sm font-semibold flex flex-col sm:flex-row sm:items-center gap-1">
+                <span>{isInbound ? "They Offer" : "You Offer"}</span>
                 <span className="text-xs text-muted-foreground font-normal">
-                  (${formatValue(offerValue)})
+                  ({formatValue(offerValue)})
                 </span>
               </h4>
-              <ScrollArea className="h-32 border rounded-lg p-2">
+              <ScrollArea className="h-24 md:h-32 border rounded-lg p-2">
                 <div className="space-y-2">
                   {groupedOfferItems.map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-sm">
+                    <div key={idx} className="flex items-center gap-2 text-xs md:text-sm">
                       <img
                         src={item.itemImageUrl}
                         alt={item.itemName}
-                        className="w-10 h-10 rounded object-cover"
+                        className="w-8 h-8 md:w-10 md:h-10 rounded object-cover flex-shrink-0"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">
+                        <p className="font-medium truncate text-xs md:text-sm">
                           {item.itemName}
                           {(item.amount || 1) > 1 && (
                             <span className="text-muted-foreground ml-1">
@@ -369,27 +370,28 @@ export default function Trading() {
                             </span>
                           )}
                         </p>
-                        <div className="flex items-center gap-2 text-xs">
-                          <Badge variant="outline" className={`${getRarityClass(item.itemRarity)} text-[10px] px-1`}>
+                        <div className="flex items-center gap-1 md:gap-2 text-[10px] md:text-xs">
+                          <Badge variant="outline" className={`${getRarityClass(item.itemRarity)} text-[8px] md:text-[10px] px-1`}>
                             {item.itemRarity}
                           </Badge>
                           {item.serialNumbers && item.serialNumbers.length > 0 && (
-                            <span className="text-muted-foreground flex items-center gap-1">
-                              <Hash className="w-3 h-3" />
-                              {item.serialNumbers.sort((a: number, b: number) => a - b).join(', ')}
+                            <span className="text-muted-foreground flex items-center gap-0.5">
+                              <Hash className="w-2.5 h-2.5 md:w-3 md:h-3" />
+                              <span className="hidden sm:inline">{item.serialNumbers.sort((a: number, b: number) => a - b).join(', ')}</span>
+                              <span className="sm:hidden">{item.serialNumbers[0]}{item.serialNumbers.length > 1 ? '...' : ''}</span>
                             </span>
                           )}
                         </div>
                       </div>
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">
-                        ${formatValue(item.itemValue * (item.amount || 1))}
+                      <span className="text-[10px] md:text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
+                        {formatValue(item.itemValue * (item.amount || 1))}
                       </span>
                     </div>
                   ))}
                   {offering.cash > 0 && (
                     <div className="flex items-center gap-2 text-sm bg-muted/50 p-2 rounded">
                       <DollarSign className="w-4 h-4 text-green-600" />
-                      <span className="font-semibold">${offering.cash.toLocaleString()}</span>
+                      <span className="font-semibold">R${offering.cash.toLocaleString()}</span>
                     </div>
                   )}
                 </div>
@@ -397,23 +399,23 @@ export default function Trading() {
             </div>
 
             <div className="space-y-2">
-              <h4 className="text-sm font-semibold flex items-center gap-2">
-                {isInbound ? "They Request" : "You Request"}
+              <h4 className="text-xs md:text-sm font-semibold flex flex-col sm:flex-row sm:items-center gap-1">
+                <span>{isInbound ? "They Request" : "You Request"}</span>
                 <span className="text-xs text-muted-foreground font-normal">
-                  (${formatValue(requestValue)})
+                  ({formatValue(requestValue)})
                 </span>
               </h4>
-              <ScrollArea className="h-32 border rounded-lg p-2">
+              <ScrollArea className="h-24 md:h-32 border rounded-lg p-2">
                 <div className="space-y-2">
                   {groupedRequestItems.map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-sm">
+                    <div key={idx} className="flex items-center gap-2 text-xs md:text-sm">
                       <img
                         src={item.itemImageUrl}
                         alt={item.itemName}
-                        className="w-10 h-10 rounded object-cover"
+                        className="w-8 h-8 md:w-10 md:h-10 rounded object-cover flex-shrink-0"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">
+                        <p className="font-medium truncate text-xs md:text-sm">
                           {item.itemName}
                           {(item.amount || 1) > 1 && (
                             <span className="text-muted-foreground ml-1">
@@ -421,27 +423,28 @@ export default function Trading() {
                             </span>
                           )}
                         </p>
-                        <div className="flex items-center gap-2 text-xs">
-                          <Badge variant="outline" className={`${getRarityClass(item.itemRarity)} text-[10px] px-1`}>
+                        <div className="flex items-center gap-1 md:gap-2 text-[10px] md:text-xs">
+                          <Badge variant="outline" className={`${getRarityClass(item.itemRarity)} text-[8px] md:text-[10px] px-1`}>
                             {item.itemRarity}
                           </Badge>
                           {item.serialNumbers && item.serialNumbers.length > 0 && (
-                            <span className="text-muted-foreground flex items-center gap-1">
-                              <Hash className="w-3 h-3" />
-                              {item.serialNumbers.sort((a: number, b: number) => a - b).join(', ')}
+                            <span className="text-muted-foreground flex items-center gap-0.5">
+                              <Hash className="w-2.5 h-2.5 md:w-3 md:h-3" />
+                              <span className="hidden sm:inline">{item.serialNumbers.sort((a: number, b: number) => a - b).join(', ')}</span>
+                              <span className="sm:hidden">{item.serialNumbers[0]}{item.serialNumbers.length > 1 ? '...' : ''}</span>
                             </span>
                           )}
                         </div>
                       </div>
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">
-                        ${formatValue(item.itemValue * (item.amount || 1))}
+                      <span className="text-[10px] md:text-xs text-muted-foreground whitespace-nowrap flex-shrink-0">
+                        {formatValue(item.itemValue * (item.amount || 1))}
                       </span>
                     </div>
                   ))}
                   {requesting.cash > 0 && (
                     <div className="flex items-center gap-2 text-sm bg-muted/50 p-2 rounded">
                       <DollarSign className="w-4 h-4 text-green-600" />
-                      <span className="font-semibold">${requesting.cash.toLocaleString()}</span>
+                      <span className="font-semibold">R${requesting.cash.toLocaleString()}</span>
                     </div>
                   )}
                 </div>
@@ -450,12 +453,12 @@ export default function Trading() {
           </div>
 
           {showActions && trade.status === "pending" && (
-            <div className="flex gap-2 pt-2 border-t">
+            <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
               {isInbound ? (
                 <>
                   <Button
                     variant="default"
-                    className="flex-1"
+                    className="flex-1 text-sm"
                     onClick={() => handleAcceptTrade(trade)}
                     disabled={processingTradeId === trade.id}
                     data-testid="button-accept-trade"
@@ -465,7 +468,7 @@ export default function Trading() {
                   </Button>
                   <Button
                     variant="destructive"
-                    className="flex-1"
+                    className="flex-1 text-sm"
                     onClick={() => handleDeclineTrade(trade)}
                     disabled={processingTradeId === trade.id}
                     data-testid="button-decline-trade"
@@ -477,7 +480,7 @@ export default function Trading() {
               ) : (
                 <Button
                   variant="outline"
-                  className="w-full"
+                  className="w-full text-sm"
                   onClick={() => handleCancelTrade(trade)}
                   disabled={processingTradeId === trade.id}
                   data-testid="button-cancel-trade"
@@ -494,27 +497,27 @@ export default function Trading() {
   };
 
   return (
-    <div className="container mx-auto p-4 md:p-6 max-w-7xl">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold tracking-tight mb-2 flex items-center gap-2">
-          <ArrowLeftRight className="w-8 h-8" />
+    <div className="container mx-auto p-3 md:p-6 max-w-7xl">
+      <div className="mb-4 md:mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-2 flex items-center gap-2">
+          <ArrowLeftRight className="w-6 h-6 md:w-8 md:h-8" />
           Trading
         </h1>
-        <p className="text-muted-foreground">Manage your trade offers and exchanges</p>
+        <p className="text-sm md:text-base text-muted-foreground">Manage your trade offers and exchanges</p>
       </div>
 
       <Tabs defaultValue="inbound" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="inbound" data-testid="tab-inbound">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+          <TabsTrigger value="inbound" data-testid="tab-inbound" className="text-xs md:text-sm">
             Inbound ({inboundTrades.length})
           </TabsTrigger>
-          <TabsTrigger value="outbound" data-testid="tab-outbound">
+          <TabsTrigger value="outbound" data-testid="tab-outbound" className="text-xs md:text-sm">
             Outbound ({outboundTrades.length})
           </TabsTrigger>
-          <TabsTrigger value="inactive" data-testid="tab-inactive">
+          <TabsTrigger value="inactive" data-testid="tab-inactive" className="text-xs md:text-sm">
             Inactive ({inactiveTrades.length})
           </TabsTrigger>
-          <TabsTrigger value="completed" data-testid="tab-completed">
+          <TabsTrigger value="completed" data-testid="tab-completed" className="text-xs md:text-sm">
             Completed ({completedTrades.length})
           </TabsTrigger>
         </TabsList>

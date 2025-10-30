@@ -17,7 +17,6 @@ import Trading from "./pages/Trading";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { AdminPanel } from "@/components/AdminPanel";
-import { GlobalRollToast } from "@/components/GlobalRollToast";
 import { BanOverlay } from "@/components/BanOverlay";
 import { Dices, Package, Database, Shield, LogOut, Sparkles, Settings as SettingsIcon, Users, Trophy, ArrowLeftRight } from "lucide-react";
 import { signOut } from "firebase/auth";
@@ -90,7 +89,7 @@ function AppContent() {
           <div className="flex items-center gap-2">
             <div className="px-3 py-1.5 bg-primary/10 rounded-md border border-primary/20">
               <span className="text-sm font-bold text-primary tabular-nums">
-                ${(user.cash ?? 1000).toLocaleString()}
+                R${(user.cash ?? 1000).toLocaleString()}
               </span>
             </div>
             {user.isAdmin && (
@@ -184,8 +183,6 @@ function AppContent() {
           </div>
         </div>
       </footer>
-
-      <GlobalRollToast />
 
       <BanOverlay />
 

@@ -55,10 +55,10 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
 
 export function formatValue(value: number): string {
   if (value >= 1000000) {
-    return `${(value / 1000000).toFixed(2)}M`;
+    return `R$${(value / 1000000).toFixed(2)}M`;
   }
   if (value >= 1000) {
-    return `${(value / 1000).toFixed(1)}K`;
+    return `R$${(value / 1000).toFixed(1)}K`;
   }
-  return value.toString();
+  return `R$${value}`;
 }
