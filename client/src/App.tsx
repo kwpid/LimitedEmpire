@@ -18,6 +18,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { AdminPanel } from "@/components/AdminPanel";
 import { BanOverlay } from "@/components/BanOverlay";
+import { InactiveTabOverlay } from "@/components/InactiveTabOverlay";
 import { PendingSaveIndicator } from "@/components/PendingSaveIndicator";
 import { UpdateNotification } from "@/components/UpdateNotification";
 import { Dices, Package, Database, Shield, LogOut, Sparkles, Settings as SettingsIcon, Users, Trophy, ArrowLeftRight } from "lucide-react";
@@ -197,6 +198,7 @@ function AppContent() {
       </footer>
 
       <BanOverlay />
+      <InactiveTabOverlay />
 
       {user.isAdmin && (
         <AdminPanel
