@@ -105,17 +105,63 @@ export async function deleteDoc(reference: DocumentReference): Promise<void> {
   dbMonitor.logWrite('deleteDoc', collection, 1, caller);
 }
 
+function createMonitoredTransaction(transaction: Transaction, transactionCaller: string | undefined): Transaction {
+  return new Proxy(transaction, {
+    get(target, prop, receiver) {
+      const original = Reflect.get(target, prop, receiver);
+      
+      if (typeof original !== 'function') {
+        return original;
+      }
+      
+      if (prop === 'get') {
+        return async function(documentRef: DocumentReference) {
+          const result = await original.call(target, documentRef);
+          const collection = getCollectionFromPath(documentRef.path);
+          dbMonitor.logRead('transaction.get', collection, 1, transactionCaller);
+          return result;
+        };
+      }
+      
+      if (prop === 'set') {
+        return function(documentRef: DocumentReference, data: any) {
+          const collection = getCollectionFromPath(documentRef.path);
+          dbMonitor.logWrite('transaction.set', collection, 1, transactionCaller);
+          return original.call(target, documentRef, data);
+        };
+      }
+      
+      if (prop === 'update') {
+        return function(documentRef: DocumentReference, data: any) {
+          const collection = getCollectionFromPath(documentRef.path);
+          dbMonitor.logWrite('transaction.update', collection, 1, transactionCaller);
+          return original.call(target, documentRef, data);
+        };
+      }
+      
+      if (prop === 'delete') {
+        return function(documentRef: DocumentReference) {
+          const collection = getCollectionFromPath(documentRef.path);
+          dbMonitor.logWrite('transaction.delete', collection, 1, transactionCaller);
+          return original.call(target, documentRef);
+        };
+      }
+      
+      return original.bind(target);
+    }
+  });
+}
+
 export async function runTransaction<T>(
   firestore: Firestore,
   updateFunction: (transaction: Transaction) => Promise<T>
 ): Promise<T> {
   const caller = getCallerInfo();
   
-  dbMonitor.logWrite('runTransaction (start)', 'transaction', 1, caller);
-  
-  const result = await _runTransaction(firestore, updateFunction);
-  
-  dbMonitor.logWrite('runTransaction (complete)', 'transaction', 1, caller);
+  const result = await _runTransaction(firestore, (transaction) => {
+    const monitoredTransaction = createMonitoredTransaction(transaction, caller);
+    return updateFunction(monitoredTransaction);
+  });
   
   return result;
 }
