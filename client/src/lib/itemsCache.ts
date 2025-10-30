@@ -1,5 +1,5 @@
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "./firebase";
+import { collection } from "firebase/firestore";
+import { db, getDocs } from "./firebase";
 import type { Item } from "@shared/schema";
 
 class ItemsCache {

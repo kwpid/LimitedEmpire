@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { collection, query, orderBy, limit } from "firebase/firestore";
+import { collection, query, orderBy, limit, where } from "firebase/firestore";
 import { db, getDocs } from "@/lib/firebase";
 import type { User } from "@shared/schema";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,44 @@ export default function Players() {
   useEffect(() => {
     loadPlayers();
   }, []);
+
+  useEffect(() => {
+    if (searchQuery) {
+      const timeoutId = setTimeout(() => {
+        searchPlayers(searchQuery);
+      }, 300);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [searchQuery]);
+
+  const searchPlayers = async (search: string) => {
+    if (!search) {
+      loadPlayers();
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, orderBy("lastActive", "desc"), limit(100));
+      const snapshot = await getDocs(q);
+      
+      const searchLower = search.toLowerCase();
+      const loadedPlayers: User[] = [];
+      snapshot.forEach((doc) => {
+        const userData = { id: doc.id, ...doc.data() } as User;
+        if (userData.username?.toLowerCase().includes(searchLower)) {
+          loadedPlayers.push(userData);
+        }
+      });
+      
+      setPlayers(loadedPlayers);
+    } catch (error) {
+      console.error("Error searching players:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadPlayers = async () => {
     try {

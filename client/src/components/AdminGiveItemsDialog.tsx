@@ -6,8 +6,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { collection, getDocs, query, where, runTransaction, doc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { collection, query, where, doc } from "firebase/firestore";
+import { db, getDocs, runTransaction } from "@/lib/firebase";
 import type { Item, User } from "@shared/schema";
 import { Gift } from "lucide-react";
 

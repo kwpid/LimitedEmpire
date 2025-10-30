@@ -4,8 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Trophy, TrendingUp, Package, DollarSign, Dices } from "lucide-react";
 import type { User, Item } from "@shared/schema";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { collection } from "firebase/firestore";
+import { db, getDocs } from "@/lib/firebase";
 import { PlayerProfileModal } from "@/components/PlayerProfileModal";
 import { formatValue } from "@/lib/rarity";
 
