@@ -242,11 +242,13 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
             <Card className="rounded-xl">
               <CardContent className="p-4">
                 <h3 className="text-sm font-medium text-muted-foreground mb-1">
-                  {item.stockType === "limited" ? "Owners / Stock" : "Copies"}
+                  {item.stockType === "limited" ? "Serials / Stock" : "Copies"}
                 </h3>
                 <p className="text-2xl tabular-nums font-bold" data-testid="text-owner-count">
                   {item.stockType === "limited" 
-                    ? `${item.totalOwners.toLocaleString()} / ${item.totalStock?.toLocaleString() || 0}`
+                    ? loadingOwners 
+                      ? "Loading..."
+                      : `${owners.length.toLocaleString()} / ${item.totalStock?.toLocaleString() || 0}`
                     : item.totalOwners.toLocaleString()
                   }
                 </p>
