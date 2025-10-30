@@ -110,7 +110,7 @@ export function ItemCreateForm({ onSuccess }: { onSuccess?: () => void }) {
           totalOwners: initialOwners,
           timerExpiresAt,
           timerDuration: values.timerDuration,
-          nextSerialNumber: values.stockType === "timer" ? 1 : undefined,
+          nextSerialNumber: values.stockType === "limited" || values.stockType === "timer" ? 1 : undefined,
           createdAt: Date.now(),
           createdBy: user.id,
         });

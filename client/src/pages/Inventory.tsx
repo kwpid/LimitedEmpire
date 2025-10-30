@@ -112,9 +112,9 @@ export default function Inventory() {
     const grouped = new Map<string, StackedInventoryItem>();
 
     inventory.forEach((invItem) => {
-      const isLimitedWithSerial = invItem.item.stockType === "limited" && invItem.serialNumber !== null;
+      const isSerializedItem = (invItem.item.stockType === "limited" || invItem.item.stockType === "timer") && invItem.serialNumber !== null;
       
-      if (isLimitedWithSerial) {
+      if (isSerializedItem) {
         const uniqueKey = `${invItem.itemId}-${invItem.serialNumber}`;
         grouped.set(uniqueKey, {
           item: invItem.item,

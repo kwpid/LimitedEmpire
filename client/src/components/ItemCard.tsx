@@ -3,6 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import type { Item } from "@shared/schema";
 import { getRarityClass, getRarityGlow, formatValue, getRarityColor } from "@/lib/rarity";
 import { RARITY_TIERS } from "@shared/schema";
+import { useState, useEffect } from "react";
+import { Clock, Users } from "lucide-react";
 
 interface ItemCardProps {
   item: Item;
@@ -12,11 +14,37 @@ interface ItemCardProps {
   showStock?: boolean; // Show stock badge (for index)
 }
 
+function formatTimerCountdown(expiresAt: number): string {
+  const timeLeft = expiresAt - Date.now();
+  if (timeLeft <= 0) return "EXPIRED";
+  
+  const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+  
+  return `${days}d ${hours}h ${minutes}m`;
+}
+
 export function ItemCard({ item, serialNumber, onClick, stackCount, showStock = false }: ItemCardProps) {
   const rarityClass = getRarityClass(item.rarity);
   const rarityGlow = getRarityGlow(item.rarity);
   const isInsane = item.rarity === "INSANE";
   const rarityColor = getRarityColor(item.rarity);
+  const [timerDisplay, setTimerDisplay] = useState<string>("");
+
+  // Update timer countdown every minute for timer items
+  useEffect(() => {
+    if (item.stockType === "timer" && item.timerExpiresAt) {
+      const updateTimer = () => {
+        setTimerDisplay(formatTimerCountdown(item.timerExpiresAt!));
+      };
+      
+      updateTimer();
+      const interval = setInterval(updateTimer, 60000); // Update every minute
+      
+      return () => clearInterval(interval);
+    }
+  }, [item.stockType, item.timerExpiresAt]);
 
   return (
     <Card
@@ -78,6 +106,30 @@ export function ItemCard({ item, serialNumber, onClick, stackCount, showStock = 
         {showStock && item.stockType === "limited" && serialNumber === undefined && (
           <Badge variant="secondary" className="absolute top-2 right-2 text-xs z-[15] bg-secondary backdrop-blur-md whitespace-nowrap" data-testid={`badge-stock-${item.id}`}>
             {item.remainingStock}/{item.totalStock}
+          </Badge>
+        )}
+
+        {/* Timer countdown badge - Top right (only when showStock is true and item is timer) */}
+        {showStock && item.stockType === "timer" && serialNumber === undefined && (
+          <Badge 
+            variant="secondary" 
+            className="absolute top-2 right-2 text-xs z-[15] bg-blue-500/80 text-white backdrop-blur-md whitespace-nowrap flex items-center gap-1" 
+            data-testid={`badge-timer-${item.id}`}
+          >
+            <Clock className="w-3 h-3" />
+            {timerDisplay}
+          </Badge>
+        )}
+
+        {/* Owners badge - Bottom right (for limited and timer items on index) */}
+        {showStock && (item.stockType === "limited" || item.stockType === "timer") && item.totalOwners > 0 && (
+          <Badge 
+            variant="secondary" 
+            className="absolute bottom-2 right-2 text-xs z-[15] bg-purple-500/80 text-white backdrop-blur-md whitespace-nowrap flex items-center gap-1" 
+            data-testid={`badge-owners-${item.id}`}
+          >
+            <Users className="w-3 h-3" />
+            {item.totalOwners}
           </Badge>
         )}
       </div>
