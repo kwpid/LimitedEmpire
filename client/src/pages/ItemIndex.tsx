@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { collection, orderBy, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -35,14 +35,11 @@ export default function ItemIndex({ onEditItem }: ItemIndexProps = {}) {
   const loadItems = async () => {
     setLoading(true);
     try {
-      const itemsRef = collection(db, "items");
-      const q = query(itemsRef, orderBy("value", "desc"));
-      const snapshot = await getDocs(q);
-
-      const loadedItems: Item[] = [];
-      snapshot.forEach((doc) => {
-        loadedItems.push({ id: doc.id, ...doc.data() } as Item);
-      });
+      const { itemsCache } = await import("@/lib/itemsCache");
+      const itemsMap = await itemsCache.getItems();
+      
+      const loadedItems = Array.from(itemsMap.values())
+        .sort((a, b) => b.value - a.value);
 
       setItems(loadedItems);
     } catch (error) {

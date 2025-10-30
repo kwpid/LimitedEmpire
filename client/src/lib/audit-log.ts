@@ -1,5 +1,5 @@
-import { collection, addDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { collection } from "firebase/firestore";
+import { db, addDoc } from "@/lib/firebase";
 import type { InsertAuditLog } from "@shared/schema";
 
 export async function createAuditLog(logData: InsertAuditLog): Promise<void> {

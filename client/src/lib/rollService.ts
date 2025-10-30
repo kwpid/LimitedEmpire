@@ -1,5 +1,5 @@
-import { collection, doc, runTransaction, getDocs, query, where, arrayUnion } from "firebase/firestore";
-import { db } from "./firebase";
+import { collection, doc, query, where, arrayUnion } from "firebase/firestore";
+import { db, runTransaction, getDocs } from "./firebase";
 import type { Item, User } from "@shared/schema";
 
 export async function performRoll(user: User): Promise<{ item: Item; serialNumber: number | null; autoSold?: boolean; playerEarned?: number }> {
