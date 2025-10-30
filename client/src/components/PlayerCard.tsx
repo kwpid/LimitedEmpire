@@ -1,12 +1,13 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { User } from "@shared/schema";
-import { useState } from "react";
+import type { User, Item } from "@shared/schema";
+import { useState, useMemo, useEffect } from "react";
 import { User as UserIcon, Ban, TrendingUp, Shield } from "lucide-react";
 import { formatValue } from "@/lib/rarity";
 import { useAuth } from "@/contexts/AuthContext";
 import { AdminPanelDialog } from "@/components/AdminPanelDialog";
+import { itemsCache } from "@/lib/itemsCache";
 
 interface PlayerCardProps {
   player: User;
@@ -17,12 +18,75 @@ interface PlayerCardProps {
 export function PlayerCard({ player, onClick, onAdminActionComplete }: PlayerCardProps) {
   const { user: currentUser } = useAuth();
   const [panelOpen, setPanelOpen] = useState(false);
+  const [calculatedInventoryValue, setCalculatedInventoryValue] = useState<number | null>(null);
+  const [calculatedShowcase, setCalculatedShowcase] = useState<Array<{itemName: string; itemImageUrl: string; itemValue: number; serialNumber: number | null}>>([]);
 
   const isOnline = player.lastActive && (Date.now() - player.lastActive < 5 * 60 * 1000);
 
-  const showcaseMetadata = player.showcaseMetadata || [];
-  const inventoryValue = player.inventoryValue || 0;
-  const showcaseDisplay = showcaseMetadata.slice(0, 3);
+  useEffect(() => {
+    setCalculatedInventoryValue(null);
+    setCalculatedShowcase([]);
+    
+    const calculateValues = async () => {
+      const items = await itemsCache.getItems();
+      
+      const needsInventoryCalc = (!player.inventoryValue || player.inventoryValue <= 0) && 
+                                 player.inventory && player.inventory.length > 0;
+      if (needsInventoryCalc) {
+        let total = 0;
+        for (const invItem of player.inventory) {
+          const item = items.get(invItem.itemId);
+          if (item) {
+            total += item.value * (invItem.amount || 1);
+          }
+        }
+        setCalculatedInventoryValue(total);
+      } else {
+        setCalculatedInventoryValue(null);
+      }
+
+      const needsShowcaseCalc = (!player.showcaseMetadata || player.showcaseMetadata.length === 0) && 
+                                player.showcaseItems && player.showcaseItems.length > 0;
+      if (needsShowcaseCalc && player.inventory) {
+        const showcase = [];
+        for (const inventoryItemId of player.showcaseItems.slice(0, 3)) {
+          const invItem = player.inventory.find(item => item.id === inventoryItemId);
+          if (!invItem) continue;
+          const item = items.get(invItem.itemId);
+          if (!item) continue;
+          showcase.push({
+            itemName: item.name,
+            itemImageUrl: item.imageUrl,
+            itemValue: item.value,
+            serialNumber: invItem.serialNumber
+          });
+        }
+        setCalculatedShowcase(showcase);
+      } else {
+        setCalculatedShowcase([]);
+      }
+    };
+
+    calculateValues();
+  }, [player]);
+
+  const showcaseDisplay = useMemo(() => {
+    if (player.showcaseMetadata && player.showcaseMetadata.length > 0) {
+      return player.showcaseMetadata.slice(0, 3);
+    }
+    return calculatedShowcase;
+  }, [player.showcaseMetadata, calculatedShowcase]);
+
+  const inventoryValue = useMemo(() => {
+    if (player.inventoryValue && player.inventoryValue > 0) {
+      return player.inventoryValue;
+    }
+    if (calculatedInventoryValue !== null) {
+      return calculatedInventoryValue;
+    }
+    return 0;
+  }, [player.inventoryValue, calculatedInventoryValue]);
+
   const emptySlots = Math.max(0, 3 - showcaseDisplay.length);
   const showAdminPanel = currentUser?.isAdmin && player.userId !== currentUser.userId;
 

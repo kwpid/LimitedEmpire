@@ -1,0 +1,139 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+    
+    function isModerator() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isModerator == true;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      // Anyone authenticated can read user profiles
+      allow read: if isAuthenticated();
+      
+      // Users can ONLY create their own document with matching Firebase UID
+      allow create: if isAuthenticated() && 
+                      request.auth.uid == userId &&
+                      request.resource.data.firebaseUid == request.auth.uid &&
+                      request.resource.data.isBanned == false;
+      
+      // Users can only update their own document (but cannot change protected fields)
+      allow update: if (isAuthenticated() &&
+                       request.auth.uid == userId && 
+                       !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+                         'isAdmin', 'isModerator', 'isBanned', 
+                         'isPermanentBan', 'banReason', 'banNotes', 
+                         'banExpiresAt', 'userId', 'firebaseUid'
+                       ])) ||
+                      (isAdmin() &&
+                       !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+                         'isAdmin', 'userId', 'firebaseUid'
+                       ])) ||
+                      (isModerator() &&
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                         'isBanned', 'isPermanentBan', 'banReason', 'banNotes', 'banExpiresAt'
+                       ]));
+      
+      // Only admins can delete users
+      allow delete: if isAdmin();
+    }
+    
+    // Items collection
+    match /items/{itemId} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || 
+                      (isAuthenticated() && 
+                       !request.resource.data.diff(resource.data).affectedKeys()
+                         .hasAny(['name', 'imageUrl', 'value', 'rarity', 'offSale', 'stockType', 'totalStock']));
+      
+      match /owners/{userId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() && request.auth.uid == userId;
+        allow delete: if isAdmin();
+        allow update: if false;
+      }
+    }
+    
+    // Inventory collection
+    match /inventory/{inventoryId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && 
+                      request.resource.data.userId == request.auth.uid &&
+                      request.resource.data.rolledAt is int;
+      allow read, delete: if isAdmin();
+      allow update: if false;
+    }
+    
+    // Global rolls collection
+    match /globalRolls/{rollId} {
+      allow read: if true;
+      allow create: if isAuthenticated() &&
+                      request.resource.data.timestamp is int &&
+                      request.resource.data.itemValue >= 2500000;
+      allow delete: if isAdmin();
+      allow update: if false;
+    }
+    
+    // Counters collection
+    match /counters/{counterId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && counterId == 'userId';
+    }
+    
+    // Trades collection
+    match /trades/{tradeId} {
+      allow read: if isAuthenticated() && (
+        resource.data.senderId == request.auth.uid ||
+        resource.data.receiverId == request.auth.uid
+      );
+      allow read: if isAdmin();
+      allow create: if isAuthenticated() && 
+                      request.resource.data.senderId == request.auth.uid &&
+                      request.resource.data.status == "pending" &&
+                      request.resource.data.senderOffer.items.size() >= 1 &&
+                      request.resource.data.senderOffer.items.size() <= 7 &&
+                      request.resource.data.receiverRequest.items.size() >= 1 &&
+                      request.resource.data.receiverRequest.items.size() <= 7 &&
+                      request.resource.data.senderOffer.cash >= 0 &&
+                      request.resource.data.senderOffer.cash <= 50000 &&
+                      request.resource.data.receiverRequest.cash >= 0 &&
+                      request.resource.data.receiverRequest.cash <= 10000;
+      allow update: if isAuthenticated() && (
+        (resource.data.senderId == request.auth.uid && 
+         (resource.data.status == "pending" || resource.data.status == "active") &&
+         (request.resource.data.status == "declined" || request.resource.data.status == "cancelled")) ||
+        (resource.data.receiverId == request.auth.uid && 
+         resource.data.status == "pending" &&
+         (request.resource.data.status == "completed" || 
+          request.resource.data.status == "declined"))
+      ) && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['senderId', 'receiverId', 'senderOffer', 'receiverRequest', 'createdAt']);
+      allow delete: if isAdmin();
+    }
+    
+    // Audit Logs collection
+    match /auditLogs/{logId} {
+      allow read, create: if isAdmin() || isModerator();
+      allow update, delete: if false;
+    }
+  }
+}
