@@ -6,21 +6,32 @@ Limited Empire is a web-based collection game where players acquire rare items t
 
 ## Recent Changes (October 30, 2025)
 
-**Mobile UI Improvements & Currency Standardization:**
+**Firebase Read/Write Optimization & Auto-Save System:**
+- **Auto-Save Manager**: Implemented buffered write system to reduce Firebase operations
+  - User activity/data updates now queue and save every 60 seconds (instead of every 30 seconds)
+  - Automatically flushes pending updates when user leaves site (beforeunload/pagehide events)
+  - Reduces daily Firebase write operations significantly while maintaining data integrity
+  - Exposed `updateUserLocal` function in AuthContext for local state updates
+- **Items Cache System**: Created persistent cache for items data
+  - Items cached for 5 minutes to reduce redundant Firestore reads
+  - Prevents duplicate reads across components (leaderboard, inventory, trading, etc.)
+  - Automatic cache refresh on expiry
+  - Significantly reduces Firebase read operations for high-traffic pages
+- **Trade UI Simplified**: Removed excessive mobile responsive classes from TradeModal
+  - Fixed trade popup layout issues
+  - Simplified from complex responsive breakpoints (md:, lg:, xl:) to single desktop layout
+  - Improved consistency and reliability across screen sizes
+  - Inventory grids fixed at 6 columns for better usability
+- **Fresh Data Fetching**: Trade and profile systems fetch latest data when needed
+  - TradeModal fetches fresh user data from Firestore when opened
+  - Ensures inventory is up-to-date for trading operations
+  - PlayerProfileModal gets fresh data for accurate profile display
+
+**Previous Mobile UI Improvements & Currency Standardization:**
 - **Removed Global Notification System**: Temporarily removed GlobalRollToast component from App.tsx for cleaner UX
 - **Standardized Currency Display**: Updated formatValue function to prefix all currency values with R$ across entire site
   - Affects: roll screen, inventory, trading, leaderboard, player profiles, settings, and all modals
   - Ensures consistent currency representation throughout application
-- **Mobile-Responsive Trading Page**:
-  - Responsive text sizing (text-sm to text-base scaling with breakpoints)
-  - Improved padding and spacing for mobile screens
-  - Trade summary cards now stack vertically on mobile
-  - Enhanced readability on small devices
-- **Mobile-Friendly TradeModal**:
-  - Inventory grids scale from 3 columns on mobile to 6 on XL screens
-  - Responsive search inputs and typography
-  - Summary panel with limited height on mobile to prevent overflow
-  - All interactive elements properly sized for touch screens
 - **Settings Page Redesign**:
   - Converted from sidebar navigation to horizontal tab layout
   - Uses shadcn Tabs component with grid layout

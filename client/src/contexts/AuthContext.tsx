@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState, useRef } from "react";
 import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+import { autoSaveManager } from "@/lib/autoSaveManager";
 import type { User } from "@shared/schema";
 
 interface AuthContextType {
@@ -9,6 +10,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   refetchUser: () => Promise<void>;
+  updateUserLocal: (updates: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -18,7 +20,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const sessionStartRef = useRef<number>(Date.now());
-  const activityIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchUserData = async (uid: string) => {
     try {
@@ -40,6 +41,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Update user locally and queue for auto-save
+  const updateUserLocal = (updates: Partial<User>) => {
+    if (!user) return;
+    
+    const updatedUser = { ...user, ...updates };
+    setUser(updatedUser);
+    
+    // Queue the update for auto-save (remove id from updates)
+    const { id, ...dataToSave } = updates;
+    autoSaveManager.queueUpdate("users", user.id, dataToSave);
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setFirebaseUser(fbUser);
@@ -55,55 +68,66 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
+  // Auto-save manager - only depends on user identity, not full user object
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) {
+      autoSaveManager.stop();
+      return;
+    }
 
-    const updateActivity = async () => {
-      try {
-        const userRef = doc(db, "users", user.id);
-        await updateDoc(userRef, {
-          lastActive: Date.now(),
-        });
-      } catch (error) {
-        console.error("Error updating activity:", error);
-      }
+    const userId = user.id;
+    
+    // Start auto-save manager
+    autoSaveManager.start();
+
+    // Queue activity update every 60 seconds (instead of writing immediately)
+    const activityInterval = setInterval(() => {
+      autoSaveManager.queueUpdate("users", userId, {
+        lastActive: Date.now(),
+      });
+    }, 60000);
+
+    return () => {
+      clearInterval(activityInterval);
     };
+  }, [user?.id]);
 
-    updateActivity();
+  // Session duration tracking - separate effect
+  useEffect(() => {
+    if (!user?.id) return;
 
-    activityIntervalRef.current = setInterval(updateActivity, 30000);
-
+    const userId = user.id;
+    const currentTimeSpent = user.timeSpentOnSite || 0;
+    
     const handleBeforeUnload = async () => {
-      if (!user || !sessionStartRef.current) return;
+      if (!sessionStartRef.current) return;
       
       const sessionDuration = Date.now() - sessionStartRef.current;
       if (sessionDuration <= 0) return;
       
-      try {
-        const userRef = doc(db, "users", user.id);
-        await updateDoc(userRef, {
-          timeSpentOnSite: (user.timeSpentOnSite || 0) + sessionDuration,
-          lastActive: Date.now(),
-        });
-        sessionStartRef.current = Date.now();
-      } catch (error) {
-        console.error("Error saving session duration:", error);
-      }
+      // Queue final updates
+      autoSaveManager.queueUpdate("users", userId, {
+        timeSpentOnSite: currentTimeSpent + sessionDuration,
+        lastActive: Date.now(),
+      });
+      
+      // Flush immediately on page unload
+      await autoSaveManager.flush();
+      sessionStartRef.current = Date.now();
     };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("pagehide", handleBeforeUnload);
 
     return () => {
-      if (activityIntervalRef.current) {
-        clearInterval(activityIntervalRef.current);
-      }
       window.removeEventListener("beforeunload", handleBeforeUnload);
-      handleBeforeUnload();
+      window.removeEventListener("pagehide", handleBeforeUnload);
+      // Don't call handleBeforeUnload on cleanup - only on actual page unload
     };
-  }, [user]);
+  }, [user?.id, user?.timeSpentOnSite]);
 
   return (
-    <AuthContext.Provider value={{ firebaseUser, user, loading, refetchUser }}>
+    <AuthContext.Provider value={{ firebaseUser, user, loading, refetchUser, updateUserLocal }}>
       {children}
     </AuthContext.Provider>
   );

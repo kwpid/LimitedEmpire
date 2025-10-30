@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { collection, getDocs, query, where, doc, getDoc, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { itemsCache } from "@/lib/itemsCache";
 import type { User, Item } from "@shared/schema";
 import { getRarityClass, getRarityGlow, formatValue } from "@/lib/rarity";
 import { Search, X, DollarSign, ArrowLeftRight, Hash, Lock } from "lucide-react";
@@ -110,15 +111,8 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
     const inventory = targetUser.inventory || [];
     const uniqueItemIds = Array.from(new Set(inventory.map(inv => inv.itemId)));
 
-    const itemPromises = uniqueItemIds.map(itemId => getDoc(doc(db, "items", itemId)));
-    const itemDocs = await Promise.all(itemPromises);
-    
-    const itemsMap = new Map<string, Item>();
-    itemDocs.forEach((itemDoc) => {
-      if (itemDoc.exists()) {
-        itemsMap.set(itemDoc.id, { id: itemDoc.id, ...itemDoc.data() } as Item);
-      }
-    });
+    // Use items cache instead of individual Firestore reads
+    const itemsMap = await itemsCache.getItemsBatch(uniqueItemIds);
 
     const itemsWithDetails: InventoryItemWithDetails[] = inventory.map(invItem => {
       const item = itemsMap.get(invItem.itemId);
@@ -465,32 +459,32 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] w-full lg:max-w-7xl h-[90vh] overflow-hidden flex flex-col p-3 md:p-4 lg:p-6" data-testid="modal-trade">
+      <DialogContent className="max-w-7xl w-full h-[90vh] overflow-hidden flex flex-col p-6" data-testid="modal-trade">
         <DialogHeader className="pb-2 border-b">
-          <DialogTitle className="flex items-center gap-2 text-base md:text-lg lg:text-xl">
-            <ArrowLeftRight className="w-4 h-4 md:w-5 md:h-5" />
+          <DialogTitle className="flex items-center gap-2 text-lg">
+            <ArrowLeftRight className="w-5 h-5" />
             Trade with {targetUser?.username}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 flex flex-col gap-3 md:gap-4 overflow-hidden mt-3 md:mt-4">
-          <div className="flex-1 flex flex-col gap-3 md:gap-4 overflow-hidden">
+        <div className="flex-1 flex flex-col gap-4 overflow-hidden mt-4">
+          <div className="flex-1 flex flex-col gap-4 overflow-hidden">
             <div className="flex-1 flex flex-col overflow-hidden border rounded-lg bg-card/50">
-              <div className="p-2 md:p-3 border-b bg-muted/30">
-                <Label className="text-xs md:text-sm font-semibold mb-1.5 md:mb-2 block">Your Inventory</Label>
+              <div className="p-3 border-b bg-muted/30">
+                <Label className="text-sm font-semibold mb-2 block">Your Inventory</Label>
                 <div className="relative">
-                  <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
+                  <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     placeholder="Search your items..."
                     value={mySearchTerm}
                     onChange={(e) => setMySearchTerm(e.target.value)}
-                    className="pl-7 md:pl-8 h-7 md:h-8 text-xs md:text-sm"
+                    className="pl-8 h-8 text-sm"
                     data-testid="input-search-my-items"
                   />
                 </div>
               </div>
-              <ScrollArea className="flex-1 p-2 md:p-3">
-                <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1.5 md:gap-2">
+              <ScrollArea className="flex-1 p-3">
+                <div className="grid grid-cols-6 gap-2">
                   {loading ? (
                     <p className="col-span-full text-center text-muted-foreground py-8 text-sm">Loading...</p>
                   ) : filteredGroupedMyInventory.size === 0 ? (
@@ -505,21 +499,21 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
             </div>
 
             <div className="flex-1 flex flex-col overflow-hidden border rounded-lg bg-card/50">
-              <div className="p-2 md:p-3 border-b bg-muted/30">
-                <Label className="text-xs md:text-sm font-semibold mb-1.5 md:mb-2 block">{targetUser?.username}'s Inventory</Label>
+              <div className="p-3 border-b bg-muted/30">
+                <Label className="text-sm font-semibold mb-2 block">{targetUser?.username}'s Inventory</Label>
                 <div className="relative">
-                  <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-3 h-3 md:w-4 md:h-4 text-muted-foreground" />
+                  <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     placeholder="Search their items..."
                     value={theirSearchTerm}
                     onChange={(e) => setTheirSearchTerm(e.target.value)}
-                    className="pl-7 md:pl-8 h-7 md:h-8 text-xs md:text-sm"
+                    className="pl-8 h-8 text-sm"
                     data-testid="input-search-their-items"
                   />
                 </div>
               </div>
-              <ScrollArea className="flex-1 p-2 md:p-3">
-                <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-1.5 md:gap-2">
+              <ScrollArea className="flex-1 p-3">
+                <div className="grid grid-cols-6 gap-2">
                   {loading ? (
                     <p className="col-span-full text-center text-muted-foreground py-8 text-sm">Loading...</p>
                   ) : filteredGroupedTheirInventory.size === 0 ? (
@@ -534,10 +528,10 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
             </div>
           </div>
 
-          <div className="w-full flex flex-col gap-3 md:gap-4 border rounded-lg bg-card/50 p-3 md:p-4 max-h-[40vh] lg:max-h-none overflow-y-auto">
-            <div className="space-y-2 md:space-y-3">
-              <Label className="text-sm md:text-base font-semibold">Your Offer</Label>
-              <div className="min-h-[80px] md:min-h-[100px] p-2 md:p-3 border rounded-lg bg-muted/30">
+          <div className="w-full flex flex-col gap-4 border rounded-lg bg-card/50 p-4">
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Your Offer</Label>
+              <div className="min-h-[100px] p-3 border rounded-lg bg-muted/30">
                 {offerQuantities.size === 0 && offerCash === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-6">Select items from your inventory</p>
                 ) : (
@@ -598,9 +592,9 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
               </div>
             </div>
 
-            <div className="space-y-2 md:space-y-3">
-              <Label className="text-sm md:text-base font-semibold">Your Request</Label>
-              <div className="min-h-[80px] md:min-h-[100px] p-2 md:p-3 border rounded-lg bg-muted/30">
+            <div className="space-y-3">
+              <Label className="text-base font-semibold">Your Request</Label>
+              <div className="min-h-[100px] p-3 border rounded-lg bg-muted/30">
                 {requestQuantities.size === 0 && requestCash === 0 ? (
                   <p className="text-xs text-muted-foreground text-center py-6">Select items from their inventory</p>
                 ) : (
@@ -658,11 +652,11 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
               </div>
             </div>
 
-            <div className="mt-auto pt-3 md:pt-4 border-t space-y-2">
+            <div className="mt-auto pt-4 border-t space-y-2">
               <Button
                 onClick={handleSubmitTrade}
                 disabled={submitting || offerQuantities.size === 0 || requestQuantities.size === 0}
-                className="w-full text-sm md:text-base"
+                className="w-full"
                 size="default"
                 data-testid="button-send-trade"
               >
@@ -671,7 +665,7 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
               <Button 
                 variant="outline" 
                 onClick={() => onOpenChange(false)} 
-                className="w-full text-sm md:text-base"
+                className="w-full"
                 size="default"
                 data-testid="button-cancel-trade"
               >
