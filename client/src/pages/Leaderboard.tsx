@@ -37,11 +37,9 @@ export default function Leaderboard() {
         }
       });
 
-      const itemsSnapshot = await getDocs(collection(db, "items"));
-      const itemsMap = new Map<string, Item>();
-      itemsSnapshot.forEach((doc) => {
-        itemsMap.set(doc.id, { id: doc.id, ...doc.data() } as Item);
-      });
+      // Use itemsCache instead of fetching all items again
+      const { itemsCache } = await import("@/lib/itemsCache");
+      const itemsMap = await itemsCache.getItems();
 
       const playersWithValues = await Promise.all(
         users.map(async (user) => {
@@ -102,12 +100,31 @@ export default function Leaderboard() {
       setHasRendered(true);
     }
     
-    const refreshInterval = setInterval(() => {
+    let intervalId: NodeJS.Timeout | null = null;
+    
+    // Calculate time until next 5-minute mark (XX:00, XX:05, XX:10, etc.)
+    const now = new Date();
+    const currentMinutes = now.getMinutes();
+    const currentSeconds = now.getSeconds();
+    const currentMs = now.getMilliseconds();
+    
+    // Calculate ms until next 5-minute mark
+    const minutesToNext5 = 5 - (currentMinutes % 5);
+    const msUntilNext5Minutes = (minutesToNext5 * 60 * 1000) - (currentSeconds * 1000) - currentMs;
+    
+    const timeoutId = setTimeout(() => {
       loadLeaderboards();
-    }, 5 * 60 * 1000);
+      // After first sync, set up regular 5-minute interval
+      intervalId = setInterval(() => {
+        loadLeaderboards();
+      }, 5 * 60 * 1000);
+    }, msUntilNext5Minutes);
     
     return () => {
-      clearInterval(refreshInterval);
+      clearTimeout(timeoutId);
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
     };
   }, [hasRendered]);
 

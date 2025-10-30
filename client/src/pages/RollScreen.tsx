@@ -178,33 +178,24 @@ export default function RollScreen() {
     };
 
     try {
-      // Save to user's best rolls if >= 250K
+      // Save to user's best rolls if >= 250K (batched via autoSaveManager)
       if (item.value >= 250000) {
         const currentBest = user.bestRolls || [];
         const updated = [newRoll, ...currentBest].slice(0, 10);
         
-        const userRef = doc(db, "users", user.firebaseUid);
-        await updateDoc(userRef, {
+        // Optimistically update local state
+        setBestRolls(updated);
+        
+        // Queue update for batched save (no immediate write)
+        const { autoSaveManager } = await import("@/lib/autoSaveManager");
+        autoSaveManager.queueUpdate("users", user.id, {
           bestRolls: updated
         });
-        
-        setBestRolls(updated);
       }
 
-      // Save to global rolls if >= 2.5M
+      // Note: Global rolls >= 2.5M are already handled in rollService transaction
+      // No need to duplicate here - just reload to show the new roll
       if (item.value >= 2500000) {
-        await addDoc(collection(db, "globalRolls"), {
-          username: user.username,
-          itemId: item.id,
-          itemName: item.name,
-          itemImageUrl: item.imageUrl,
-          itemValue: item.value,
-          rarity: item.rarity,
-          serialNumber,
-          timestamp: Date.now(),
-        });
-        
-        // Reload global rolls to show the new one
         await loadGlobalRolls();
       }
     } catch (error) {
