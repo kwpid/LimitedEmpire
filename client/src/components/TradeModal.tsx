@@ -467,211 +467,216 @@ export function TradeModal({ open, onOpenChange, targetUser }: TradeModalProps) 
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 flex flex-col gap-4 overflow-hidden mt-4">
-          <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-            <div className="flex-1 flex flex-col overflow-hidden border rounded-lg bg-card/50">
-              <div className="p-3 border-b bg-muted/30">
-                <Label className="text-sm font-semibold mb-2 block">Your Inventory</Label>
-                <div className="relative">
-                  <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search your items..."
-                    value={mySearchTerm}
-                    onChange={(e) => setMySearchTerm(e.target.value)}
-                    className="pl-8 h-8 text-sm"
-                    data-testid="input-search-my-items"
-                  />
-                </div>
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 overflow-hidden mt-4">
+          {/* Your Inventory */}
+          <div className="flex flex-col overflow-hidden border rounded-lg bg-card/50">
+            <div className="p-3 border-b bg-muted/30">
+              <Label className="text-sm font-semibold mb-2 block">Your Inventory</Label>
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search your items..."
+                  value={mySearchTerm}
+                  onChange={(e) => setMySearchTerm(e.target.value)}
+                  className="pl-8 h-8 text-sm"
+                  data-testid="input-search-my-items"
+                />
               </div>
-              <ScrollArea className="flex-1 p-3">
-                <div className="grid grid-cols-6 gap-2">
-                  {loading ? (
-                    <p className="col-span-full text-center text-muted-foreground py-8 text-sm">Loading...</p>
-                  ) : filteredGroupedMyInventory.size === 0 ? (
-                    <p className="col-span-full text-center text-muted-foreground py-8 text-sm">No items found</p>
-                  ) : (
-                    Array.from(filteredGroupedMyInventory.entries()).map(([itemId, items]) =>
-                      renderInventoryItem(itemId, items, true)
-                    )
-                  )}
-                </div>
-              </ScrollArea>
             </div>
-
-            <div className="flex-1 flex flex-col overflow-hidden border rounded-lg bg-card/50">
-              <div className="p-3 border-b bg-muted/30">
-                <Label className="text-sm font-semibold mb-2 block">{targetUser?.username}'s Inventory</Label>
-                <div className="relative">
-                  <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search their items..."
-                    value={theirSearchTerm}
-                    onChange={(e) => setTheirSearchTerm(e.target.value)}
-                    className="pl-8 h-8 text-sm"
-                    data-testid="input-search-their-items"
-                  />
-                </div>
+            <ScrollArea className="flex-1 p-3">
+              <div className="grid grid-cols-4 gap-2">
+                {loading ? (
+                  <p className="col-span-full text-center text-muted-foreground py-8 text-sm">Loading...</p>
+                ) : filteredGroupedMyInventory.size === 0 ? (
+                  <p className="col-span-full text-center text-muted-foreground py-8 text-sm">No items found</p>
+                ) : (
+                  Array.from(filteredGroupedMyInventory.entries()).map(([itemId, items]) =>
+                    renderInventoryItem(itemId, items, true)
+                  )
+                )}
               </div>
-              <ScrollArea className="flex-1 p-3">
-                <div className="grid grid-cols-6 gap-2">
-                  {loading ? (
-                    <p className="col-span-full text-center text-muted-foreground py-8 text-sm">Loading...</p>
-                  ) : filteredGroupedTheirInventory.size === 0 ? (
-                    <p className="col-span-full text-center text-muted-foreground py-8 text-sm">No items found</p>
-                  ) : (
-                    Array.from(filteredGroupedTheirInventory.entries()).map(([itemId, items]) =>
-                      renderInventoryItem(itemId, items, false)
-                    )
-                  )}
-                </div>
-              </ScrollArea>
-            </div>
+            </ScrollArea>
           </div>
 
-          <div className="w-full flex flex-col gap-4 border rounded-lg bg-card/50 p-4">
-            <div className="space-y-3">
-              <Label className="text-base font-semibold">Your Offer</Label>
-              <div className="min-h-[100px] p-3 border rounded-lg bg-muted/30">
-                {offerQuantities.size === 0 && offerCash === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-6">Select items from your inventory</p>
+          {/* Their Inventory */}
+          <div className="flex flex-col overflow-hidden border rounded-lg bg-card/50">
+            <div className="p-3 border-b bg-muted/30">
+              <Label className="text-sm font-semibold mb-2 block">{targetUser?.username}'s Inventory</Label>
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search their items..."
+                  value={theirSearchTerm}
+                  onChange={(e) => setTheirSearchTerm(e.target.value)}
+                  className="pl-8 h-8 text-sm"
+                  data-testid="input-search-their-items"
+                />
+              </div>
+            </div>
+            <ScrollArea className="flex-1 p-3">
+              <div className="grid grid-cols-4 gap-2">
+                {loading ? (
+                  <p className="col-span-full text-center text-muted-foreground py-8 text-sm">Loading...</p>
+                ) : filteredGroupedTheirInventory.size === 0 ? (
+                  <p className="col-span-full text-center text-muted-foreground py-8 text-sm">No items found</p>
                 ) : (
-                  <div className="space-y-1">
-                    {Array.from(offerQuantities.entries()).map(([itemId, quantity]) => {
-                      const items = groupedMyInventory.get(itemId);
-                      if (!items || items.length === 0) return null;
-                      const item = items[0];
-                      return (
-                        <div key={itemId} className="flex items-center justify-between p-2 rounded bg-background/50">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0">
-                              <img src={item.itemImageUrl} alt={item.itemName} className="w-full h-full object-cover" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold truncate">{item.itemName}</p>
-                              <p className="text-[10px] text-muted-foreground">Qty: {quantity}</p>
-                            </div>
-                          </div>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="w-6 h-6 flex-shrink-0"
-                            onClick={() => handleQuantityChange(itemId, items, 0, true)}
-                          >
-                            <X className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  Array.from(filteredGroupedTheirInventory.entries()).map(([itemId, items]) =>
+                    renderInventoryItem(itemId, items, false)
+                  )
                 )}
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Cash (Max: R$50,000)</Label>
-                <div className="flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <Input
-                    type="number"
-                    min={0}
-                    max={50000}
-                    value={offerCash}
-                    onChange={(e) => setOfferCash(Math.min(50000, Math.max(0, parseInt(e.target.value) || 0)))}
-                    placeholder="0"
-                    className="h-8 text-sm"
-                    data-testid="input-offer-cash"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Available: R${(user?.cash ?? 0).toLocaleString()}
-                </p>
-              </div>
-              <div className="pt-2 border-t">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Total Value:</span>
-                  <span className="text-lg font-bold text-foreground">{formatValue(totalOfferValue)}</span>
-                </div>
-              </div>
-            </div>
+            </ScrollArea>
+          </div>
 
-            <div className="space-y-3">
-              <Label className="text-base font-semibold">Your Request</Label>
-              <div className="min-h-[100px] p-3 border rounded-lg bg-muted/30">
-                {requestQuantities.size === 0 && requestCash === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-6">Select items from their inventory</p>
-                ) : (
-                  <div className="space-y-1">
-                    {Array.from(requestQuantities.entries()).map(([itemId, quantity]) => {
-                      const items = groupedTheirInventory.get(itemId);
-                      if (!items || items.length === 0) return null;
-                      const item = items[0];
-                      return (
-                        <div key={itemId} className="flex items-center justify-between p-2 rounded bg-background/50">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0">
-                              <img src={item.itemImageUrl} alt={item.itemName} className="w-full h-full object-cover" />
+          {/* Offer/Request Panel */}
+          <div className="flex flex-col overflow-hidden border rounded-lg bg-card/50">
+            <ScrollArea className="flex-1 p-4">
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  <Label className="text-base font-semibold">Your Offer</Label>
+                  <div className="min-h-[100px] p-3 border rounded-lg bg-muted/30">
+                    {offerQuantities.size === 0 && offerCash === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-6">Select items from your inventory</p>
+                    ) : (
+                      <div className="space-y-1">
+                        {Array.from(offerQuantities.entries()).map(([itemId, quantity]) => {
+                          const items = groupedMyInventory.get(itemId);
+                          if (!items || items.length === 0) return null;
+                          const item = items[0];
+                          return (
+                            <div key={itemId} className="flex items-center justify-between p-2 rounded bg-background/50">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0">
+                                  <img src={item.itemImageUrl} alt={item.itemName} className="w-full h-full object-cover" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-semibold truncate">{item.itemName}</p>
+                                  <p className="text-[10px] text-muted-foreground">Qty: {quantity}</p>
+                                </div>
+                              </div>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="w-6 h-6 flex-shrink-0"
+                                onClick={() => handleQuantityChange(itemId, items, 0, true)}
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold truncate">{item.itemName}</p>
-                              <p className="text-[10px] text-muted-foreground">Qty: {quantity}</p>
-                            </div>
-                          </div>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="w-6 h-6 flex-shrink-0"
-                            onClick={() => handleQuantityChange(itemId, items, 0, false)}
-                          >
-                            <X className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      );
-                    })}
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Cash (Max: R$10,000)</Label>
-                <div className="flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  <Input
-                    type="number"
-                    min={0}
-                    max={10000}
-                    value={requestCash}
-                    onChange={(e) => setRequestCash(Math.min(10000, Math.max(0, parseInt(e.target.value) || 0)))}
-                    placeholder="0"
-                    className="h-8 text-sm"
-                    data-testid="input-request-cash"
-                  />
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Cash (Max: R$50,000)</Label>
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      <Input
+                        type="number"
+                        min={0}
+                        max={50000}
+                        value={offerCash}
+                        onChange={(e) => setOfferCash(Math.min(50000, Math.max(0, parseInt(e.target.value) || 0)))}
+                        placeholder="0"
+                        className="h-8 text-sm"
+                        data-testid="input-offer-cash"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Available: R${(user?.cash ?? 0).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="pt-2 border-t">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Total Value:</span>
+                      <span className="text-lg font-bold text-foreground">{formatValue(totalOfferValue)}</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="pt-2 border-t">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Total Value:</span>
-                  <span className="text-lg font-bold text-foreground">{formatValue(totalRequestValue)}</span>
-                </div>
-              </div>
-            </div>
 
-            <div className="mt-auto pt-4 border-t space-y-2">
-              <Button
-                onClick={handleSubmitTrade}
-                disabled={submitting || offerQuantities.size === 0 || requestQuantities.size === 0}
-                className="w-full"
-                size="default"
-                data-testid="button-send-trade"
-              >
-                {submitting ? "Sending..." : "Make Offer"}
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => onOpenChange(false)} 
-                className="w-full"
-                size="default"
-                data-testid="button-cancel-trade"
-              >
-                Cancel
-              </Button>
-            </div>
+                <div className="space-y-3">
+                  <Label className="text-base font-semibold">Your Request</Label>
+                  <div className="min-h-[100px] p-3 border rounded-lg bg-muted/30">
+                    {requestQuantities.size === 0 && requestCash === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-6">Select items from their inventory</p>
+                    ) : (
+                      <div className="space-y-1">
+                        {Array.from(requestQuantities.entries()).map(([itemId, quantity]) => {
+                          const items = groupedTheirInventory.get(itemId);
+                          if (!items || items.length === 0) return null;
+                          const item = items[0];
+                          return (
+                            <div key={itemId} className="flex items-center justify-between p-2 rounded bg-background/50">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <div className="w-10 h-10 rounded overflow-hidden flex-shrink-0">
+                                  <img src={item.itemImageUrl} alt={item.itemName} className="w-full h-full object-cover" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-semibold truncate">{item.itemName}</p>
+                                  <p className="text-[10px] text-muted-foreground">Qty: {quantity}</p>
+                                </div>
+                              </div>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="w-6 h-6 flex-shrink-0"
+                                onClick={() => handleQuantityChange(itemId, items, 0, false)}
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Cash (Max: R$10,000)</Label>
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      <Input
+                        type="number"
+                        min={0}
+                        max={10000}
+                        value={requestCash}
+                        onChange={(e) => setRequestCash(Math.min(10000, Math.max(0, parseInt(e.target.value) || 0)))}
+                        placeholder="0"
+                        className="h-8 text-sm"
+                        data-testid="input-request-cash"
+                      />
+                    </div>
+                  </div>
+                  <div className="pt-2 border-t">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Total Value:</span>
+                      <span className="text-lg font-bold text-foreground">{formatValue(totalRequestValue)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-auto pt-4 border-t space-y-2">
+                  <Button
+                    onClick={handleSubmitTrade}
+                    disabled={submitting || offerQuantities.size === 0 || requestQuantities.size === 0}
+                    className="w-full"
+                    size="default"
+                    data-testid="button-send-trade"
+                  >
+                    {submitting ? "Sending..." : "Make Offer"}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => onOpenChange(false)} 
+                    className="w-full"
+                    size="default"
+                    data-testid="button-cancel-trade"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </ScrollArea>
           </div>
         </div>
       </DialogContent>
