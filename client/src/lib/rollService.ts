@@ -39,21 +39,14 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
 
   const result = await runTransaction(db, async (transaction) => {
     const itemRef = doc(db, "items", selectedItemId);
-    const ownershipMarkerRef = doc(db, "items", selectedItemId, "owners", user.firebaseUid);
     const userRef = doc(db, "users", user.id);
     const adminRef = adminDocId ? doc(db, "users", adminDocId) : null;
 
+    // Read item first to determine if we need ownership marker
     const itemDoc = await transaction.get(itemRef);
-    const ownershipDoc = await transaction.get(ownershipMarkerRef);
-    const userDoc = await transaction.get(userRef);
-    const adminDoc = adminRef ? await transaction.get(adminRef) : null;
     
     if (!itemDoc.exists()) {
       throw new Error("Item not found");
-    }
-    
-    if (!userDoc.exists()) {
-      throw new Error("User document not found");
     }
     
     const selectedItem = { id: itemDoc.id, ...itemDoc.data() } as Item;
@@ -62,7 +55,22 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
       throw new Error("Item is off-sale and cannot be rolled");
     }
 
-    const isFirstTimeOwning = !ownershipDoc.exists();
+    // Only read ownership marker for limited items
+    let isFirstTimeOwning = false;
+    let ownershipMarkerRef = null;
+    if (selectedItem.stockType === "limited") {
+      ownershipMarkerRef = doc(db, "items", selectedItemId, "owners", user.firebaseUid);
+      const ownershipDoc = await transaction.get(ownershipMarkerRef);
+      isFirstTimeOwning = !ownershipDoc.exists();
+    }
+
+    // Read user and admin docs
+    const userDoc = await transaction.get(userRef);
+    const adminDoc = adminRef ? await transaction.get(adminRef) : null;
+    
+    if (!userDoc.exists()) {
+      throw new Error("User document not found");
+    }
     
     let serialNumber: number | null = null;
     const itemUpdates: any = {};
@@ -81,6 +89,7 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
         shouldSetOwnership = true;
       }
     } else {
+      // For infinite items, always increment totalOwners (tracks total times owned, not unique owners)
       itemUpdates.totalOwners = (selectedItem.totalOwners || 0) + 1;
     }
 
@@ -162,7 +171,7 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
       }
     }
 
-    if (shouldSetOwnership) {
+    if (shouldSetOwnership && ownershipMarkerRef) {
       transaction.set(ownershipMarkerRef, { ownedAt: Date.now() });
     }
 

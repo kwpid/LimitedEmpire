@@ -1,6 +1,7 @@
-import { runTransaction, doc, collection, query, where, getDocs } from "firebase/firestore";
+import { runTransaction, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { User } from "@shared/schema";
+import { adminCache } from "./adminCache";
 
 export interface SellResult {
   soldCount: number;
@@ -28,15 +29,12 @@ export async function sellItems(
   const playerEarned = Math.floor(totalValue * 0.8);
   const adminEarned = Math.floor(totalValue * 0.2);
 
-  const usersRef = collection(db, "users");
-  const adminQuery = query(usersRef, where("userId", "==", 1));
-  const adminSnapshot = await getDocs(adminQuery);
+  // Use cached admin ID to save database reads
+  const adminDocId = await adminCache.getAdminDocId();
   
-  if (adminSnapshot.empty) {
+  if (!adminDocId) {
     throw new Error("Admin user not found");
   }
-
-  const adminDocId = adminSnapshot.docs[0].id;
 
   const result = await runTransaction(db, async (transaction) => {
     const userRef = doc(db, "users", user.id);
