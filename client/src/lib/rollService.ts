@@ -1,19 +1,11 @@
 import { collection, doc, query, where, arrayUnion } from "firebase/firestore";
 import { db, runTransaction, getDocs } from "./firebase";
 import type { Item, User } from "@shared/schema";
+import { rollableItemsCache } from "./rollableItemsCache";
 
 export async function performRoll(user: User): Promise<{ item: Item; serialNumber: number | null; autoSold?: boolean; playerEarned?: number }> {
-  const itemsRef = collection(db, "items");
-  const q = query(itemsRef, where("offSale", "==", false));
-  const itemsSnapshot = await getDocs(q);
-  
-  const eligibleItems: Item[] = [];
-  itemsSnapshot.forEach((doc) => {
-    const item = { id: doc.id, ...doc.data() } as Item;
-    if (item.stockType === "infinite" || (item.remainingStock && item.remainingStock > 0)) {
-      eligibleItems.push(item);
-    }
-  });
+  // Use cache instead of querying all items every roll
+  const eligibleItems = await rollableItemsCache.getItems();
 
   if (eligibleItems.length === 0) {
     throw new Error("No items available to roll");
@@ -192,17 +184,6 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
 }
 
 export async function getRollableItems(): Promise<Item[]> {
-  const itemsRef = collection(db, "items");
-  const q = query(itemsRef, where("offSale", "==", false));
-  const snapshot = await getDocs(q);
-  
-  const items: Item[] = [];
-  snapshot.forEach((doc) => {
-    const item = { id: doc.id, ...doc.data() } as Item;
-    if (item.stockType === "infinite" || (item.remainingStock && item.remainingStock > 0)) {
-      items.push(item);
-    }
-  });
-  
-  return items;
+  // Use cache instead of querying every time
+  return rollableItemsCache.getItems();
 }
