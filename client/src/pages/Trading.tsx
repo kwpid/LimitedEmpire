@@ -261,6 +261,30 @@ export default function Trading() {
     });
   };
 
+  const groupTradeItems = (items: any[]) => {
+    const grouped = new Map<string, any>();
+    items.forEach(item => {
+      const key = item.itemId;
+      if (grouped.has(key)) {
+        const existing = grouped.get(key);
+        existing.amount = (existing.amount || 1) + (item.amount || 1);
+        if (item.serialNumber !== null) {
+          if (!existing.serialNumbers) {
+            existing.serialNumbers = [];
+          }
+          existing.serialNumbers.push(item.serialNumber);
+        }
+      } else {
+        const newItem = { ...item, amount: item.amount || 1 };
+        if (item.serialNumber !== null) {
+          newItem.serialNumbers = [item.serialNumber];
+        }
+        grouped.set(key, newItem);
+      }
+    });
+    return Array.from(grouped.values());
+  };
+
   const renderTradeCard = (trade: Trade, isInbound: boolean, showActions: boolean) => {
     const otherUser = isInbound ? trade.senderUsername : trade.receiverUsername;
     
@@ -290,8 +314,11 @@ export default function Trading() {
       return null;
     }
     
-    const offerValue = offering.items.reduce((sum, item) => sum + item.itemValue, 0) + offering.cash;
-    const requestValue = requesting.items.reduce((sum, item) => sum + item.itemValue, 0) + requesting.cash;
+    const groupedOfferItems = groupTradeItems(offering.items);
+    const groupedRequestItems = groupTradeItems(requesting.items);
+    
+    const offerValue = offering.items.reduce((sum, item) => sum + (item.itemValue * (item.amount || 1)), 0) + offering.cash;
+    const requestValue = requesting.items.reduce((sum, item) => sum + (item.itemValue * (item.amount || 1)), 0) + requesting.cash;
 
     return (
       <Card key={trade.id} className="hover:shadow-lg transition-all" data-testid={`card-trade-${trade.id}`}>
@@ -326,7 +353,7 @@ export default function Trading() {
               </h4>
               <ScrollArea className="h-32 border rounded-lg p-2">
                 <div className="space-y-2">
-                  {offering.items.map((item, idx) => (
+                  {groupedOfferItems.map((item, idx) => (
                     <div key={idx} className="flex items-center gap-2 text-sm">
                       <img
                         src={item.itemImageUrl}
@@ -334,21 +361,28 @@ export default function Trading() {
                         className="w-10 h-10 rounded object-cover"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{item.itemName}</p>
+                        <p className="font-medium truncate">
+                          {item.itemName}
+                          {(item.amount || 1) > 1 && (
+                            <span className="text-muted-foreground ml-1">
+                              x{item.amount || 1}
+                            </span>
+                          )}
+                        </p>
                         <div className="flex items-center gap-2 text-xs">
                           <Badge variant="outline" className={`${getRarityClass(item.itemRarity)} text-[10px] px-1`}>
                             {item.itemRarity}
                           </Badge>
-                          {item.serialNumber !== null && (
+                          {item.serialNumbers && item.serialNumbers.length > 0 && (
                             <span className="text-muted-foreground flex items-center gap-1">
                               <Hash className="w-3 h-3" />
-                              {item.serialNumber}
+                              {item.serialNumbers.sort((a: number, b: number) => a - b).join(', ')}
                             </span>
                           )}
                         </div>
                       </div>
                       <span className="text-xs text-muted-foreground whitespace-nowrap">
-                        ${formatValue(item.itemValue)}
+                        ${formatValue(item.itemValue * (item.amount || 1))}
                       </span>
                     </div>
                   ))}
@@ -371,7 +405,7 @@ export default function Trading() {
               </h4>
               <ScrollArea className="h-32 border rounded-lg p-2">
                 <div className="space-y-2">
-                  {requesting.items.map((item, idx) => (
+                  {groupedRequestItems.map((item, idx) => (
                     <div key={idx} className="flex items-center gap-2 text-sm">
                       <img
                         src={item.itemImageUrl}
@@ -379,21 +413,28 @@ export default function Trading() {
                         className="w-10 h-10 rounded object-cover"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{item.itemName}</p>
+                        <p className="font-medium truncate">
+                          {item.itemName}
+                          {(item.amount || 1) > 1 && (
+                            <span className="text-muted-foreground ml-1">
+                              x{item.amount || 1}
+                            </span>
+                          )}
+                        </p>
                         <div className="flex items-center gap-2 text-xs">
                           <Badge variant="outline" className={`${getRarityClass(item.itemRarity)} text-[10px] px-1`}>
                             {item.itemRarity}
                           </Badge>
-                          {item.serialNumber !== null && (
+                          {item.serialNumbers && item.serialNumbers.length > 0 && (
                             <span className="text-muted-foreground flex items-center gap-1">
                               <Hash className="w-3 h-3" />
-                              {item.serialNumber}
+                              {item.serialNumbers.sort((a: number, b: number) => a - b).join(', ')}
                             </span>
                           )}
                         </div>
                       </div>
                       <span className="text-xs text-muted-foreground whitespace-nowrap">
-                        ${formatValue(item.itemValue)}
+                        ${formatValue(item.itemValue * (item.amount || 1))}
                       </span>
                     </div>
                   ))}
