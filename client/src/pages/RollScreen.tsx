@@ -78,16 +78,12 @@ export default function RollScreen() {
       itemIdCounts.set(itemId, (itemIdCounts.get(itemId) || 0) + amount);
     });
 
-    const itemPromises = Array.from(uniqueItemIds).map(async (itemId) => {
-      const itemDoc = await getDocs(query(collection(db, "items"), where("__name__", "==", itemId)));
-      if (!itemDoc.empty) {
-        return { id: itemDoc.docs[0].id, ...itemDoc.docs[0].data() } as Item;
-      }
-      return null;
-    });
-
-    const itemResults = await Promise.all(itemPromises);
-    const items = itemResults.filter((item): item is Item => item !== null);
+    const { itemsCache } = await import("@/lib/itemsCache");
+    const items = await Promise.all(
+      Array.from(uniqueItemIds).map(async (itemId) => {
+        return await itemsCache.getItem(itemId);
+      })
+    ).then(results => results.filter((item): item is Item => item !== null));
 
     const itemCounts = new Map<string, { item: Item; count: number }>();
     let totalValue = 0;
@@ -117,13 +113,12 @@ export default function RollScreen() {
   };
 
   const loadItems = async () => {
-    const itemsRef = collection(db, "items");
-    const q = query(itemsRef, where("offSale", "==", false));
-    const snapshot = await getDocs(q);
+    const { itemsCache } = await import("@/lib/itemsCache");
+    const itemsMap = await itemsCache.getItems();
     const loadedItems: Item[] = [];
-    snapshot.forEach((doc) => {
-      const item = { id: doc.id, ...doc.data() } as Item;
-      if (item.stockType === "infinite" || (item.remainingStock && item.remainingStock > 0)) {
+    
+    itemsMap.forEach((item) => {
+      if (!item.offSale && (item.stockType === "infinite" || (item.remainingStock && item.remainingStock > 0))) {
         loadedItems.push(item);
       }
     });

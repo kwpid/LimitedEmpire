@@ -63,12 +63,11 @@ export function AdminGiveItemsDialog({ open, onOpenChange, targetUser, onSuccess
 
   const loadItems = async () => {
     try {
-      const itemsSnapshot = await getDocs(collection(db, "items"));
-      const itemsList: Item[] = [];
-      itemsSnapshot.forEach((doc) => {
-        itemsList.push({ id: doc.id, ...doc.data() } as Item);
-      });
-      setItems(itemsList.sort((a, b) => a.name.localeCompare(b.name)));
+      const { itemsCache } = await import("@/lib/itemsCache");
+      const itemsMap = await itemsCache.getItems();
+      const itemsList = Array.from(itemsMap.values())
+        .sort((a, b) => a.name.localeCompare(b.name));
+      setItems(itemsList);
     } catch (error) {
       console.error("Error loading items:", error);
       toast({

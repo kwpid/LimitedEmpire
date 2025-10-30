@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { collection, query, orderBy, limit } from "firebase/firestore";
+import { db, getDocs } from "@/lib/firebase";
 import type { User } from "@shared/schema";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,7 +22,7 @@ export default function Players() {
   const loadPlayers = async () => {
     try {
       const usersRef = collection(db, "users");
-      const q = query(usersRef, orderBy("lastActive", "desc"));
+      const q = query(usersRef, orderBy("lastActive", "desc"), limit(50));
       const snapshot = await getDocs(q);
       
       const loadedPlayers: User[] = [];

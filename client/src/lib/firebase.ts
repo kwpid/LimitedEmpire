@@ -13,3 +13,15 @@ const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+export {
+  getDocs,
+  getDoc,
+  setDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  runTransaction,
+} from "./db-wrapper";
+
+export { dbMonitor } from "./db-monitor";
