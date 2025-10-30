@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { AdminPanel } from "@/components/AdminPanel";
 import { BanOverlay } from "@/components/BanOverlay";
 import { PendingSaveIndicator } from "@/components/PendingSaveIndicator";
+import { UpdateNotification } from "@/components/UpdateNotification";
 import { Dices, Package, Database, Shield, LogOut, Sparkles, Settings as SettingsIcon, Users, Trophy, ArrowLeftRight } from "lucide-react";
 import { signOut } from "firebase/auth";
 import { auth } from "./lib/firebase";
@@ -213,6 +214,7 @@ export default function App() {
       <TooltipProvider>
         <AuthProvider>
           <AppContent />
+          <UpdateNotification />
         </AuthProvider>
         <Toaster />
       </TooltipProvider>
