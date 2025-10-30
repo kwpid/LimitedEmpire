@@ -4,6 +4,30 @@
 
 Limited Empire is a web-based collection game where players acquire rare items through a probability-based rolling system. The project aims to provide an engaging user experience with Google authentication, a sophisticated item rarity and stock system, and comprehensive administrative tools for item and user management. Key features include an animated rolling interface, inventory management, a real-time global roll notification system for high-value items, and advanced admin capabilities like item creation (with admin auto-ownership of serial #0), flexible item gifting, and a robust ban system with inventory wiping. The game's economy is centered around a probability-based item acquisition and selling mechanism, with plans for future expansion into reporting and analytics.
 
+## Recent Changes (October 30, 2025)
+
+**Mobile UI Improvements & Currency Standardization:**
+- **Removed Global Notification System**: Temporarily removed GlobalRollToast component from App.tsx for cleaner UX
+- **Standardized Currency Display**: Updated formatValue function to prefix all currency values with R$ across entire site
+  - Affects: roll screen, inventory, trading, leaderboard, player profiles, settings, and all modals
+  - Ensures consistent currency representation throughout application
+- **Mobile-Responsive Trading Page**:
+  - Responsive text sizing (text-sm to text-base scaling with breakpoints)
+  - Improved padding and spacing for mobile screens
+  - Trade summary cards now stack vertically on mobile
+  - Enhanced readability on small devices
+- **Mobile-Friendly TradeModal**:
+  - Inventory grids scale from 3 columns on mobile to 6 on XL screens
+  - Responsive search inputs and typography
+  - Summary panel with limited height on mobile to prevent overflow
+  - All interactive elements properly sized for touch screens
+- **Settings Page Redesign**:
+  - Converted from sidebar navigation to horizontal tab layout
+  - Uses shadcn Tabs component with grid layout
+  - Profile and Sell Settings tabs with responsive typography
+  - Mobile-friendly form inputs and buttons
+  - Improved spacing and padding across all breakpoints
+
 ## Recent Changes (October 29, 2025)
 
 **Trading System Implementation:**
