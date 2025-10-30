@@ -60,33 +60,15 @@ export default function Inventory() {
     setLoading(true);
 
     try {
-      const userDocRef = doc(db, "users", user.id);
-      const userDocSnap = await getDoc(userDocRef);
+      // Use user data from context instead of fetching again
+      const userInventory = user.inventory || [];
       
-      if (!userDocSnap.exists()) {
-        setInventory([]);
-        setLoading(false);
-        return;
-      }
-
-      const userData = userDocSnap.data();
-      const userInventory = userData.inventory || [];
-
+      // Extract unique item IDs
       const uniqueItemIds = Array.from(new Set(userInventory.map((inv: any) => inv.itemId))) as string[];
       
-      const itemFetches = uniqueItemIds.map(async (itemId: string) => {
-        const itemDocRef = doc(db, "items", itemId);
-        const itemDoc = await getDoc(itemDocRef);
-        return itemDoc.exists() 
-          ? { id: itemDoc.id, ...itemDoc.data() } as Item
-          : null;
-      });
-
-      const fetchedItems = await Promise.all(itemFetches);
-      const itemCache = new Map<string, Item>();
-      fetchedItems.forEach((item) => {
-        if (item) itemCache.set(item.id, item);
-      });
+      // Use itemsCache for batched, cached item fetching
+      const { itemsCache } = await import("@/lib/itemsCache");
+      const itemCache = await itemsCache.getItemsBatch(uniqueItemIds);
 
       const items: InventoryItemWithDetails[] = [];
       for (const invItem of userInventory) {
