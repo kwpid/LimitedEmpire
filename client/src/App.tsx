@@ -25,6 +25,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "./lib/firebase";
 import type { Item } from "@shared/schema";
 import "@/lib/userSchemaUpdater";
+import { usersCache } from "@/lib/usersCache";
 
 const MemoizedRollScreen = memo(RollScreen);
 
@@ -37,6 +38,14 @@ function AppContent() {
   useEffect(() => {
     document.title = "Limited Empire";
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      usersCache.initialize().catch(err => 
+        console.error("Failed to initialize users cache:", err)
+      );
+    }
+  }, [user]);
 
   const handleLogout = async () => {
     try {

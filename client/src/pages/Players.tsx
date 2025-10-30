@@ -1,6 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
-import { collection, query, orderBy, limit, where } from "firebase/firestore";
-import { db, getDocs } from "@/lib/firebase";
+import { useState, useEffect, useMemo, memo, useCallback } from "react";
 import type { User } from "@shared/schema";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,6 +6,9 @@ import { PlayerCard } from "@/components/PlayerCard";
 import { PlayerProfileModal } from "@/components/PlayerProfileModal";
 import { Users, Search } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { usersCache } from "@/lib/usersCache";
+
+const MemoizedPlayerCard = memo(PlayerCard);
 
 export default function Players() {
   const [onlinePlayers, setOnlinePlayers] = useState<User[]>([]);
@@ -21,6 +22,12 @@ export default function Players() {
 
   useEffect(() => {
     loadOnlinePlayers();
+
+    const refreshInterval = setInterval(() => {
+      loadOnlinePlayers();
+    }, 60 * 1000);
+
+    return () => clearInterval(refreshInterval);
   }, []);
 
   useEffect(() => {
@@ -37,22 +44,8 @@ export default function Players() {
   const loadOnlinePlayers = async () => {
     setLoading(true);
     try {
-      const usersRef = collection(db, "users");
-      const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-      const q = query(
-        usersRef,
-        where("lastActive", ">=", fiveMinutesAgo),
-        orderBy("lastActive", "desc"),
-        limit(50)
-      );
-      const snapshot = await getDocs(q);
-      
-      const loadedPlayers: User[] = [];
-      snapshot.forEach((doc) => {
-        loadedPlayers.push({ id: doc.id, ...doc.data() } as User);
-      });
-      
-      setOnlinePlayers(loadedPlayers);
+      const online = await usersCache.getOnlineUsers();
+      setOnlinePlayers(online);
     } catch (error) {
       console.error("Error loading online players:", error);
     } finally {
@@ -68,23 +61,8 @@ export default function Players() {
     
     setSearchLoading(true);
     try {
-      const usersRef = collection(db, "users");
-      const searchLower = search.toLowerCase();
-      const q = query(
-        usersRef, 
-        where("usernameLower", ">=", searchLower),
-        where("usernameLower", "<=", searchLower + "\uf8ff"),
-        orderBy("usernameLower"),
-        limit(20)
-      );
-      const snapshot = await getDocs(q);
-      
-      const loadedPlayers: User[] = [];
-      snapshot.forEach((doc) => {
-        loadedPlayers.push({ id: doc.id, ...doc.data() } as User);
-      });
-      
-      setSearchResults(loadedPlayers);
+      const results = await usersCache.searchUsers(search);
+      setSearchResults(results);
     } catch (error) {
       console.error("Error searching players:", error);
       setSearchResults([]);
@@ -156,7 +134,7 @@ export default function Players() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredOnline.map((player) => (
-                <PlayerCard
+                <MemoizedPlayerCard
                   key={player.id}
                   player={player}
                   onClick={() => handlePlayerClick(player)}
@@ -193,7 +171,7 @@ export default function Players() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {searchResults.map((player) => (
-                <PlayerCard
+                <MemoizedPlayerCard
                   key={player.id}
                   player={player}
                   onClick={() => handlePlayerClick(player)}
