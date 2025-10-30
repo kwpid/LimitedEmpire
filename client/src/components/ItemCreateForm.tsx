@@ -175,6 +175,14 @@ export function ItemCreateForm({ onSuccess }: { onSuccess?: () => void }) {
       });
       console.log("Admin log webhook request completed");
 
+      // Invalidate caches so new item appears immediately
+      const { itemsCache } = await import("@/lib/itemsCache");
+      const { rollableItemsCache } = await import("@/lib/rollableItemsCache");
+      await Promise.all([
+        itemsCache.refresh(),
+        rollableItemsCache.refresh()
+      ]);
+
       toast({
         title: "Item created!",
         description: `${values.name} has been added to the database and Admin received copy #${values.stockType === "limited" ? "0" : "∞"}.`,

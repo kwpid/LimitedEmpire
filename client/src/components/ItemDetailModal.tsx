@@ -319,17 +319,31 @@ export function ItemDetailModal({ item, serialNumber, open, onOpenChange, onEdit
                 try {
                   const userRef = doc(db, "users", user.id);
                   let newShowcaseItems;
+                  let newShowcaseMetadata;
 
                   if (isInShowcase) {
                     newShowcaseItems = (user.showcaseItems || []).filter(id => id !== firstInventoryId);
+                    newShowcaseMetadata = (user.showcaseMetadata || []).filter(meta => meta.inventoryId !== firstInventoryId);
                   } else if (canAddToShowcase) {
                     newShowcaseItems = [...(user.showcaseItems || []), firstInventoryId];
+                    
+                    // Add to showcaseMetadata with denormalized data
+                    const newMetadata = {
+                      inventoryId: firstInventoryId,
+                      itemId: item.id,
+                      itemName: item.name,
+                      itemImageUrl: item.imageUrl,
+                      itemValue: item.value,
+                      serialNumber: serialNumber !== undefined ? serialNumber : null,
+                    };
+                    newShowcaseMetadata = [...(user.showcaseMetadata || []), newMetadata];
                   } else {
                     return;
                   }
 
                   await updateDoc(userRef, {
                     showcaseItems: newShowcaseItems,
+                    showcaseMetadata: newShowcaseMetadata,
                   });
 
                   await refetchUser();

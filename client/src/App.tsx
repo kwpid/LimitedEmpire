@@ -24,6 +24,7 @@ import { Dices, Package, Database, Shield, LogOut, Sparkles, Settings as Setting
 import { signOut } from "firebase/auth";
 import { auth } from "./lib/firebase";
 import type { Item } from "@shared/schema";
+import "@/lib/userSchemaUpdater";
 
 const MemoizedRollScreen = memo(RollScreen);
 

@@ -108,3 +108,24 @@ export async function migrateAllUsersSchema() {
     throw error;
   }
 }
+
+// Add global debug command for admins to run migration
+if (typeof window !== 'undefined') {
+  (window as any).migrateUserSchema = async () => {
+    console.log('%c🔄 Starting User Schema Migration...', 'color: #8b5cf6; font-weight: bold; font-size: 14px');
+    console.log('%cThis will update usernameLower, showcaseMetadata, and inventoryValue for all users', 'color: #6b7280');
+    
+    try {
+      const result = await migrateAllUsersSchema();
+      console.log('%c✅ Migration Complete!', 'color: #10b981; font-weight: bold; font-size: 14px');
+      console.log(`Updated ${result.updated} out of ${result.total} users`);
+      return result;
+    } catch (error) {
+      console.log('%c❌ Migration Failed', 'color: #ef4444; font-weight: bold; font-size: 14px');
+      console.error(error);
+      throw error;
+    }
+  };
+  
+  console.log('%cUser schema migration initialized. Run migrateUserSchema() to update all user data.', 'color: #8b5cf6; font-weight: bold');
+}

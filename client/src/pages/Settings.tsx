@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -19,13 +19,20 @@ export default function Settings() {
   const { user, refetchUser } = useAuth();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("profile");
-  const [autoSellRarities, setAutoSellRarities] = useState<RarityTier[]>(
-    user?.settings?.autoSellRarities || []
-  );
-  const [customStatus, setCustomStatus] = useState(user?.customStatus || "");
-  const [description, setDescription] = useState(user?.description || "");
+  const [autoSellRarities, setAutoSellRarities] = useState<RarityTier[]>([]);
+  const [customStatus, setCustomStatus] = useState("");
+  const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
+
+  // Update local state when user data changes
+  useEffect(() => {
+    if (user) {
+      setAutoSellRarities(user.settings?.autoSellRarities || []);
+      setCustomStatus(user.customStatus || "");
+      setDescription(user.description || "");
+    }
+  }, [user]);
 
   const toggleRarity = (rarity: RarityTier) => {
     setAutoSellRarities((prev) => {

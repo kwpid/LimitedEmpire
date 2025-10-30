@@ -56,6 +56,14 @@ export default function Leaderboard() {
 
   useEffect(() => {
     loadLeaderboards();
+    
+    // Auto-refresh every 5 minutes
+    const refreshInterval = setInterval(() => {
+      console.log('%c[LEADERBOARD] Auto-refreshing...', 'color: #8b5cf6; font-weight: bold');
+      loadLeaderboards();
+    }, 5 * 60 * 1000); // 5 minutes
+    
+    return () => clearInterval(refreshInterval);
   }, []);
 
   const handlePlayerClick = (player: User) => {
