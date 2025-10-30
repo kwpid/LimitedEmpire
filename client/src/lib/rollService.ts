@@ -1,7 +1,8 @@
-import { collection, doc, query, where, arrayUnion } from "firebase/firestore";
-import { db, runTransaction, getDocs } from "./firebase";
+import { collection, doc } from "firebase/firestore";
+import { db, runTransaction } from "./firebase";
 import type { Item, User } from "@shared/schema";
 import { rollableItemsCache } from "./rollableItemsCache";
+import { adminCache } from "./adminCache";
 
 export async function performRoll(user: User): Promise<{ item: Item; serialNumber: number | null; autoSold?: boolean; playerEarned?: number }> {
   // Use cache instead of querying all items every roll
@@ -30,11 +31,8 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
     }
   }
 
-  const usersRef = collection(db, "users");
-  const adminQuery = query(usersRef, where("userId", "==", 1));
-  const adminSnapshot = await getDocs(adminQuery);
-  
-  const adminDocId = !adminSnapshot.empty ? adminSnapshot.docs[0].id : null;
+  // Use cached admin ID to save 1 database read per roll
+  const adminDocId = await adminCache.getAdminDocId();
 
   let shouldRemoveFromCache = false;
   let itemIdToRemove: string | null = null;
