@@ -64,6 +64,7 @@ export const userSchema = z.object({
   dateJoined: z.number().default(1730079600000), // Oct 28 2025 USA (midnight EST) - for existing users
   rollCount: z.number().default(0), // Total number of rolls performed
   cash: z.number().default(1000), // User's currency
+  luckMultiplier: z.number().default(1), // Luck multiplier for rolling (only affects ULTRA_RARE and higher)
   customStatus: z.string().max(120).default(""), // User's custom status message
   description: z.string().max(1000).default(""), // User's profile description
   showcaseItems: z.array(z.string()).max(5).default([]), // Array of inventory item IDs (max 5)

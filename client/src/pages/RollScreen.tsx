@@ -31,6 +31,7 @@ interface SavedRoll {
   itemRarity: RarityTier;
   serialNumber?: number | null;
   timestamp: number;
+  username?: string; // Username of the player who rolled (only for global rolls)
 }
 
 export default function RollScreen() {
@@ -150,6 +151,7 @@ export default function RollScreen() {
           itemRarity: data.rarity || 'COMMON',
           serialNumber: data.serialNumber,
           timestamp: data.timestamp || Date.now(),
+          username: data.username || 'Unknown',
         });
       });
       
@@ -558,6 +560,9 @@ export default function RollScreen() {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs md:text-sm font-semibold truncate">{roll.itemName}</p>
                     <p className="text-xs text-muted-foreground truncate">{formatValue(roll.itemValue)}</p>
+                    {roll.username && (
+                      <p className="text-[10px] md:text-xs text-primary/80 truncate">@{roll.username}</p>
+                    )}
                     <p className="text-[10px] md:text-xs text-muted-foreground">{formatTimestamp(roll.timestamp)}</p>
                   </div>
                 </div>
