@@ -39,20 +39,20 @@ AutoRoll automatically pauses during rarity animations to allow players to appre
     - **Timer**: Time-limited availability with serial numbers and countdown display (dd hh mm format). Admins automatically receive serial #0. Items automatically go off-sale when timer expires.
     - **Infinite**: Unlimited stock, no serial numbers.
 - **Transactional Integrity**: Firebase transactions ensure atomicity for critical operations like rolling, selling, gifting, and inventory wiping.
-- **Real-time Features**: Global roll notifications for high-value items and real-time Firestore updates.
+- **Real-time Features**: Global roll notifications for high-value items (2.5M+) with username display and real-time Firestore updates.
 - **Admin Features**: Item management (creation, editing, stock, off-sale), user management (stats, advanced gifting, comprehensive ban system with inventory wipe options), and audit logging of all admin actions.
 - **Security Rules**: Firebase security rules enforce data access control.
-- **Roll System Logic**: Core mechanism calculates probabilities based on item values, with a design for future migration to Cloud Functions.
+- **Roll System Logic**: Core mechanism calculates probabilities based on item values, with a design for future migration to Cloud Functions. Includes a luck multiplier system (default 1.0) that increases the chances of rolling ULTRA_RARE and higher rarities when applied to users.
 - **Optimization**: Implemented a buffered write system for user data (auto-saves every 60 seconds or on page unload) and a persistent 5-minute cache for item data (`itemsCache`) to significantly reduce Firestore reads and writes. Leaderboard refreshes are synchronized globally.
 - **Trading System**: Comprehensive 4-tab interface for managing trades, including item selection (1-7 items), cash offers, NFT-locked item restrictions, and inventory sorting/searching. Trade validation is enforced client-side and via Firestore security rules.
 - **Leaderboard System**: Displays top 30 players across four categories (Value, Items, Cash, Rolls) with gold/silver/bronze rankings, auto-refreshing every 5 minutes.
-- **Badge System**: Configurable player badges (Developer, Admin, Veteran, Millionaire, Roller Tiers, Leaderboard Tiers) displayed in player profiles with dynamic calculation.
+- **Badge System**: Configurable player badges (Developer, Admin, Veteran, Millionaire, Roller Tiers, Leaderboard Tiers, Serial Owner, Dominus Owner, Rare Owner) displayed in player profiles with dynamic calculation.
 
 ### Core Data Models (Firestore Collections)
-- `users`: User profiles, auth details, cash, roll counts, ban status.
+- `users`: User profiles, auth details, cash, roll counts, ban status, luck multiplier.
 - `items`: Item properties (name, value, rarity, stock, image URL).
 - `inventory`: User-owned items, serial numbers, NFT lock status.
-- `globalRolls`: Records significant item rolls.
+- `globalRolls`: Records significant item rolls (2.5M+ value) with username, item details, and timestamp.
 - `auditLogs`: Administrative actions.
 - `counters`: Sequential IDs.
 - `trades`: Trade offers (items, cash, status, timestamps).
