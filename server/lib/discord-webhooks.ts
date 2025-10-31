@@ -63,7 +63,7 @@ export async function sendItemReleaseWebhook(itemData: {
   name: string;
   rarity: RarityTier;
   value: number;
-  stock: number | null;
+  stock: string | number | null;
   imageUrl?: string;
 }): Promise<void> {
   const webhookUrl = process.env.DISCORD_WEBHOOK_ITEM_RELEASE;
@@ -72,7 +72,11 @@ export async function sendItemReleaseWebhook(itemData: {
     return;
   }
 
-  const stockDisplay = itemData.stock === null ? "Infinite" : itemData.stock.toLocaleString();
+  const stockDisplay = itemData.stock === null 
+    ? "Infinite" 
+    : typeof itemData.stock === 'string' 
+    ? itemData.stock 
+    : itemData.stock.toLocaleString();
 
   const embed: DiscordEmbed = {
     title: itemData.name,

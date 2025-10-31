@@ -15,14 +15,29 @@ The application is built with React, TypeScript, and Firebase, maintaining a cle
 ### UI/UX Decisions
 The design features a dark, modern theme with rarity-based color coding for visual hierarchy. Framer Motion is used for smooth animations and transitions, especially in the rolling system and modal interactions. Responsive grid layouts ensure cross-device usability. Shadcn/ui components provide a consistent and accessible user interface. Insane rarity items have a distinctive animated rainbow gradient. Mobile interfaces prioritize icon-only navigation and compact layouts.
 
+**Rarity Animation System**: Each rarity tier features unique screen effects when rolled:
+- **COMMON**: Green tint + small shake (1s)
+- **UNCOMMON**: Blue tint + medium shake + particles (1.5s)
+- **RARE**: Purple tint + stronger shake + particles + glow (2s)
+- **EPIC**: Orange tint + strong shake + particles + glow (2.5s)
+- **ULTRA_EPIC**: Purple tint + very strong shake + particles + glow (3s)
+- **MYTHIC**: Pink tint + intense shake + particles + glow (3.5s)
+- **ULTRA_RARE**: Cyan tint + extreme shake + particles + glow + radial burst (4s)
+- **INSANE**: Animated rainbow gradient + screen rotation + particle explosions + radial burst + glow pulses (5s)
+
+AutoRoll automatically pauses during rarity animations to allow players to appreciate high-value rolls.
+
 ### Technical Implementations
 - **Frontend**: Developed with React and TypeScript, utilizing Tailwind CSS for styling and Wouter for routing. TanStack Query efficiently manages server state.
 - **Backend**: Primarily uses Firebase services:
     - **Firebase Authentication**: For Google OAuth.
     - **Firebase Firestore**: Main NoSQL database for all application data.
     - **Firebase Hosting**: For web application deployment.
-- **Rarity System**: Items are categorized into 8 tiers, influencing roll probability logarithmically.
-- **Stock System**: Supports "limited" (with serial numbers) and "infinite" items. Admins automatically receive serial #0 for new limited items.
+- **Rarity System**: Items are categorized into 8 tiers (COMMON, UNCOMMON, RARE, ULTRA_RARE, EPIC, ULTRA_EPIC, MYTHIC, INSANE), influencing roll probability logarithmically.
+- **Stock System**: Supports three types of items:
+    - **Limited**: Fixed stock with serial numbers. Admins automatically receive serial #0.
+    - **Timer**: Time-limited availability with serial numbers and countdown display (dd hh mm format). Admins automatically receive serial #0. Items automatically go off-sale when timer expires.
+    - **Infinite**: Unlimited stock, no serial numbers.
 - **Transactional Integrity**: Firebase transactions ensure atomicity for critical operations like rolling, selling, gifting, and inventory wiping.
 - **Real-time Features**: Global roll notifications for high-value items and real-time Firestore updates.
 - **Admin Features**: Item management (creation, editing, stock, off-sale), user management (stats, advanced gifting, comprehensive ban system with inventory wipe options), and audit logging of all admin actions.
@@ -48,4 +63,4 @@ The design features a dark, modern theme with rarity-based color coding for visu
     - **Authentication**: Google OAuth.
     - **Firestore**: Primary database.
     - **Hosting**: Web application deployment.
-- **Discord Webhooks**: Real-time notifications for item releases and admin actions.
+- **Discord Webhooks**: Real-time notifications for item releases (including timer duration for timer items) and admin actions.

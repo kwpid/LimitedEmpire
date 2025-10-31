@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import type { Item } from "@shared/schema";
 import { useAuth } from "@/contexts/AuthContext";
 import { SlotMachineRoll } from "@/components/SlotMachineRoll";
+import { RarityAnimationOverlay } from "@/components/RarityAnimationOverlay";
 import { getRarityClass, getRarityGlow, formatValue } from "@/lib/rarity";
 import { Dices, Loader2, TrendingUp, Package, Gem, Hash } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -42,6 +43,7 @@ export default function RollScreen() {
   const [bestRolls, setBestRolls] = useState<SavedRoll[]>([]);
   const [globalRolls, setGlobalRolls] = useState<SavedRoll[]>([]);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [showRarityAnimation, setShowRarityAnimation] = useState(false);
   const [userStats, setUserStats] = useState<UserStats>({
     totalRolls: 0,
     totalItems: 0,
@@ -201,8 +203,11 @@ export default function RollScreen() {
   const handleAnimationComplete = useCallback(async () => {
     if (!rolledItem || !user) return;
     
-    // Immediately transition to result after animation completes
+    // Start slot machine to result transition
     setIsAnimating(false);
+    
+    // Trigger rarity-based screen animation
+    setShowRarityAnimation(true);
     
     // Save to database and update UI
     const serialNumber = rolledItem.stockType === "limited" ? 
@@ -231,10 +236,13 @@ export default function RollScreen() {
     ]);
     
     loadBestRolls();
-    
+  }, [rolledItem, user, toast, refetchUser]);
+
+  const handleRarityAnimationComplete = useCallback(() => {
+    setShowRarityAnimation(false);
     setRolling(false);
     rollingRef.current = false;
-  }, [rolledItem, user, toast, refetchUser]);
+  }, []);
 
   const performRoll = useCallback(async () => {
     if (!user || rolling || rollingRef.current) return;
@@ -270,12 +278,12 @@ export default function RollScreen() {
   }, [autoRoll]);
 
   useEffect(() => {
-    if (!autoRoll || rolling || rollingRef.current) return;
+    if (!autoRoll || rolling || rollingRef.current || showRarityAnimation) return;
     
     const tryAutoRoll = async () => {
-      if (!autoRollRef.current || rollingRef.current) return;
+      if (!autoRollRef.current || rollingRef.current || showRarityAnimation) return;
       await performRoll();
-      if (autoRollRef.current && !rollingRef.current) {
+      if (autoRollRef.current && !rollingRef.current && !showRarityAnimation) {
         autoRollTimeoutRef.current = setTimeout(tryAutoRoll, 100);
       }
     };
@@ -288,7 +296,7 @@ export default function RollScreen() {
         autoRollTimeoutRef.current = null;
       }
     };
-  }, [autoRoll, rolling]);
+  }, [autoRoll, rolling, showRarityAnimation]);
 
   const rarityClass = rolledItem ? getRarityClass(rolledItem.rarity) : "";
   const rarityGlow = rolledItem ? getRarityGlow(rolledItem.rarity) : "";
@@ -308,7 +316,17 @@ export default function RollScreen() {
   };
 
   return (
-    <div className="container mx-auto p-4 md:p-6 max-w-7xl space-y-4 md:space-y-6">
+    <>
+      {/* Rarity animation overlay */}
+      {rolledItem && showRarityAnimation && (
+        <RarityAnimationOverlay
+          rarity={rolledItem.rarity}
+          isActive={showRarityAnimation}
+          onComplete={handleRarityAnimationComplete}
+        />
+      )}
+
+      <div className="container mx-auto p-4 md:p-6 max-w-7xl space-y-4 md:space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">Your Stats</CardTitle>
@@ -522,5 +540,6 @@ export default function RollScreen() {
         </Card>
       </div>
     </div>
+    </>
   );
 }
