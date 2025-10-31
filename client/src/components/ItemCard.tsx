@@ -121,8 +121,8 @@ export function ItemCard({ item, serialNumber, onClick, stackCount, showStock = 
           </Badge>
         )}
 
-        {/* Owners badge - Bottom right (for limited and timer items on index) */}
-        {showStock && (item.stockType === "limited" || item.stockType === "timer") && item.totalOwners > 0 && (
+        {/* Owners badge - Bottom right (for timer items only on index) */}
+        {showStock && item.stockType === "timer" && item.totalOwners > 0 && (
           <Badge 
             variant="secondary" 
             className="absolute bottom-2 right-2 text-xs z-[15] bg-purple-500/80 text-white backdrop-blur-md whitespace-nowrap flex items-center gap-1" 
