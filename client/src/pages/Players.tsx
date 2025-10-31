@@ -20,28 +20,7 @@ export default function Players() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("online");
 
-  useEffect(() => {
-    loadOnlinePlayers();
-
-    const refreshInterval = setInterval(() => {
-      loadOnlinePlayers();
-    }, 60 * 1000);
-
-    return () => clearInterval(refreshInterval);
-  }, []);
-
-  useEffect(() => {
-    if (searchQuery && activeTab === "all") {
-      const timeoutId = setTimeout(() => {
-        searchPlayers(searchQuery);
-      }, 300);
-      return () => clearTimeout(timeoutId);
-    } else if (!searchQuery && activeTab === "all") {
-      setSearchResults([]);
-    }
-  }, [searchQuery, activeTab]);
-
-  const loadOnlinePlayers = async () => {
+  const loadOnlinePlayers = useCallback(async () => {
     setLoading(true);
     try {
       const online = await usersCache.getOnlineUsers();
@@ -51,9 +30,9 @@ export default function Players() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const searchPlayers = async (search: string) => {
+  const searchPlayers = useCallback(async (search: string) => {
     if (!search) {
       setSearchResults([]);
       return;
@@ -69,12 +48,33 @@ export default function Players() {
     } finally {
       setSearchLoading(false);
     }
-  };
+  }, []);
 
-  const handlePlayerClick = (player: User) => {
+  const handlePlayerClick = useCallback((player: User) => {
     setSelectedPlayer(player);
     setProfileOpen(true);
-  };
+  }, []);
+
+  useEffect(() => {
+    loadOnlinePlayers();
+
+    const refreshInterval = setInterval(() => {
+      loadOnlinePlayers();
+    }, 60 * 1000);
+
+    return () => clearInterval(refreshInterval);
+  }, [loadOnlinePlayers]);
+
+  useEffect(() => {
+    if (searchQuery && activeTab === "all") {
+      const timeoutId = setTimeout(() => {
+        searchPlayers(searchQuery);
+      }, 300);
+      return () => clearTimeout(timeoutId);
+    } else if (!searchQuery && activeTab === "all") {
+      setSearchResults([]);
+    }
+  }, [searchQuery, activeTab, searchPlayers]);
 
   const filteredOnline = useMemo(() => {
     if (!searchQuery) return onlinePlayers;
@@ -137,7 +137,7 @@ export default function Players() {
                 <MemoizedPlayerCard
                   key={player.id}
                   player={player}
-                  onClick={() => handlePlayerClick(player)}
+                  onClick={handlePlayerClick}
                 />
               ))}
             </div>
@@ -174,7 +174,7 @@ export default function Players() {
                 <MemoizedPlayerCard
                   key={player.id}
                   player={player}
-                  onClick={() => handlePlayerClick(player)}
+                  onClick={handlePlayerClick}
                 />
               ))}
             </div>

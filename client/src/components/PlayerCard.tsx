@@ -11,7 +11,7 @@ import { itemsCache } from "@/lib/itemsCache";
 
 interface PlayerCardProps {
   player: User;
-  onClick?: () => void;
+  onClick?: (player: User) => void;
   onAdminActionComplete?: () => void;
 }
 
@@ -99,7 +99,7 @@ export function PlayerCard({ player, onClick, onAdminActionComplete }: PlayerCar
           if (target.closest('[data-admin-panel]')) {
             return;
           }
-          onClick?.();
+          onClick?.(player);
         }}
         data-testid={`card-player-${player.userId}`}
       >

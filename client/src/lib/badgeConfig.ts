@@ -22,6 +22,9 @@ export const BADGE_ICONS = {
   leaderboardTop10: "https://cdn-icons-png.flaticon.com/512/2583/2583988.png",
   leaderboardTop3: "https://cdn-icons-png.flaticon.com/512/3845/3845876.png",
   leaderboardTop1: "https://cdn-icons-png.flaticon.com/512/744/744984.png",
+  serialOwner: "https://cdn-icons-png.flaticon.com/512/9195/9195842.png",
+  dominusOwner: "https://cdn-icons-png.flaticon.com/512/2592/2592115.png",
+  rareOwner: "https://cdn-icons-png.flaticon.com/512/1785/1785380.png",
 };
 
 export interface LeaderboardPositions {
@@ -208,6 +211,56 @@ export async function calculateUserBadges(user: User, inventoryValue: number, le
           color: "#60a5fa",
         });
       }
+    }
+  }
+  
+  if (user.inventory && user.inventory.length > 0) {
+    const hasSerialItem = user.inventory.some(invItem => invItem.serialNumber !== null && invItem.serialNumber !== undefined);
+    if (hasSerialItem) {
+      badges.push({
+        id: "serialOwner",
+        name: "Serial Owner",
+        description: "Own a serial # item",
+        icon: BADGE_ICONS.serialOwner,
+        color: "#06b6d4",
+      });
+    }
+    
+    const itemsSnapshot = await getDocs(collection(db, "items"));
+    const itemsMap = new Map<string, any>();
+    itemsSnapshot.forEach((doc) => {
+      itemsMap.set(doc.id, doc.data());
+    });
+    
+    const hasDominusItem = user.inventory.some(invItem => {
+      const item = itemsMap.get(invItem.itemId);
+      return item && item.name && item.name.includes("Dominus");
+    });
+    if (hasDominusItem) {
+      badges.push({
+        id: "dominusOwner",
+        name: "Dominus Owner",
+        description: "Own a Dominus item",
+        icon: BADGE_ICONS.dominusOwner,
+        color: "#a855f7",
+      });
+    }
+    
+    const hasRareItem = user.inventory.some(invItem => {
+      const item = itemsMap.get(invItem.itemId);
+      if (!item) return false;
+      const isStockOrTimer = item.stockType === "limited" || item.stockType === "timer";
+      const hasLowOwners = (item.totalOwners || 0) < 15;
+      return isStockOrTimer && hasLowOwners;
+    });
+    if (hasRareItem) {
+      badges.push({
+        id: "rareOwner",
+        name: "Rare Owner",
+        description: "Own an item with less than 15 owners",
+        icon: BADGE_ICONS.rareOwner,
+        color: "#ec4899",
+      });
     }
   }
   

@@ -9,6 +9,7 @@ import type { Item } from "@shared/schema";
 import { useAuth } from "@/contexts/AuthContext";
 import { SlotMachineRoll } from "@/components/SlotMachineRoll";
 import { RarityAnimationOverlay } from "@/components/RarityAnimationOverlay";
+import { GlobalRollToast } from "@/components/GlobalRollToast";
 import { getRarityClass, getRarityGlow, formatValue } from "@/lib/rarity";
 import { Dices, Loader2, TrendingUp, Package, Gem, Hash } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -350,6 +351,9 @@ export default function RollScreen() {
 
   return (
     <>
+      {/* Global roll toast notifications */}
+      <GlobalRollToast />
+      
       {/* Rarity animation overlay */}
       {rolledItem && showRarityAnimation && (
         <RarityAnimationOverlay
