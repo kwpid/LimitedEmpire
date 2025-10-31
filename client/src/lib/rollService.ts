@@ -12,9 +12,21 @@ export async function performRoll(user: User): Promise<{ item: Item; serialNumbe
     throw new Error("No items available to roll");
   }
 
+  // Get user's luck multiplier (default to 1 for users without it)
+  const luckMultiplier = user.luckMultiplier ?? 1;
+  
+  // Ultra rare and higher rarities that are affected by luck multiplier
+  const luckAffectedRarities = ["ULTRA_RARE", "EPIC", "ULTRA_EPIC", "MYTHIC", "INSANE"];
+  
   let totalWeight = 0;
   const weights = eligibleItems.map((item) => {
-    const weight = 1 / item.value;
+    let weight = 1 / item.value;
+    
+    // Apply luck multiplier only to ULTRA_RARE or higher
+    if (luckAffectedRarities.includes(item.rarity)) {
+      weight *= luckMultiplier;
+    }
+    
     totalWeight += weight;
     return weight;
   });
