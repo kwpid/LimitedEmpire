@@ -138,7 +138,7 @@ export const itemSchema = z.object({
   totalOwners: z.number().nonnegative().default(0), // Track unique users who own this item
   timerExpiresAt: z.number().nullable(), // timestamp when timer items expire and become unavailable
   timerDuration: z.number().nullable(), // duration in milliseconds for timer items
-  nextSerialNumber: z.number().default(1), // Next serial number to assign for timer items (no max stock)
+  nextSerialNumber: z.number().optional(), // Next serial number to assign for limited/timer items (only set for those types)
   createdAt: z.number(),
   createdBy: z.string(), // userId who created it
 });
