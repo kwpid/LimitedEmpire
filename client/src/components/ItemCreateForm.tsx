@@ -29,6 +29,16 @@ function formatTimerDuration(ms: number): string {
   return `${minutes} minute${minutes > 1 ? 's' : ''}`;
 }
 
+function formatTimerDurationDetailed(ms: number): string {
+  const totalMinutes = Math.floor(ms / 60000);
+  const totalHours = Math.floor(totalMinutes / 60);
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+  const minutes = totalMinutes % 60;
+  
+  return `${days}d, ${hours}h, ${minutes}m`;
+}
+
 export function ItemCreateForm({ onSuccess }: { onSuccess?: () => void }) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -174,7 +184,7 @@ export function ItemCreateForm({ onSuccess }: { onSuccess?: () => void }) {
       const stockDisplay = values.stockType === "limited" 
         ? values.totalStock 
         : values.stockType === "timer" 
-        ? "Timer" 
+        ? `Timer - ${formatTimerDurationDetailed(values.timerDuration || 0)}` 
         : null;
 
       await sendWebhookRequest('/api/webhooks/item-release', {
