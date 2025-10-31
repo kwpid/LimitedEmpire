@@ -9,7 +9,6 @@ import type { Item } from "@shared/schema";
 import { useAuth } from "@/contexts/AuthContext";
 import { SlotMachineRoll } from "@/components/SlotMachineRoll";
 import { RarityAnimationOverlay } from "@/components/RarityAnimationOverlay";
-import { GlobalRollToast } from "@/components/GlobalRollToast";
 import { getRarityClass, getRarityGlow, formatValue } from "@/lib/rarity";
 import { Dices, Loader2, TrendingUp, Package, Gem, Hash } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -137,8 +136,7 @@ export default function RollScreen() {
   const loadGlobalRolls = async () => {
     try {
       const rollsRef = collection(db, "globalRolls");
-      const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
-      const q = query(rollsRef, where("timestamp", ">=", fiveMinutesAgo), orderBy("timestamp", "desc"), limit(10));
+      const q = query(rollsRef, orderBy("timestamp", "desc"), limit(10));
       const snapshot = await getDocs(q);
       
       const rolls: SavedRoll[] = [];
@@ -351,9 +349,6 @@ export default function RollScreen() {
 
   return (
     <>
-      {/* Global roll toast notifications */}
-      <GlobalRollToast />
-      
       {/* Rarity animation overlay */}
       {rolledItem && showRarityAnimation && (
         <RarityAnimationOverlay
