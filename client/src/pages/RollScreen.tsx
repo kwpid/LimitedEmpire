@@ -206,10 +206,47 @@ export default function RollScreen() {
     // Start slot machine to result transition
     setIsAnimating(false);
     
-    // Trigger rarity-based screen animation
-    setShowRarityAnimation(true);
+    // Trigger rarity-based screen animation (only for UNCOMMON or higher)
+    if (rolledItem.rarity !== "COMMON") {
+      setShowRarityAnimation(true);
+    } else {
+      // For COMMON items, complete immediately without animation
+      const serialNumber = rolledItem.stockType === "limited" ? 
+        user.inventory?.find(inv => inv.itemId === rolledItem.id)?.serialNumber : undefined;
+      
+      await saveRollToDatabase(rolledItem, serialNumber);
+      
+      const wasAutoSold = user.settings?.autoSellRarities?.includes(rolledItem.rarity);
+      if (wasAutoSold) {
+        toast({
+          title: "Auto-Sold!",
+          description: `${rolledItem.name} - Earned ${formatValue(rolledItem.value)}`,
+        });
+      } else {
+        toast({
+          title: "You rolled!",
+          description: `${rolledItem.name} - ${formatValue(rolledItem.value)}${serialNumber ? ` #${serialNumber}` : ""}`,
+        });
+      }
+
+      await Promise.all([
+        loadItems(),
+        loadUserStats(),
+        refetchUser(),
+      ]);
+      
+      loadBestRolls();
+      setRolling(false);
+      rollingRef.current = false;
+    }
+  }, [rolledItem, user, toast, refetchUser, loadItems, loadUserStats, loadBestRolls]);
+
+  const handleRarityAnimationComplete = useCallback(async () => {
+    if (!rolledItem || !user) return;
     
-    // Save to database and update UI
+    setShowRarityAnimation(false);
+    
+    // Save to database and update UI for UNCOMMON+ items
     const serialNumber = rolledItem.stockType === "limited" ? 
       user.inventory?.find(inv => inv.itemId === rolledItem.id)?.serialNumber : undefined;
     
@@ -236,13 +273,9 @@ export default function RollScreen() {
     ]);
     
     loadBestRolls();
-  }, [rolledItem, user, toast, refetchUser]);
-
-  const handleRarityAnimationComplete = useCallback(() => {
-    setShowRarityAnimation(false);
     setRolling(false);
     rollingRef.current = false;
-  }, []);
+  }, [rolledItem, user, toast, saveRollToDatabase, loadItems, loadUserStats, refetchUser, loadBestRolls]);
 
   const performRoll = useCallback(async () => {
     if (!user || rolling || rollingRef.current) return;

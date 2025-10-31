@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import type { RarityTier } from "@shared/schema";
+import { RARITY_TIERS } from "@shared/schema";
 import { useEffect, useState } from "react";
 
 interface RarityAnimationOverlayProps {
@@ -8,18 +9,25 @@ interface RarityAnimationOverlayProps {
   onComplete?: () => void;
 }
 
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 const rarityConfig = {
   COMMON: {
-    duration: 1.0,
-    tintColor: "rgba(34, 197, 94, 0.15)",
-    shakeIntensity: 3,
+    duration: 0,
+    tintColor: "transparent",
+    shakeIntensity: 0,
     particles: 0,
     glow: false,
     rainbow: false,
   },
   UNCOMMON: {
     duration: 1.5,
-    tintColor: "rgba(59, 130, 246, 0.2)",
+    tintColor: hexToRgba(RARITY_TIERS.UNCOMMON.color, 0.2),
     shakeIntensity: 5,
     particles: 5,
     glow: false,
@@ -27,15 +35,23 @@ const rarityConfig = {
   },
   RARE: {
     duration: 2.0,
-    tintColor: "rgba(168, 85, 247, 0.25)",
+    tintColor: hexToRgba(RARITY_TIERS.RARE.color, 0.25),
     shakeIntensity: 8,
     particles: 10,
     glow: true,
     rainbow: false,
   },
+  ULTRA_RARE: {
+    duration: 4.0,
+    tintColor: hexToRgba(RARITY_TIERS.ULTRA_RARE.color, 0.45),
+    shakeIntensity: 25,
+    particles: 60,
+    glow: true,
+    rainbow: false,
+  },
   EPIC: {
     duration: 2.5,
-    tintColor: "rgba(251, 146, 60, 0.3)",
+    tintColor: hexToRgba(RARITY_TIERS.EPIC.color, 0.3),
     shakeIntensity: 12,
     particles: 15,
     glow: true,
@@ -43,7 +59,7 @@ const rarityConfig = {
   },
   ULTRA_EPIC: {
     duration: 3.0,
-    tintColor: "rgba(107, 33, 168, 0.35)",
+    tintColor: hexToRgba(RARITY_TIERS.ULTRA_EPIC.color, 0.35),
     shakeIntensity: 15,
     particles: 25,
     glow: true,
@@ -51,17 +67,9 @@ const rarityConfig = {
   },
   MYTHIC: {
     duration: 3.5,
-    tintColor: "rgba(236, 72, 153, 0.4)",
+    tintColor: hexToRgba(RARITY_TIERS.MYTHIC.color, 0.4),
     shakeIntensity: 20,
     particles: 40,
-    glow: true,
-    rainbow: false,
-  },
-  ULTRA_RARE: {
-    duration: 4.0,
-    tintColor: "rgba(6, 182, 212, 0.45)",
-    shakeIntensity: 25,
-    particles: 60,
     glow: true,
     rainbow: false,
   },
@@ -76,6 +84,13 @@ const rarityConfig = {
 };
 
 export function RarityAnimationOverlay({ rarity, isActive, onComplete }: RarityAnimationOverlayProps) {
+  if (rarity === "COMMON") {
+    if (isActive && onComplete) {
+      onComplete();
+    }
+    return null;
+  }
+
   const config = rarityConfig[rarity];
   const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number; size: number; delay: number }>>([]);
 
